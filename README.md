@@ -10,6 +10,7 @@ Plan, liste et graphe : [PLAN.md](PLAN.md).
 | Tri Téléchargements | fait (mêmes règles `regles.json`) |
 | Lanceur Jeux | fait (même `%APPDATA%\LanceurJeux\data.json`) |
 | Coffre | fait (même `%APPDATA%\CoffreMotsDePasse\coffre.json`) |
+| Traducteur | fait (même `%APPDATA%\TraducteurSousTitres.json` et glossaire ; Google/DeepL, ffmpeg pour les vidéos) |
 | Les autres | pas encore : leur onglet ouvre l'ancienne version |
 
 ## Compiler

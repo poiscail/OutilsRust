@@ -3,6 +3,7 @@
 //! ont un onglet qui lance leur ancien exe.
 mod coffre;
 mod lanceur;
+mod traducteur;
 mod tri;
 
 use eframe::egui;
@@ -15,7 +16,6 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 /// (nom, exe de l'ancien outil relatif à la racine Outils)
 const ANCIENS: &[(&str, &str)] = &[
-    ("Traducteur", r"TraducteurSousTitres\dist\TraducteurSousTitres.exe"),
     ("Presse-papiers", r"GestionnairePressePapiers\publish\GestionnairePressePapiers.exe"),
     ("Serveur Minecraft", r"GestionServeurMinecraft\GestionServeurMinecraft.exe"),
     ("Moniteur Jeu", r"MoniteurJeu\MoniteurJeu.exe"),
@@ -34,7 +34,8 @@ struct App {
     tri: tri::Tri,
     lanceur: lanceur::Lanceur,
     coffre: coffre::CoffreUi,
-    onglet: usize, // 0 = Tri, 1 = Lanceur, 2 = Coffre, 3.. = ANCIENS[i-3]
+    traducteur: traducteur::Traducteur,
+    onglet: usize, // 0 = Tri, 1 = Lanceur, 2 = Coffre, 3 = Traducteur, 4.. = ANCIENS[i-4]
     erreur: Option<String>,
 }
 
@@ -43,7 +44,7 @@ impl App {
         cc.egui_ctx.set_visuals(egui::Visuals::dark());
         egui_extras::install_image_loaders(&cc.egui_ctx); // jaquettes des jeux
         let racine = racine();
-        App { tri: tri::Tri::new(&racine), lanceur: lanceur::Lanceur::new(), coffre: coffre::CoffreUi::new(), racine, onglet: 0, erreur: None }
+        App { tri: tri::Tri::new(&racine), lanceur: lanceur::Lanceur::new(), coffre: coffre::CoffreUi::new(), traducteur: traducteur::Traducteur::new(), racine, onglet: 0, erreur: None }
     }
 
     fn ancien(&mut self, ui: &mut egui::Ui, nom: &str, rel: &str) {
@@ -76,7 +77,7 @@ impl eframe::App for App {
             ui.add_space(8.0);
             ui.heading("Outils");
             ui.separator();
-            let mut noms = vec!["Tri Téléchargements", "Lanceur Jeux", "Coffre"];
+            let mut noms = vec!["Tri Téléchargements", "Lanceur Jeux", "Coffre", "Traducteur"];
             noms.extend(ANCIENS.iter().map(|(n, _)| *n));
             for (i, n) in noms.iter().enumerate() {
                 if ui.selectable_label(self.onglet == i, *n).clicked() {
@@ -89,8 +90,9 @@ impl eframe::App for App {
             0 => self.tri.ui(ui),
             1 => self.lanceur.ui(ui),
             2 => self.coffre.ui(ui),
+            3 => self.traducteur.ui(ui),
             i => {
-                let (n, rel) = ANCIENS[i - 3];
+                let (n, rel) = ANCIENS[i - 4];
                 self.ancien(ui, n, rel);
             }
         });

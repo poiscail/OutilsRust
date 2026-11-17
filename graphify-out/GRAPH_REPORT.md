@@ -1,17 +1,17 @@
 # Graph Report - OutilsRust  (2026-11-17)
 
 ## Corpus Check
-- 9 files · ~9,303 words
+- 10 files · ~14,713 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 1 file(s) not represented in the graph (top: (none) 1)
 
 ## Summary
-- 290 nodes · 574 edges · 18 communities (16 shown, 2 thin omitted)
-- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 5 edges (avg confidence: 0.64)
+- 415 nodes · 892 edges · 21 communities (20 shown, 1 thin omitted)
+- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 7 edges (avg confidence: 0.65)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `f3b36491`
+- Built from commit: `504a8878`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -24,34 +24,39 @@
 - lanceur.rs
 - carte
 - outils
-- CoffreUi
+- .ecran_principal
 - Erreur
 - scan_steam
 - reg
 - fil_saisie
 - partie
-- .copier
+- CoffreUi
 - Sauvegarde
 - generer_mot_de_passe
-- Color32
+- traducteur.rs
+- Traducteur
+- .dialogues
+- Dialogue
 
 ## God Nodes (most connected - your core abstractions)
-1. `CoffreUi` - 18 edges
-2. `Erreur` - 16 edges
-3. `Tri` - 16 edges
-4. `fil_saisie()` - 13 edges
-5. `Jeu` - 12 edges
-6. `carte()` - 12 edges
-7. `Coffre` - 11 edges
-8. `Action` - 10 edges
-9. `Action` - 10 edges
-10. `Regles` - 10 edges
+1. `traduire_contenu()` - 20 edges
+2. `CoffreUi` - 18 edges
+3. `R` - 17 edges
+4. `Erreur` - 16 edges
+5. `Tri` - 16 edges
+6. `Bloc` - 14 edges
+7. `traduire_blocs()` - 14 edges
+8. `fil_saisie()` - 13 edges
+9. `Jeu` - 12 edges
+10. `carte()` - 12 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `App` --references--> `CoffreUi`  [INFERRED]
   src/main.rs → src/coffre.rs
 - `App` --references--> `Lanceur`  [INFERRED]
   src/main.rs → src/lanceur.rs
+- `App` --references--> `Traducteur`  [INFERRED]
+  src/main.rs → src/traducteur.rs
 - `App` --references--> `Tri`  [INFERRED]
   src/main.rs → src/tri.rs
 - `deplacer()` --calls--> `w()`  [INFERRED]
@@ -60,7 +65,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (18 total, 2 thin omitted)
+## Communities (21 total, 1 thin omitted)
 
 ### Community 0 - "main.rs"
 Cohesion: 0.12
@@ -68,7 +73,7 @@ Nodes (5): ANCIENS, App, CREATE_NO_WINDOW, main(), racine()
 
 ### Community 1 - "coffre.rs"
 Cohesion: 0.05
-Nodes (11): DELAI_PRESSE_PAPIERS, DELAI_VERROU, ecrire_atomique(), KDF_DEFAUT, LONGUEUR_MIN_MAITRE, ouvre_un_coffre_python(), RAPIDE, SYMBOLES (+3 more)
+Nodes (13): DELAI_PRESSE_PAPIERS, DELAI_VERROU, ecrire_atomique(), GRIS, KDF_DEFAUT, LONGUEUR_MIN_MAITRE, ouvre_un_coffre_python(), RAPIDE (+5 more)
 
 ### Community 2 - "tri.rs"
 Cohesion: 0.08
@@ -90,9 +95,9 @@ Nodes (22): ATTENTE, BLEU, CARTE, CH, chemin_processus(), CW, dossier_test(), GR
 Cohesion: 0.22
 Nodes (10): Action, Actualiser, Ajouter, Dossier, Lancer, Retirer, SteamDabord, carte() (+2 more)
 
-### Community 8 - "CoffreUi"
-Cohesion: 0.08
-Nodes (23): Action, Copier, Exporter, Maitre, Modifier, Nouveau, Remplir, Supprimer (+15 more)
+### Community 8 - ".ecran_principal"
+Cohesion: 0.19
+Nodes (11): Action, Copier, Exporter, Maitre, Modifier, Nouveau, Remplir, Supprimer (+3 more)
 
 ### Community 9 - "Erreur"
 Cohesion: 0.19
@@ -114,9 +119,9 @@ Nodes (12): fenetre_cible(), fil_saisie(), Morceau, Texte, Touche, mot_cle_site(
 Cohesion: 0.36
 Nodes (6): assurer_steam(), Etat, maintenant(), Partage, partie(), statut()
 
-### Community 14 - ".copier"
-Cohesion: 0.50
-Nodes (4): copier(), effacer_si_inchange(), ouvrir(), poser()
+### Community 14 - "CoffreUi"
+Cohesion: 0.23
+Nodes (6): CoffreUi, copier(), effacer_si_inchange(), ouvrir(), poser(), session_verrouillee()
 
 ### Community 15 - "Sauvegarde"
 Cohesion: 0.40
@@ -126,25 +131,41 @@ Nodes (3): Sauvegarde, tri_des_jeux(), trier()
 Cohesion: 0.67
 Nodes (3): force_et_generateur(), generer_mot_de_passe(), tirage()
 
+### Community 17 - "traducteur.rs"
+Cohesion: 0.05
+Nodes (86): agent(), aller_retour_crlf_bom_et_cp1252(), ANNULE, ass_hms(), ass_vers_html(), AUTO, BALISE, balises_intactes() (+78 more)
+
+### Community 18 - "Traducteur"
+Cohesion: 0.11
+Nodes (16): Apercu, appdata(), config_chemin(), ecrire_config(), glossaire_chemin(), lire_config(), Moteur, DeepL (+8 more)
+
+### Community 19 - ".dialogues"
+Cohesion: 0.21
+Nodes (6): activer(), champ_mdp(), hex(), reduire(), verr_maj(), maj()
+
+### Community 20 - "Dialogue"
+Cohesion: 0.40
+Nodes (5): Dialogue, Confirmer, Entree, Maitre, FormEntree
+
 ## Knowledge Gaps
-- **12 isolated node(s):** `outils`, `MauvaisMotDePasse`, `ModifieAilleurs`, `Maitre`, `Confirmer` (+7 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 89 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **2 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **16 isolated node(s):** `outils`, `MauvaisMotDePasse`, `ModifieAilleurs`, `Maitre`, `Confirmer` (+11 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 112 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **1 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `CoffreUi` connect `CoffreUi` to `main.rs`, `coffre.rs`, `Erreur`, `fil_saisie`, `.copier`?**
-  _High betweenness centrality (0.100) - this node is a cross-community bridge._
+- **Why does `App` connect `main.rs` to `tri.rs`, `Traducteur`, `Jeu`, `CoffreUi`?**
+  _High betweenness centrality (0.065) - this node is a cross-community bridge._
 - **What connects `outils`, `MauvaisMotDePasse`, `ModifieAilleurs` to the rest of the system?**
-  _12 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _16 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `main.rs` be split into smaller, more focused modules?**
   _Cohesion score 0.12280701754385964 - nodes in this community are weakly interconnected._
-- **Why does `App` connect `main.rs` to `CoffreUi`, `tri.rs`, `Jeu`?**
-  _High betweenness centrality (0.082) - this node is a cross-community bridge._
+- **Why does `CoffreUi` connect `CoffreUi` to `main.rs`, `coffre.rs`, `.ecran_principal`, `Erreur`, `fil_saisie`, `.dialogues`, `Dialogue`?**
+  _High betweenness centrality (0.062) - this node is a cross-community bridge._
 - **Should `coffre.rs` be split into smaller, more focused modules?**
-  _Cohesion score 0.05 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.048726467331118496 - nodes in this community are weakly interconnected._
 - **Why does `Tri` connect `tri.rs` to `main.rs`?**
-  _High betweenness centrality (0.072) - this node is a cross-community bridge._
+  _High betweenness centrality (0.049) - this node is a cross-community bridge._
 - **Should `tri.rs` be split into smaller, more focused modules?**
   _Cohesion score 0.08156028368794327 - nodes in this community are weakly interconnected._
