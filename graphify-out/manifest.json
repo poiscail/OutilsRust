@@ -1,0 +1,38 @@
+{
+  "Cargo.toml": {
+    "mtime": 1794928059.2986777,
+    "seen": 1794928565.8737395,
+    "ast_hash": "75e23fb16bd04c3ea87427a13424b189",
+    "semantic_hash": ""
+  },
+  "regles.json": {
+    "mtime": 1793958310.7798126,
+    "seen": 1794928565.8737395,
+    "ast_hash": "a4a01c43273d73e0de02caf07f109e10",
+    "semantic_hash": ""
+  },
+  "src/main.rs": {
+    "mtime": 1794928245.45593,
+    "seen": 1794928565.8737395,
+    "ast_hash": "4852822bd46f55a2310b0c963813e68b",
+    "semantic_hash": ""
+  },
+  "src/tri.rs": {
+    "mtime": 1794928521.4413812,
+    "seen": 1794928565.8737395,
+    "ast_hash": "07646b57c8923fc8951b699d94da67ed",
+    "semantic_hash": ""
+  },
+  "PLAN.md": {
+    "mtime": 1794927942.1108017,
+    "seen": 1794928565.8737395,
+    "ast_hash": "ad587de8a975d54eeb57c302b5fa0223",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1794928521.9616067,
+    "seen": 1794928565.8737395,
+    "ast_hash": "c50084111e3ea6c40b7cc4b69d7cfbb3",
+    "semantic_hash": ""
+  }
+}
