@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 //! Outils : tous les outils dans un seul programme. Les outils pas encore réécrits en Rust
 //! ont un onglet qui lance leur ancien exe.
+mod lanceur;
 mod tri;
 
 use eframe::egui;
@@ -13,7 +14,6 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 /// (nom, exe de l'ancien outil relatif à la racine Outils)
 const ANCIENS: &[(&str, &str)] = &[
-    ("Lanceur Jeux", r"LanceurJeux\LanceurJeux.exe"),
     ("Coffre", r"CoffreMotsDePasse\CoffreMotsDePasse.exe"),
     ("Traducteur", r"TraducteurSousTitres\dist\TraducteurSousTitres.exe"),
     ("Presse-papiers", r"GestionnairePressePapiers\publish\GestionnairePressePapiers.exe"),
@@ -32,15 +32,17 @@ fn racine() -> PathBuf {
 struct App {
     racine: PathBuf,
     tri: tri::Tri,
-    onglet: usize, // 0 = Tri, 1.. = ANCIENS[i-1]
+    lanceur: lanceur::Lanceur,
+    onglet: usize, // 0 = Tri, 1 = Lanceur, 2.. = ANCIENS[i-2]
     erreur: Option<String>,
 }
 
 impl App {
     fn new(cc: &eframe::CreationContext) -> Self {
         cc.egui_ctx.set_visuals(egui::Visuals::dark());
+        egui_extras::install_image_loaders(&cc.egui_ctx); // jaquettes des jeux
         let racine = racine();
-        App { tri: tri::Tri::new(&racine), racine, onglet: 0, erreur: None }
+        App { tri: tri::Tri::new(&racine), lanceur: lanceur::Lanceur::new(), racine, onglet: 0, erreur: None }
     }
 
     fn ancien(&mut self, ui: &mut egui::Ui, nom: &str, rel: &str) {
@@ -72,7 +74,7 @@ impl eframe::App for App {
             ui.add_space(8.0);
             ui.heading("Outils");
             ui.separator();
-            let mut noms = vec!["Tri Téléchargements"];
+            let mut noms = vec!["Tri Téléchargements", "Lanceur Jeux"];
             noms.extend(ANCIENS.iter().map(|(n, _)| *n));
             for (i, n) in noms.iter().enumerate() {
                 if ui.selectable_label(self.onglet == i, *n).clicked() {
@@ -83,8 +85,9 @@ impl eframe::App for App {
         });
         egui::CentralPanel::default().show(ctx, |ui| match self.onglet {
             0 => self.tri.ui(ui),
+            1 => self.lanceur.ui(ui),
             i => {
-                let (n, rel) = ANCIENS[i - 1];
+                let (n, rel) = ANCIENS[i - 2];
                 self.ancien(ui, n, rel);
             }
         });

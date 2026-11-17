@@ -8,6 +8,7 @@ Plan, liste et graphe : [PLAN.md](PLAN.md).
 | Outil | Rust |
 |-------|------|
 | Tri Téléchargements | fait (mêmes règles `regles.json`) |
+| Lanceur Jeux | fait (même `%APPDATA%\LanceurJeux\data.json`) |
 | Les autres | pas encore : leur onglet ouvre l'ancienne version |
 
 ## Compiler
