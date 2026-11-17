@@ -12,6 +12,7 @@ Plan, liste et graphe : [PLAN.md](PLAN.md).
 | Coffre | fait (même `%APPDATA%\CoffreMotsDePasse\coffre.json`) |
 | Traducteur | fait (même `%APPDATA%\TraducteurSousTitres.json` et glossaire ; Google/DeepL, ffmpeg pour les vidéos) |
 | Presse-papiers | fait (même `%APPDATA%\GestionnairePressePapiers`, raccourci de `parametres.json`) |
+| Serveur Minecraft | fait (même `%APPDATA%\GestionServeurMinecraft.json` ; veille, playit, modpacks, kit amis) |
 | Les autres | pas encore : leur onglet ouvre l'ancienne version |
 
 ## Compiler
