@@ -1,26 +1,17 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-//! Outils : tous les outils dans un seul programme. Les outils pas encore réécrits en Rust
-//! ont un onglet qui lance leur ancien exe.
+//! Outils : tous les outils dans un seul programme.
 mod coffre;
 mod lanceur;
 mod minecraft;
 mod moniteur;
+mod optimiseur;
 mod pressepapiers;
 mod traducteur;
 mod tri;
 
 use eframe::egui;
-use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::time::Duration;
-
-const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-
-/// (nom, exe de l'ancien outil relatif à la racine Outils)
-const ANCIENS: &[(&str, &str)] = &[
-    ("Optimiseur", r"OptimiseurWindows\OptimiseurWindows.exe"),
-];
 
 /// Dossier "Outils" : le premier parent de l'exe qui contient OutilsRust.
 fn racine() -> PathBuf {
@@ -30,7 +21,6 @@ fn racine() -> PathBuf {
 }
 
 struct App {
-    racine: PathBuf,
     tri: tri::Tri,
     lanceur: lanceur::Lanceur,
     coffre: coffre::CoffreUi,
@@ -38,8 +28,8 @@ struct App {
     presse: pressepapiers::PressePapiers,
     minecraft: minecraft::Minecraft,
     moniteur: moniteur::Moniteur,
-    onglet: usize, // 0 = Tri, 1 = Lanceur, 2 = Coffre, 3 = Traducteur, 4 = Presse-papiers, 5 = Minecraft, 6 = Moniteur, 7.. = ANCIENS[i-7]
-    erreur: Option<String>,
+    optimiseur: optimiseur::Optimiseur,
+    onglet: usize, // index dans la liste des noms du panneau
 }
 
 impl App {
@@ -47,27 +37,7 @@ impl App {
         cc.egui_ctx.set_visuals(egui::Visuals::dark());
         egui_extras::install_image_loaders(&cc.egui_ctx); // jaquettes des jeux
         let racine = racine();
-        App { tri: tri::Tri::new(&racine), lanceur: lanceur::Lanceur::new(), coffre: coffre::CoffreUi::new(), traducteur: traducteur::Traducteur::new(), presse: pressepapiers::PressePapiers::new(), minecraft: minecraft::Minecraft::new(), moniteur: moniteur::Moniteur::new(&racine), racine, onglet: 0, erreur: None }
-    }
-
-    fn ancien(&mut self, ui: &mut egui::Ui, nom: &str, rel: &str) {
-        ui.heading(nom);
-        ui.label("Pas encore réécrit en Rust.");
-        ui.add_space(8.0);
-        let exe = self.racine.join(rel);
-        if !exe.is_file() {
-            ui.colored_label(egui::Color32::GRAY, format!("Introuvable : {}", exe.display()));
-            return;
-        }
-        if ui.button("Ouvrir l'ancienne version").clicked() {
-            // "start" passe par le shell : gère la demande de droits admin (UAC)
-            let r = Command::new("cmd").args(["/c", "start", ""]).arg(&exe)
-                .current_dir(exe.parent().unwrap_or(&self.racine)).creation_flags(CREATE_NO_WINDOW).spawn();
-            self.erreur = r.err().map(|e| e.to_string());
-        }
-        if let Some(e) = &self.erreur {
-            ui.colored_label(egui::Color32::LIGHT_RED, e);
-        }
+        App { tri: tri::Tri::new(&racine), lanceur: lanceur::Lanceur::new(), coffre: coffre::CoffreUi::new(), traducteur: traducteur::Traducteur::new(), presse: pressepapiers::PressePapiers::new(), minecraft: minecraft::Minecraft::new(), moniteur: moniteur::Moniteur::new(&racine), optimiseur: optimiseur::Optimiseur::new(), onglet: 0 }
     }
 }
 
@@ -85,12 +55,10 @@ impl eframe::App for App {
             ui.add_space(8.0);
             ui.heading("Outils");
             ui.separator();
-            let mut noms = vec!["Tri Téléchargements", "Lanceur Jeux", "Coffre", "Traducteur", "Presse-papiers", "Serveur Minecraft", "Moniteur Jeu"];
-            noms.extend(ANCIENS.iter().map(|(n, _)| *n));
+            let noms = ["Tri Téléchargements", "Lanceur Jeux", "Coffre", "Traducteur", "Presse-papiers", "Serveur Minecraft", "Moniteur Jeu", "Optimiseur"];
             for (i, n) in noms.iter().enumerate() {
                 if ui.selectable_label(self.onglet == i, *n).clicked() {
                     self.onglet = i;
-                    self.erreur = None;
                 }
             }
         });
@@ -102,10 +70,8 @@ impl eframe::App for App {
             4 => self.presse.ui(ui),
             5 => self.minecraft.ui(ui),
             6 => self.moniteur.ui(ui),
-            i => {
-                let (n, rel) = ANCIENS[i - 7];
-                self.ancien(ui, n, rel);
-            }
+            7 => self.optimiseur.ui(ui),
+            _ => {}
         });
     }
 }

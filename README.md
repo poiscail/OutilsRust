@@ -14,8 +14,7 @@ Plan, liste et graphe : [PLAN.md](PLAN.md).
 | Presse-papiers | fait (même `%APPDATA%\GestionnairePressePapiers`, raccourci de `parametres.json`) |
 | Serveur Minecraft | fait (même `%APPDATA%\GestionServeurMinecraft.json` ; veille, playit, modpacks, kit amis) |
 | Moniteur Jeu | fait (même `MoniteurJeu\reglages.ini` et `historique\` ; mode jeu, FPS ETW en admin, overlay) |
-eglages.ini` et `historique` ; mode jeu, FPS ETW en admin, overlay) |
-| Les autres | pas encore : leur onglet ouvre l'ancienne version |
+| Optimiseur Windows | fait (nettoyage, confidentialité, perf, confort ; applis ; démarrage/arrière-plan ; admin requis pour HKLM/services) |
 
 ## Compiler
 
