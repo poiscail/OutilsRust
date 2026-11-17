@@ -9,7 +9,7 @@ Plan, liste et graphe : [PLAN.md](PLAN.md).
 |-------|------|
 | Tri Téléchargements | fait (mêmes règles `regles.json`) |
 | Lanceur Jeux | fait (même `%APPDATA%\LanceurJeux\data.json`) |
-| Coffre | fait (même `%APPDATA%CoffreMotsDePasseffre.json`) |
+| Coffre | fait (même `%APPDATA%\CoffreMotsDePasse\coffre.json`) |
 | Les autres | pas encore : leur onglet ouvre l'ancienne version |
 
 ## Compiler
