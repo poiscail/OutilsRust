@@ -527,6 +527,13 @@ impl Drop for CoffreUi {
     }
 }
 
+impl CoffreUi {
+    /// Mots de passe faibles, si le coffre est ouvert (pour l'accueil).
+    pub fn faibles(&self) -> Option<usize> {
+        self.coffre.as_ref().map(|c| c.entrees.iter().filter(|e| force_mot_de_passe(&e.mdp) == "faible").count())
+    }
+}
+
 fn titre60(t: &str) -> String {
     t.chars().take(60).collect()
 }

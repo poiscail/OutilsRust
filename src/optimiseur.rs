@@ -1151,6 +1151,7 @@ impl Optimiseur {
             }
             let f = l.etat().fichier.display().to_string();
             l.ecrire(format!("Terminé. Espace libéré : {}. Journal : {f}", format_taille(total)));
+            crate::systeme::notifier("Optimiseur", &format!("Nettoyage terminé : {} libérés.", format_taille(total)));
             analyser(l, &toutes);
             if oui_non("Certains réglages ne s'appliquent qu'après un redémarrage.\n\nRedémarrer maintenant ?") {
                 let _ = lancer("shutdown.exe", &["/r", "/t", "0"]);

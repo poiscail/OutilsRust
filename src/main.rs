@@ -3,22 +3,36 @@
 mod coffre;
 mod lanceur;
 mod minecraft;
+mod minuteur;
 mod moniteur;
 mod optimiseur;
 mod pressepapiers;
+mod renommer;
+mod systeme;
 mod theme;
 mod traducteur;
 mod tri;
 
 use eframe::egui;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::sync::atomic::Ordering::Relaxed;
+use std::time::{Duration, Instant};
 
 /// Dossier "Outils" : le premier parent de l'exe qui contient OutilsRust.
 fn racine() -> PathBuf {
     let exe = std::env::current_exe().unwrap_or_default();
     exe.ancestors().find(|d| d.join("OutilsRust").is_dir()).map(Path::to_path_buf)
         .unwrap_or_else(|| exe.parent().map(Path::to_path_buf).unwrap_or_default())
+}
+
+const ONGLETS: [&str; 12] = [
+    "🏠 Accueil", "📂 Tri Téléchargements", "🎮 Lanceur Jeux", "🔒 Coffre", "🌐 Traducteur", "📋 Presse-papiers",
+    "⛏ Serveur Minecraft", "📊 Moniteur Jeu", "🚀 Optimiseur", "✏ Renommer", "⏱ Minuteur", "🎨 Personnaliser",
+];
+const PRESSE: usize = 5;
+
+fn go(octets: u64) -> String {
+    format!("{:.0} Go", octets as f64 / (1u64 << 30) as f64)
 }
 
 struct App {
@@ -30,50 +44,162 @@ struct App {
     minecraft: minecraft::Minecraft,
     moniteur: moniteur::Moniteur,
     optimiseur: optimiseur::Optimiseur,
+    renommer: renommer::Renommer,
+    minuteur: minuteur::Minuteur,
     theme: theme::Theme,
-    onglet: usize, // index dans la liste des noms du panneau
+    maj: systeme::MajPartagee,
+    maj_ignoree: bool,
+    disques: (Option<Instant>, Vec<(String, u64, u64)>),
+    lance_au_demarrage: bool, // lancé par Windows : on démarre rangé
+    onglet: usize,            // index dans ONGLETS
 }
 
 impl App {
     fn new(cc: &eframe::CreationContext) -> Self {
         egui_extras::install_image_loaders(&cc.egui_ctx); // jaquettes des jeux
+        systeme::nettoyer_ancienne();
         let racine = racine();
-        App { tri: tri::Tri::new(&racine), lanceur: lanceur::Lanceur::new(), coffre: coffre::CoffreUi::new(), traducteur: traducteur::Traducteur::new(), presse: pressepapiers::PressePapiers::new(), minecraft: minecraft::Minecraft::new(), moniteur: moniteur::Moniteur::new(&racine), optimiseur: optimiseur::Optimiseur::new(), theme: theme::Theme::new(), onglet: 0 }
+        let theme = theme::Theme::new(); // règle aussi notifications, zone et raccourci
+        systeme::lancer(cc.egui_ctx.clone());
+        let maj = systeme::MajPartagee::default();
+        if theme.r.maj {
+            systeme::verifier(maj.clone());
+        }
+        App {
+            tri: tri::Tri::new(&racine), lanceur: lanceur::Lanceur::new(), coffre: coffre::CoffreUi::new(), traducteur: traducteur::Traducteur::new(),
+            presse: pressepapiers::PressePapiers::new(), minecraft: minecraft::Minecraft::new(), moniteur: moniteur::Moniteur::new(&racine),
+            optimiseur: optimiseur::Optimiseur::new(), renommer: renommer::Renommer::new(), minuteur: minuteur::Minuteur::new(), theme, maj,
+            maj_ignoree: false, disques: (None, vec![]), lance_au_demarrage: std::env::args().any(|a| a == "--demarrage"), onglet: 0,
+        }
+    }
+
+    fn accueil(&mut self, ui: &mut egui::Ui) {
+        ui.heading("Accueil");
+        ui.add_space(8.0);
+        if self.disques.0.is_none_or(|t| t.elapsed() > Duration::from_secs(30)) {
+            self.disques = (Some(Instant::now()), systeme::disques());
+        }
+        ui.strong("Disques");
+        for (d, libre, total) in &self.disques.1 {
+            let pris = 1.0 - *libre as f32 / (*total).max(1) as f32;
+            ui.horizontal(|ui| {
+                ui.label(d);
+                ui.add(egui::ProgressBar::new(pris).desired_width(260.0).text(format!("{} libres sur {}", go(*libre), go(*total))));
+            });
+        }
+        ui.add_space(8.0);
+        ui.separator();
+        let coffre = match self.coffre.faibles() {
+            None => "Verrouillé".to_string(),
+            Some(0) => "Ouvert · aucun mot de passe faible".to_string(),
+            Some(n) => format!("Ouvert · {n} mot(s) de passe faible(s)"),
+        };
+        let lignes = [
+            (1, self.tri.resume()),
+            (6, self.minecraft.resume()),
+            (3, coffre),
+            (10, self.minuteur.resume()),
+        ];
+        egui::Grid::new("accueil").num_columns(2).spacing([16.0, 10.0]).show(ui, |ui| {
+            for (i, texte) in lignes {
+                if ui.button(ONGLETS[i]).clicked() {
+                    self.onglet = i;
+                }
+                ui.label(texte);
+                ui.end_row();
+            }
+            ui.label("🔄 Mise à jour");
+            ui.horizontal(|ui| {
+                ui.label(self.maj.lock().unwrap().etat.clone());
+                if ui.small_button("Vérifier").clicked() {
+                    systeme::verifier(self.maj.clone());
+                }
+            });
+            ui.end_row();
+        });
+        ui.add_space(8.0);
+        ui.separator();
+        ui.strong("Tous les outils");
+        ui.horizontal_wrapped(|ui| {
+            for (i, n) in ONGLETS.iter().enumerate().skip(1) {
+                if ui.add(egui::Button::new(*n).min_size(egui::vec2(170.0, 34.0))).clicked() {
+                    self.onglet = i;
+                }
+            }
+        });
+    }
+}
+
+impl Drop for App {
+    fn drop(&mut self) {
+        systeme::fin();
     }
 }
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
+        if std::mem::take(&mut self.lance_au_demarrage) {
+            if self.theme.r.zone {
+                systeme::cacher();
+            } else {
+                ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
+            }
+        }
+        if systeme::QUITTER.load(Relaxed) {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+        } else if ctx.input(|i| i.viewport().close_requested()) && systeme::zone_active() {
+            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose); // fermer = ranger dans la zone de notification
+            systeme::cacher();
+        }
         self.theme.peindre(ctx); // avant les panneaux : le fond passe dessous
         self.tri.relever();
         self.coffre.tic(ctx);
         self.minecraft.tic();
         self.moniteur.tic(ctx);
+        self.minuteur.tic();
         if self.presse.tic(ctx) {
-            self.onglet = 4;
+            self.onglet = PRESSE;
         }
         ctx.request_repaint_after(Duration::from_millis(500));
-        egui::SidePanel::left("outils").exact_width(200.0).show(ctx, |ui| {
+        let dispo = self.maj.lock().unwrap().dispo.clone();
+        if let (Some((version, _)), false) = (dispo, self.maj_ignoree) {
+            egui::TopBottomPanel::top("maj").show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(format!("🔄 Nouvelle version {version} disponible."));
+                    if ui.button("Installer et relancer").clicked() {
+                        systeme::installer(self.maj.clone());
+                    }
+                    if ui.button("Plus tard").clicked() {
+                        self.maj_ignoree = true;
+                    }
+                    ui.weak(self.maj.lock().unwrap().etat.clone());
+                });
+            });
+        }
+        egui::SidePanel::left("outils").exact_width(210.0).show(ctx, |ui| {
             ui.add_space(8.0);
             ui.heading("Outils");
             ui.separator();
-            let noms = ["Tri Téléchargements", "Lanceur Jeux", "Coffre", "Traducteur", "Presse-papiers", "Serveur Minecraft", "Moniteur Jeu", "Optimiseur", "Personnaliser"];
-            for (i, n) in noms.iter().enumerate() {
+            for (i, n) in ONGLETS.iter().enumerate() {
                 if ui.selectable_label(self.onglet == i, *n).clicked() {
                     self.onglet = i;
                 }
             }
+            ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| ui.weak(concat!("v", env!("CARGO_PKG_VERSION"))));
         });
         egui::CentralPanel::default().show(ctx, |ui| match self.onglet {
-            0 => self.tri.ui(ui),
-            1 => self.lanceur.ui(ui),
-            2 => self.coffre.ui(ui),
-            3 => self.traducteur.ui(ui),
-            4 => self.presse.ui(ui),
-            5 => self.minecraft.ui(ui),
-            6 => self.moniteur.ui(ui),
-            7 => self.optimiseur.ui(ui),
-            8 => self.theme.ui(ui),
+            0 => self.accueil(ui),
+            1 => self.tri.ui(ui),
+            2 => self.lanceur.ui(ui),
+            3 => self.coffre.ui(ui),
+            4 => self.traducteur.ui(ui),
+            5 => self.presse.ui(ui),
+            6 => self.minecraft.ui(ui),
+            7 => self.moniteur.ui(ui),
+            8 => self.optimiseur.ui(ui),
+            9 => self.renommer.ui(ui),
+            10 => self.minuteur.ui(ui),
+            11 => self.theme.ui(ui),
             _ => {}
         });
     }

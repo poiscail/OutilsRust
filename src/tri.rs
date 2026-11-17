@@ -159,7 +159,9 @@ fn surveiller(dossier: PathBuf, regles: Regles, arret: Arc<AtomicBool>, tx: mpsc
             }
             if let Some(cible) = ranger(&dossier, p, &regles, &map) {
                 tailles.remove(p);
-                let _ = tx.send((p.file_name().unwrap_or_default().to_string_lossy().into_owned(), cible));
+                let nom = p.file_name().unwrap_or_default().to_string_lossy().into_owned();
+                crate::systeme::notifier("Fichier rangé", &format!("{nom} → {}", cible.display()));
+                let _ = tx.send((nom, cible));
             }
         }
         for _ in 0..20 {
@@ -202,6 +204,11 @@ impl Tri {
 
     fn actif(&self) -> bool {
         !self.arret.load(Ordering::Relaxed)
+    }
+
+    /// Pour l'accueil.
+    pub fn resume(&self) -> String {
+        format!("{} · {} fichier(s) rangé(s)", if self.actif() { "Surveillance active" } else { "Arrêté" }, self.ranges.len())
     }
 
     fn demarrer(&mut self) {

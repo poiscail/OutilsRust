@@ -227,6 +227,9 @@ impl Serveur {
         let h = suivre(out, move |l| {
             {
                 let mut e = etat.lock().unwrap();
+                if let Some(m) = JOIN.captures(&l) {
+                    crate::systeme::notifier("Serveur Minecraft", &format!("{} a rejoint le serveur", &m[1]));
+                }
                 maj_joueurs(&mut e.joueurs, &l);
                 e.pret |= l.contains("Done (");
             }
@@ -941,6 +944,15 @@ impl Minecraft {
             m.basculer_en_ligne();
         }
         m
+    }
+
+    /// Pour l'accueil.
+    pub fn resume(&self) -> String {
+        if !self.srv.actif() {
+            return "Serveur arrêté".into();
+        }
+        let e = self.srv.etat.lock().unwrap();
+        if e.pret { format!("En ligne · {} joueur(s)", e.joueurs.len()) } else { "Démarrage…".into() }
     }
 
     fn enregistrer(&mut self) {
