@@ -13,6 +13,8 @@ Plan, liste et graphe : [PLAN.md](PLAN.md).
 | Traducteur | fait (même `%APPDATA%\TraducteurSousTitres.json` et glossaire ; Google/DeepL, ffmpeg pour les vidéos) |
 | Presse-papiers | fait (même `%APPDATA%\GestionnairePressePapiers`, raccourci de `parametres.json`) |
 | Serveur Minecraft | fait (même `%APPDATA%\GestionServeurMinecraft.json` ; veille, playit, modpacks, kit amis) |
+| Moniteur Jeu | fait (même `MoniteurJeu\reglages.ini` et `historique\` ; mode jeu, FPS ETW en admin, overlay) |
+eglages.ini` et `historique` ; mode jeu, FPS ETW en admin, overlay) |
 | Les autres | pas encore : leur onglet ouvre l'ancienne version |
 
 ## Compiler

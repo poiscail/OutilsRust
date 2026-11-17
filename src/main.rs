@@ -4,6 +4,7 @@
 mod coffre;
 mod lanceur;
 mod minecraft;
+mod moniteur;
 mod pressepapiers;
 mod traducteur;
 mod tri;
@@ -18,7 +19,6 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 /// (nom, exe de l'ancien outil relatif à la racine Outils)
 const ANCIENS: &[(&str, &str)] = &[
-    ("Moniteur Jeu", r"MoniteurJeu\MoniteurJeu.exe"),
     ("Optimiseur", r"OptimiseurWindows\OptimiseurWindows.exe"),
 ];
 
@@ -37,7 +37,8 @@ struct App {
     traducteur: traducteur::Traducteur,
     presse: pressepapiers::PressePapiers,
     minecraft: minecraft::Minecraft,
-    onglet: usize, // 0 = Tri, 1 = Lanceur, 2 = Coffre, 3 = Traducteur, 4 = Presse-papiers, 5 = Minecraft, 6.. = ANCIENS[i-6]
+    moniteur: moniteur::Moniteur,
+    onglet: usize, // 0 = Tri, 1 = Lanceur, 2 = Coffre, 3 = Traducteur, 4 = Presse-papiers, 5 = Minecraft, 6 = Moniteur, 7.. = ANCIENS[i-7]
     erreur: Option<String>,
 }
 
@@ -46,7 +47,7 @@ impl App {
         cc.egui_ctx.set_visuals(egui::Visuals::dark());
         egui_extras::install_image_loaders(&cc.egui_ctx); // jaquettes des jeux
         let racine = racine();
-        App { tri: tri::Tri::new(&racine), lanceur: lanceur::Lanceur::new(), coffre: coffre::CoffreUi::new(), traducteur: traducteur::Traducteur::new(), presse: pressepapiers::PressePapiers::new(), minecraft: minecraft::Minecraft::new(), racine, onglet: 0, erreur: None }
+        App { tri: tri::Tri::new(&racine), lanceur: lanceur::Lanceur::new(), coffre: coffre::CoffreUi::new(), traducteur: traducteur::Traducteur::new(), presse: pressepapiers::PressePapiers::new(), minecraft: minecraft::Minecraft::new(), moniteur: moniteur::Moniteur::new(&racine), racine, onglet: 0, erreur: None }
     }
 
     fn ancien(&mut self, ui: &mut egui::Ui, nom: &str, rel: &str) {
@@ -75,6 +76,7 @@ impl eframe::App for App {
         self.tri.relever();
         self.coffre.tic(ctx);
         self.minecraft.tic();
+        self.moniteur.tic(ctx);
         if self.presse.tic(ctx) {
             self.onglet = 4;
         }
@@ -83,7 +85,7 @@ impl eframe::App for App {
             ui.add_space(8.0);
             ui.heading("Outils");
             ui.separator();
-            let mut noms = vec!["Tri Téléchargements", "Lanceur Jeux", "Coffre", "Traducteur", "Presse-papiers", "Serveur Minecraft"];
+            let mut noms = vec!["Tri Téléchargements", "Lanceur Jeux", "Coffre", "Traducteur", "Presse-papiers", "Serveur Minecraft", "Moniteur Jeu"];
             noms.extend(ANCIENS.iter().map(|(n, _)| *n));
             for (i, n) in noms.iter().enumerate() {
                 if ui.selectable_label(self.onglet == i, *n).clicked() {
@@ -99,8 +101,9 @@ impl eframe::App for App {
             3 => self.traducteur.ui(ui),
             4 => self.presse.ui(ui),
             5 => self.minecraft.ui(ui),
+            6 => self.moniteur.ui(ui),
             i => {
-                let (n, rel) = ANCIENS[i - 6];
+                let (n, rel) = ANCIENS[i - 7];
                 self.ancien(ui, n, rel);
             }
         });

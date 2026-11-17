@@ -50,7 +50,7 @@ impl Item {
 
 // ---------- dates (ISO 8601 comme .NET : 2026-11-16T21:34:26.9741181+01:00) ----------
 
-fn jours(y: i64, m: i64, d: i64) -> i64 {
+pub(crate) fn jours(y: i64, m: i64, d: i64) -> i64 {
     let y = if m <= 2 { y - 1 } else { y };
     let era = y.div_euclid(400);
     let yoe = y - era * 400;

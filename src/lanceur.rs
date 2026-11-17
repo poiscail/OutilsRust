@@ -309,7 +309,7 @@ pub fn assurer_steam(pret: impl Fn() -> bool, lancer: impl FnOnce(), delai: Dura
     true
 }
 
-fn ouvrir(cible: &str, dossier: Option<&str>) -> bool {
+pub(crate) fn ouvrir(cible: &str, dossier: Option<&str>) -> bool {
     let d = dossier.map(w);
     let r = unsafe {
         windows_sys::Win32::UI::Shell::ShellExecuteW(std::ptr::null_mut(), w("open").as_ptr(), w(cible).as_ptr(),
