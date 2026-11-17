@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 //! Outils : tous les outils dans un seul programme. Les outils pas encore réécrits en Rust
 //! ont un onglet qui lance leur ancien exe.
+mod coffre;
 mod lanceur;
 mod tri;
 
@@ -14,7 +15,6 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 /// (nom, exe de l'ancien outil relatif à la racine Outils)
 const ANCIENS: &[(&str, &str)] = &[
-    ("Coffre", r"CoffreMotsDePasse\CoffreMotsDePasse.exe"),
     ("Traducteur", r"TraducteurSousTitres\dist\TraducteurSousTitres.exe"),
     ("Presse-papiers", r"GestionnairePressePapiers\publish\GestionnairePressePapiers.exe"),
     ("Serveur Minecraft", r"GestionServeurMinecraft\GestionServeurMinecraft.exe"),
@@ -33,7 +33,8 @@ struct App {
     racine: PathBuf,
     tri: tri::Tri,
     lanceur: lanceur::Lanceur,
-    onglet: usize, // 0 = Tri, 1 = Lanceur, 2.. = ANCIENS[i-2]
+    coffre: coffre::CoffreUi,
+    onglet: usize, // 0 = Tri, 1 = Lanceur, 2 = Coffre, 3.. = ANCIENS[i-3]
     erreur: Option<String>,
 }
 
@@ -42,7 +43,7 @@ impl App {
         cc.egui_ctx.set_visuals(egui::Visuals::dark());
         egui_extras::install_image_loaders(&cc.egui_ctx); // jaquettes des jeux
         let racine = racine();
-        App { tri: tri::Tri::new(&racine), lanceur: lanceur::Lanceur::new(), racine, onglet: 0, erreur: None }
+        App { tri: tri::Tri::new(&racine), lanceur: lanceur::Lanceur::new(), coffre: coffre::CoffreUi::new(), racine, onglet: 0, erreur: None }
     }
 
     fn ancien(&mut self, ui: &mut egui::Ui, nom: &str, rel: &str) {
@@ -69,12 +70,13 @@ impl App {
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
         self.tri.relever();
+        self.coffre.tic(ctx);
         ctx.request_repaint_after(Duration::from_millis(500));
         egui::SidePanel::left("outils").exact_width(200.0).show(ctx, |ui| {
             ui.add_space(8.0);
             ui.heading("Outils");
             ui.separator();
-            let mut noms = vec!["Tri Téléchargements", "Lanceur Jeux"];
+            let mut noms = vec!["Tri Téléchargements", "Lanceur Jeux", "Coffre"];
             noms.extend(ANCIENS.iter().map(|(n, _)| *n));
             for (i, n) in noms.iter().enumerate() {
                 if ui.selectable_label(self.onglet == i, *n).clicked() {
@@ -86,8 +88,9 @@ impl eframe::App for App {
         egui::CentralPanel::default().show(ctx, |ui| match self.onglet {
             0 => self.tri.ui(ui),
             1 => self.lanceur.ui(ui),
+            2 => self.coffre.ui(ui),
             i => {
-                let (n, rel) = ANCIENS[i - 2];
+                let (n, rel) = ANCIENS[i - 3];
                 self.ancien(ui, n, rel);
             }
         });

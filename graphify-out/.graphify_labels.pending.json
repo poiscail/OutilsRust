@@ -1,15 +1,20 @@
 {
   "0": "main.rs",
-  "1": "Tri",
+  "1": "coffre.rs",
   "2": "tri.rs",
   "3": "Jeu",
   "4": "OutilsRust : tous les outils réécrits en Rust, dans un seul programme",
   "5": "lanceur.rs",
   "6": "carte",
   "7": "outils",
-  "8": "Color32",
-  "9": "steam_pret",
+  "8": "CoffreUi",
+  "9": "Erreur",
   "10": "scan_steam",
   "11": "reg",
-  "12": "dossier_test"
+  "12": "fil_saisie",
+  "13": "partie",
+  "14": ".copier",
+  "15": "Sauvegarde",
+  "16": "generer_mot_de_passe",
+  "17": "Color32"
 }

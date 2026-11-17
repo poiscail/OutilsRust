@@ -1,0 +1,12 @@
+{
+ "version": 1,
+ "kdf": {
+  "nom": "argon2id",
+  "iterations": 1,
+  "memoire_kio": 64,
+  "voies": 1
+ },
+ "sel": "H76Mum+01/n9s3hg+fwMBA==",
+ "nonce": "zonHrEfSphFeWlF9",
+ "donnees": "glFkxGea5Kl6QuTtCG7y8LSTBJEzonFo26eenAX5JpchDSePfQArthOwIF1oenQyTefbqENw+3MJuYiug1FgEWzF9kfXts9TMEF/fWTeAdAyAKH7fXLqIukeXyILy0vmagRxEcJK+VGO5fpfkYSCftN0ZEpvBb1j9krYF7gKh9s="
+}
