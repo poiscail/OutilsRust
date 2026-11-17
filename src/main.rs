@@ -6,6 +6,7 @@ mod minecraft;
 mod moniteur;
 mod optimiseur;
 mod pressepapiers;
+mod theme;
 mod traducteur;
 mod tri;
 
@@ -29,20 +30,21 @@ struct App {
     minecraft: minecraft::Minecraft,
     moniteur: moniteur::Moniteur,
     optimiseur: optimiseur::Optimiseur,
+    theme: theme::Theme,
     onglet: usize, // index dans la liste des noms du panneau
 }
 
 impl App {
     fn new(cc: &eframe::CreationContext) -> Self {
-        cc.egui_ctx.set_visuals(egui::Visuals::dark());
         egui_extras::install_image_loaders(&cc.egui_ctx); // jaquettes des jeux
         let racine = racine();
-        App { tri: tri::Tri::new(&racine), lanceur: lanceur::Lanceur::new(), coffre: coffre::CoffreUi::new(), traducteur: traducteur::Traducteur::new(), presse: pressepapiers::PressePapiers::new(), minecraft: minecraft::Minecraft::new(), moniteur: moniteur::Moniteur::new(&racine), optimiseur: optimiseur::Optimiseur::new(), onglet: 0 }
+        App { tri: tri::Tri::new(&racine), lanceur: lanceur::Lanceur::new(), coffre: coffre::CoffreUi::new(), traducteur: traducteur::Traducteur::new(), presse: pressepapiers::PressePapiers::new(), minecraft: minecraft::Minecraft::new(), moniteur: moniteur::Moniteur::new(&racine), optimiseur: optimiseur::Optimiseur::new(), theme: theme::Theme::new(), onglet: 0 }
     }
 }
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
+        self.theme.peindre(ctx); // avant les panneaux : le fond passe dessous
         self.tri.relever();
         self.coffre.tic(ctx);
         self.minecraft.tic();
@@ -55,7 +57,7 @@ impl eframe::App for App {
             ui.add_space(8.0);
             ui.heading("Outils");
             ui.separator();
-            let noms = ["Tri Téléchargements", "Lanceur Jeux", "Coffre", "Traducteur", "Presse-papiers", "Serveur Minecraft", "Moniteur Jeu", "Optimiseur"];
+            let noms = ["Tri Téléchargements", "Lanceur Jeux", "Coffre", "Traducteur", "Presse-papiers", "Serveur Minecraft", "Moniteur Jeu", "Optimiseur", "Personnaliser"];
             for (i, n) in noms.iter().enumerate() {
                 if ui.selectable_label(self.onglet == i, *n).clicked() {
                     self.onglet = i;
@@ -71,6 +73,7 @@ impl eframe::App for App {
             5 => self.minecraft.ui(ui),
             6 => self.moniteur.ui(ui),
             7 => self.optimiseur.ui(ui),
+            8 => self.theme.ui(ui),
             _ => {}
         });
     }
