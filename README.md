@@ -11,7 +11,7 @@ Plan, liste et graphe : [PLAN.md](PLAN.md).
 | Lanceur Jeux | fait (même `%APPDATA%\LanceurJeux\data.json`) |
 | Coffre | fait (même `%APPDATA%\CoffreMotsDePasse\coffre.json`) |
 | Traducteur | fait (même `%APPDATA%\TraducteurSousTitres.json` et glossaire ; Google/DeepL, ffmpeg pour les vidéos) |
-| Presse-papiers | fait, pas encore vérifié dans l'appli (même `%APPDATA%\GestionnairePressePapiers`, raccourci de `parametres.json`) |
+| Presse-papiers | fait (même `%APPDATA%\GestionnairePressePapiers`, raccourci de `parametres.json`) |
 | Les autres | pas encore : leur onglet ouvre l'ancienne version |
 
 ## Compiler
