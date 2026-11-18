@@ -2,16 +2,19 @@
 //! Outils : tous les outils dans un seul programme.
 mod capture;
 mod coffre;
+mod coffrefichiers;
 mod demarrage;
 mod discord;
 mod convertisseur;
 mod disque;
 mod dnd;
 mod lanceur;
+mod majlogiciels;
 mod minecraft;
 mod minuteur;
 mod mixeur;
 mod moniteur;
+mod mods;
 mod notes;
 mod optimiseur;
 mod planif;
@@ -19,6 +22,7 @@ mod pressepapiers;
 mod promos;
 mod renommer;
 mod reseau;
+mod santedisque;
 mod sauvegardes;
 mod systeme;
 mod telephone;
@@ -41,7 +45,7 @@ fn racine() -> PathBuf {
 const ONGLETS: &[&str] = &[
     "🏠 Accueil", "📂 Tri Téléchargements", "🎮 Lanceur Jeux", "🔒 Coffre", "🌐 Traducteur", "📋 Presse-papiers",
     "⛏ Serveur Minecraft", "📊 Moniteur Jeu", "🚀 Optimiseur", "✏ Renommer", "⏱ Minuteur", "🎨 Personnaliser",
-    "💽 Espace disque", "💾 Sauvegardes jeux", "🔁 Convertisseur", "📝 Notes", "📡 Réseau", "💬 Discord", "📸 Capture", "🎚 Mixeur audio", "🗓 Planificateur", "📱 Téléphone", "🌙 Ne pas déranger", "🔌 Démarrage PC", "🏷 Promos Steam",
+    "💽 Espace disque", "💾 Sauvegardes jeux", "🔁 Convertisseur", "📝 Notes", "📡 Réseau", "💬 Discord", "📸 Capture", "🎚 Mixeur audio", "🗓 Planificateur", "📱 Téléphone", "🌙 Ne pas déranger", "🔌 Démarrage PC", "🏷 Promos Steam", "🧩 Mods", "⬆ Mises à jour logiciels", "🩺 Santé des disques", "🗄 Coffre de fichiers",
 ];
 const PRESSE: usize = 5;
 
@@ -73,6 +77,10 @@ struct App {
     dnd: dnd::Dnd,
     demarrage: demarrage::DemarragePc,
     promos: promos::Promos,
+    mods: mods::Mods,
+    majlog: majlogiciels::MajLogiciels,
+    sante: santedisque::SanteDisque,
+    coffre_f: coffrefichiers::CoffreFichiers,
     theme: theme::Theme,
     maj: systeme::MajPartagee,
     maj_ignoree: bool,
@@ -99,7 +107,8 @@ impl App {
         App {
             tri: tri::Tri::new(&racine), lanceur: lanceur::Lanceur::new(), coffre: coffre::CoffreUi::new(), traducteur: traducteur::Traducteur::new(),
             presse: pressepapiers::PressePapiers::new(), minecraft, moniteur: moniteur::Moniteur::new(&racine),
-            optimiseur: optimiseur::Optimiseur::new(), renommer: renommer::Renommer::new(), minuteur: minuteur::Minuteur::new(), disque: disque::Disque::new(), sauvegardes, convertisseur: convertisseur::Convertisseur::new(), notes: notes::Notes::new(), reseau: reseau::Reseau::new(), discord: discord::Discord::new(), capture: capture::Capture::new(), mixeur: mixeur::Mixeur::new(), planif, telephone, dnd: dnd::Dnd::new(), demarrage: demarrage::DemarragePc::new(), promos: promos::Promos::new(), theme, maj,
+            optimiseur: optimiseur::Optimiseur::new(), renommer: renommer::Renommer::new(), minuteur: minuteur::Minuteur::new(), disque: disque::Disque::new(), sauvegardes, convertisseur: convertisseur::Convertisseur::new(), notes: notes::Notes::new(), reseau: reseau::Reseau::new(), discord: discord::Discord::new(), capture: capture::Capture::new(), mixeur: mixeur::Mixeur::new(), planif, telephone, dnd: dnd::Dnd::new(), demarrage: demarrage::DemarragePc::new(), promos: promos::Promos::new(), mods: mods::Mods::new(), majlog: majlogiciels::MajLogiciels::new(),
+            sante: santedisque::SanteDisque::new(), coffre_f: coffrefichiers::CoffreFichiers::new(), theme, maj,
             maj_ignoree: false, disques: (None, vec![]), lance_au_demarrage: std::env::args().any(|a| a == "--demarrage"), onglet: 0,
         }
     }
@@ -138,6 +147,7 @@ impl App {
             (21, self.telephone.resume()),
             (22, self.dnd.resume()),
             (24, self.promos.resume()),
+            (27, self.sante.resume()),
         ];
         egui::Grid::new("accueil").num_columns(2).spacing([16.0, 10.0]).show(ui, |ui| {
             for (i, texte) in lignes {
@@ -263,6 +273,10 @@ impl eframe::App for App {
             21 => self.telephone.ui(ui),
             22 => self.dnd.ui(ui, &self.mixeur),
             24 => self.promos.ui(ui),
+            25 => self.mods.ui(ui),
+            26 => self.majlog.ui(ui),
+            27 => self.sante.ui(ui),
+            28 => self.coffre_f.ui(ui),
             23 => {
                 if self.demarrage.ui(ui) {
                     self.onglet = 8;

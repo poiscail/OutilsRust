@@ -473,6 +473,12 @@ fn envoyer(faire: impl Fn() -> Result<ureq::Response, ureq::Error>) -> R<Value> 
 }
 
 /// Google : point d'accès public sans clé ; DeepL : clé gratuite sur deepl.com (500 000 caractères par mois).
+/// Traduction d'un texte court avec Google (langue source détectée), pour la traduction instantanée.
+pub fn traduire_google(texte: &str, langue: &str) -> R<String> {
+    let mut t = moteur(Moteur::Google, langue, "auto", "")?;
+    t(texte)
+}
+
 fn moteur(m: Moteur, langue: &str, source: &str, cle: &str) -> R<Box<dyn FnMut(&str) -> R<String> + Send>> {
     let agent = agent()?;
     let (langue, source, cle) = (langue.to_string(), source.to_string(), cle.to_string());
