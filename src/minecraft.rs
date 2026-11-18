@@ -181,6 +181,7 @@ enum Msg {
     Modpack(R<InfoPack>, PathBuf),
     Partage(String, Option<String>),
     Kit(String, Option<PathBuf>),
+    Jar(String), // nouveau .jar choisi depuis un autre outil
 }
 
 // ---------- serveur : processus ----------
@@ -189,6 +190,7 @@ enum Msg {
 struct Etat {
     joueurs: BTreeSet<String>,
     pret: bool, // vrai une fois le monde chargé ("Done")
+    dernieres: VecDeque<String>, // dernières lignes de la console (pour les autres outils)
 }
 
 #[derive(Clone, Default)]
@@ -231,6 +233,10 @@ impl Serveur {
                     crate::systeme::notifier("Serveur Minecraft", &format!("{} a rejoint le serveur", &m[1]));
                 }
                 maj_joueurs(&mut e.joueurs, &l);
+                e.dernieres.push_back(l.clone());
+                if e.dernieres.len() > 300 {
+                    e.dernieres.pop_front();
+                }
                 e.pret |= l.contains("Done (");
             }
             let _ = t3.send(Msg::Log(l));
@@ -331,6 +337,34 @@ impl Pilote {
 
     pub fn commande(&self, texte: &str) {
         self.srv.commande(texte);
+    }
+
+    /// Dossier du serveur (celui du .jar configuré).
+    pub fn dossier(&self) -> Option<PathBuf> {
+        let cfg: Config = fs::read(fichier_config()).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default();
+        Path::new(&cfg.jar).parent().filter(|p| !p.as_os_str().is_empty()).map(Path::to_path_buf)
+    }
+
+    pub fn jar(&self) -> String {
+        fs::read(fichier_config()).ok().and_then(|b| serde_json::from_slice::<Config>(&b).ok()).unwrap_or_default().jar
+    }
+
+    /// RAM maximale configurée (Mo).
+    pub fn ram(&self) -> u32 {
+        fs::read(fichier_config()).ok().and_then(|b| serde_json::from_slice::<Config>(&b).ok()).and_then(|c| c.ram.parse().ok()).unwrap_or(2048)
+    }
+
+    pub fn definir_jar(&self, jar: &Path) {
+        let _ = self.tx.send(Msg::Jar(jar.display().to_string()));
+    }
+
+    pub fn pid(&self) -> Option<u32> {
+        self.srv.pid().filter(|_| self.srv.actif())
+    }
+
+    /// Dernières lignes de la console du serveur (300 au plus).
+    pub fn dernieres(&self) -> Vec<String> {
+        self.srv.etat.lock().unwrap().dernieres.iter().cloned().collect()
     }
 
     /// Sauvegarde du monde (serveur arrêté ou après save-all).
@@ -1261,6 +1295,10 @@ impl Minecraft {
                     if let Some(u) = url {
                         self.cfg.pack_url = u;
                     }
+                }
+                Msg::Jar(j) => {
+                    self.cfg.jar = j;
+                    self.enregistrer();
                 }
                 Msg::Kit(t, z) => {
                     self.kit_en_cours = false;

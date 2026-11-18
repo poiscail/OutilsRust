@@ -24,6 +24,7 @@ mod majlogiciels;
 mod minecraft;
 mod minijeux;
 mod minuteur;
+mod mcplus;
 mod mixeur;
 mod moniteur;
 mod mods;
@@ -141,13 +142,14 @@ impl App {
         let sauvegardes = sauvegardes::Sauvegardes::new();
         let planif = planif::Planif::new(planif::Executeur { mc: minecraft.pilote(), jeux: sauvegardes.poignee() });
         let telephone = telephone::Telephone::new(minecraft.pilote());
+        let extras = extras::tous(minecraft.pilote());
         App {
             tri: tri::Tri::new(&racine), lanceur: lanceur::Lanceur::new(), coffre: coffre::CoffreUi::new(), traducteur: traducteur::Traducteur::new(),
             presse: pressepapiers::PressePapiers::new(), minecraft, moniteur: moniteur::Moniteur::new(&racine),
             optimiseur: optimiseur::Optimiseur::new(), renommer: renommer::Renommer::new(), minuteur: minuteur::Minuteur::new(), disque: disque::Disque::new(), sauvegardes, convertisseur: convertisseur::Convertisseur::new(), notes: notes::Notes::new(), reseau: reseau::Reseau::new(), discord: discord::Discord::new(), capture: capture::Capture::new(), mixeur: mixeur::Mixeur::new(), planif, telephone, dnd: dnd::Dnd::new(), demarrage: demarrage::DemarragePc::new(), promos: promos::Promos::new(), mods: mods::Mods::new(), majlog: majlogiciels::MajLogiciels::new(),
             sante: santedisque::SanteDisque::new(), coffre_f: coffrefichiers::CoffreFichiers::new(), viseur: viseur::Viseur::new(), macros: macros::Macros::new(), tradinstant: tradinstant::TradInstant::new(),
             economiseur: economiseur::Economiseur::new(theme.dossier_fonds().to_path_buf()), theme, maj,
-            maj_ignoree: false, disques: (None, vec![]), lance_au_demarrage: std::env::args().any(|a| a == "--demarrage"), onglet: 0, extras: extras::tous(), recherche: String::new(),
+            maj_ignoree: false, disques: (None, vec![]), lance_au_demarrage: std::env::args().any(|a| a == "--demarrage"), onglet: 0, extras, recherche: String::new(),
         }
     }
 
