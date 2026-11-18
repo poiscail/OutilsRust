@@ -58,7 +58,7 @@ pub(crate) fn jours(y: i64, m: i64, d: i64) -> i64 {
     era * 146097 + yoe * 365 + yoe / 4 - yoe / 100 + doy - 719468
 }
 
-fn civil(z: i64) -> (i64, i64, i64) {
+pub(crate) fn civil(z: i64) -> (i64, i64, i64) {
     let z = z + 719468;
     let era = z.div_euclid(146097);
     let doe = z - era * 146097;
@@ -71,7 +71,7 @@ fn civil(z: i64) -> (i64, i64, i64) {
 }
 
 /// Décalage local actuel en secondes (heure locale - UTC).
-fn decalage() -> i64 {
+pub(crate) fn decalage() -> i64 {
     use windows_sys::Win32::Foundation::SYSTEMTIME;
     use windows_sys::Win32::System::SystemInformation::{GetLocalTime, GetSystemTime};
     let s = |t: &SYSTEMTIME| jours(t.wYear as i64, t.wMonth as i64, t.wDay as i64) * 86400 + t.wHour as i64 * 3600 + t.wMinute as i64 * 60;
@@ -83,7 +83,7 @@ fn decalage() -> i64 {
     ((s(&l) - s(&u)) as f64 / 900.0).round() as i64 * 900 // au quart d'heure près
 }
 
-fn maintenant_utc() -> i64 {
+pub(crate) fn maintenant_utc() -> i64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0)
 }
 

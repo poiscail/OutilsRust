@@ -7,6 +7,7 @@ mod lanceur;
 mod minecraft;
 mod minuteur;
 mod moniteur;
+mod notes;
 mod optimiseur;
 mod pressepapiers;
 mod renommer;
@@ -31,7 +32,7 @@ fn racine() -> PathBuf {
 const ONGLETS: &[&str] = &[
     "🏠 Accueil", "📂 Tri Téléchargements", "🎮 Lanceur Jeux", "🔒 Coffre", "🌐 Traducteur", "📋 Presse-papiers",
     "⛏ Serveur Minecraft", "📊 Moniteur Jeu", "🚀 Optimiseur", "✏ Renommer", "⏱ Minuteur", "🎨 Personnaliser",
-    "💽 Espace disque", "💾 Sauvegardes jeux", "🔁 Convertisseur",
+    "💽 Espace disque", "💾 Sauvegardes jeux", "🔁 Convertisseur", "📝 Notes",
 ];
 const PRESSE: usize = 5;
 
@@ -53,6 +54,7 @@ struct App {
     disque: disque::Disque,
     sauvegardes: sauvegardes::Sauvegardes,
     convertisseur: convertisseur::Convertisseur,
+    notes: notes::Notes,
     theme: theme::Theme,
     maj: systeme::MajPartagee,
     maj_ignoree: bool,
@@ -75,7 +77,7 @@ impl App {
         App {
             tri: tri::Tri::new(&racine), lanceur: lanceur::Lanceur::new(), coffre: coffre::CoffreUi::new(), traducteur: traducteur::Traducteur::new(),
             presse: pressepapiers::PressePapiers::new(), minecraft: minecraft::Minecraft::new(), moniteur: moniteur::Moniteur::new(&racine),
-            optimiseur: optimiseur::Optimiseur::new(), renommer: renommer::Renommer::new(), minuteur: minuteur::Minuteur::new(), disque: disque::Disque::new(), sauvegardes: sauvegardes::Sauvegardes::new(), convertisseur: convertisseur::Convertisseur::new(), theme, maj,
+            optimiseur: optimiseur::Optimiseur::new(), renommer: renommer::Renommer::new(), minuteur: minuteur::Minuteur::new(), disque: disque::Disque::new(), sauvegardes: sauvegardes::Sauvegardes::new(), convertisseur: convertisseur::Convertisseur::new(), notes: notes::Notes::new(), theme, maj,
             maj_ignoree: false, disques: (None, vec![]), lance_au_demarrage: std::env::args().any(|a| a == "--demarrage"), onglet: 0,
         }
     }
@@ -107,6 +109,7 @@ impl App {
             (3, coffre),
             (10, self.minuteur.resume()),
             (13, self.sauvegardes.resume()),
+            (15, self.notes.resume()),
         ];
         egui::Grid::new("accueil").num_columns(2).spacing([16.0, 10.0]).show(ui, |ui| {
             for (i, texte) in lignes {
@@ -165,6 +168,7 @@ impl eframe::App for App {
         self.minecraft.tic();
         self.moniteur.tic(ctx);
         self.minuteur.tic();
+        self.notes.tic(ctx);
         if self.presse.tic(ctx) {
             self.onglet = PRESSE;
         }
@@ -211,6 +215,7 @@ impl eframe::App for App {
             12 => self.disque.ui(ui),
             13 => self.sauvegardes.ui(ui),
             14 => self.convertisseur.ui(ui),
+            15 => self.notes.ui(ui),
             _ => {}
         });
     }
