@@ -946,6 +946,15 @@ impl Minecraft {
         m
     }
 
+    /// None si arrêté, sinon (prêt, joueurs connectés).
+    pub fn statut(&self) -> Option<(bool, Vec<String>)> {
+        if !self.srv.actif() {
+            return None;
+        }
+        let e = self.srv.etat.lock().unwrap();
+        Some((e.pret, e.joueurs.iter().cloned().collect()))
+    }
+
     /// Pour l'accueil.
     pub fn resume(&self) -> String {
         if !self.srv.actif() {

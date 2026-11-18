@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 //! Outils : tous les outils dans un seul programme.
 mod coffre;
+mod discord;
 mod convertisseur;
 mod disque;
 mod lanceur;
@@ -33,7 +34,7 @@ fn racine() -> PathBuf {
 const ONGLETS: &[&str] = &[
     "🏠 Accueil", "📂 Tri Téléchargements", "🎮 Lanceur Jeux", "🔒 Coffre", "🌐 Traducteur", "📋 Presse-papiers",
     "⛏ Serveur Minecraft", "📊 Moniteur Jeu", "🚀 Optimiseur", "✏ Renommer", "⏱ Minuteur", "🎨 Personnaliser",
-    "💽 Espace disque", "💾 Sauvegardes jeux", "🔁 Convertisseur", "📝 Notes", "📡 Réseau",
+    "💽 Espace disque", "💾 Sauvegardes jeux", "🔁 Convertisseur", "📝 Notes", "📡 Réseau", "💬 Discord",
 ];
 const PRESSE: usize = 5;
 
@@ -57,6 +58,7 @@ struct App {
     convertisseur: convertisseur::Convertisseur,
     notes: notes::Notes,
     reseau: reseau::Reseau,
+    discord: discord::Discord,
     theme: theme::Theme,
     maj: systeme::MajPartagee,
     maj_ignoree: bool,
@@ -79,7 +81,7 @@ impl App {
         App {
             tri: tri::Tri::new(&racine), lanceur: lanceur::Lanceur::new(), coffre: coffre::CoffreUi::new(), traducteur: traducteur::Traducteur::new(),
             presse: pressepapiers::PressePapiers::new(), minecraft: minecraft::Minecraft::new(), moniteur: moniteur::Moniteur::new(&racine),
-            optimiseur: optimiseur::Optimiseur::new(), renommer: renommer::Renommer::new(), minuteur: minuteur::Minuteur::new(), disque: disque::Disque::new(), sauvegardes: sauvegardes::Sauvegardes::new(), convertisseur: convertisseur::Convertisseur::new(), notes: notes::Notes::new(), reseau: reseau::Reseau::new(), theme, maj,
+            optimiseur: optimiseur::Optimiseur::new(), renommer: renommer::Renommer::new(), minuteur: minuteur::Minuteur::new(), disque: disque::Disque::new(), sauvegardes: sauvegardes::Sauvegardes::new(), convertisseur: convertisseur::Convertisseur::new(), notes: notes::Notes::new(), reseau: reseau::Reseau::new(), discord: discord::Discord::new(), theme, maj,
             maj_ignoree: false, disques: (None, vec![]), lance_au_demarrage: std::env::args().any(|a| a == "--demarrage"), onglet: 0,
         }
     }
@@ -172,6 +174,7 @@ impl eframe::App for App {
         self.minuteur.tic();
         self.notes.tic(ctx);
         self.reseau.tic();
+        self.discord.tic(self.lanceur.jeu_actif(), self.minecraft.statut());
         if self.presse.tic(ctx) {
             self.onglet = PRESSE;
         }
@@ -220,6 +223,7 @@ impl eframe::App for App {
             14 => self.convertisseur.ui(ui),
             15 => self.notes.ui(ui),
             16 => self.reseau.ui(ui),
+            17 => self.discord.ui(ui),
             _ => {}
         });
     }

@@ -388,6 +388,7 @@ pub struct Lanceur {
     etat: Partage,
     tri: usize,
     recherche: String,
+    actif: (Option<std::time::Instant>, Option<String>), // jeu en cours, revu toutes les 10 s
 }
 
 impl Lanceur {
@@ -395,9 +396,29 @@ impl Lanceur {
         let fichier = PathBuf::from(std::env::var("APPDATA").unwrap_or(".".into())).join("LanceurJeux").join("data.json");
         let save = std::fs::read_to_string(&fichier).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default();
         let etat = Etat { save, statut: HashMap::new(), en_cours: HashSet::new(), fichier };
-        let mut l = Lanceur { jeux: vec![], etat: Arc::new(Mutex::new(etat)), tri: 0, recherche: String::new() };
+        let mut l = Lanceur { jeux: vec![], etat: Arc::new(Mutex::new(etat)), tri: 0, recherche: String::new(), actif: (None, None) };
         l.actualiser();
         l
+    }
+
+    /// Nom du jeu en cours : lancé d'ici, ou un processus qui tourne depuis le dossier d'un jeu connu.
+    pub fn jeu_actif(&mut self) -> Option<String> {
+        if self.actif.0.is_none_or(|t| t.elapsed() > Duration::from_secs(10)) {
+            let en_cours = self.etat.lock().unwrap().en_cours.clone();
+            let mut r = self.jeux.iter().find(|g| en_cours.contains(&g.id)).map(|g| g.nom.clone());
+            if r.is_none() {
+                let mut pids = vec![0u32; 4096];
+                let mut n = 0u32;
+                unsafe { windows_sys::Win32::System::ProcessStatus::K32EnumProcesses(pids.as_mut_ptr(), (pids.len() * 4) as u32, &mut n) };
+                let chemins: Vec<String> = pids[..n as usize / 4].iter().filter_map(|&p| chemin_processus(p)).map(|c| c.to_lowercase()).collect();
+                r = self.jeux.iter().find(|g| {
+                    let d = norm(&g.dir);
+                    d.len() > 3 && chemins.iter().any(|c| c.starts_with(&(d.clone() + "\\")))
+                }).map(|g| g.nom.clone());
+            }
+            self.actif = (Some(std::time::Instant::now()), r);
+        }
+        self.actif.1.clone()
     }
 
     fn actualiser(&mut self) {
