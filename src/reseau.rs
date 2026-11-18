@@ -80,7 +80,7 @@ fn compteurs() -> (u64, u64) {
     (rx, tx)
 }
 
-fn nom_processus(pid: u32) -> String {
+pub(crate) fn nom_processus(pid: u32) -> String {
     if pid == 0 {
         return "Système (inactif)".into();
     }

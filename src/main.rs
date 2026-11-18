@@ -8,6 +8,7 @@ mod disque;
 mod lanceur;
 mod minecraft;
 mod minuteur;
+mod mixeur;
 mod moniteur;
 mod notes;
 mod optimiseur;
@@ -35,7 +36,7 @@ fn racine() -> PathBuf {
 const ONGLETS: &[&str] = &[
     "🏠 Accueil", "📂 Tri Téléchargements", "🎮 Lanceur Jeux", "🔒 Coffre", "🌐 Traducteur", "📋 Presse-papiers",
     "⛏ Serveur Minecraft", "📊 Moniteur Jeu", "🚀 Optimiseur", "✏ Renommer", "⏱ Minuteur", "🎨 Personnaliser",
-    "💽 Espace disque", "💾 Sauvegardes jeux", "🔁 Convertisseur", "📝 Notes", "📡 Réseau", "💬 Discord", "📸 Capture",
+    "💽 Espace disque", "💾 Sauvegardes jeux", "🔁 Convertisseur", "📝 Notes", "📡 Réseau", "💬 Discord", "📸 Capture", "🎚 Mixeur audio",
 ];
 const PRESSE: usize = 5;
 
@@ -61,6 +62,7 @@ struct App {
     reseau: reseau::Reseau,
     discord: discord::Discord,
     capture: capture::Capture,
+    mixeur: mixeur::Mixeur,
     theme: theme::Theme,
     maj: systeme::MajPartagee,
     maj_ignoree: bool,
@@ -83,7 +85,7 @@ impl App {
         App {
             tri: tri::Tri::new(&racine), lanceur: lanceur::Lanceur::new(), coffre: coffre::CoffreUi::new(), traducteur: traducteur::Traducteur::new(),
             presse: pressepapiers::PressePapiers::new(), minecraft: minecraft::Minecraft::new(), moniteur: moniteur::Moniteur::new(&racine),
-            optimiseur: optimiseur::Optimiseur::new(), renommer: renommer::Renommer::new(), minuteur: minuteur::Minuteur::new(), disque: disque::Disque::new(), sauvegardes: sauvegardes::Sauvegardes::new(), convertisseur: convertisseur::Convertisseur::new(), notes: notes::Notes::new(), reseau: reseau::Reseau::new(), discord: discord::Discord::new(), capture: capture::Capture::new(), theme, maj,
+            optimiseur: optimiseur::Optimiseur::new(), renommer: renommer::Renommer::new(), minuteur: minuteur::Minuteur::new(), disque: disque::Disque::new(), sauvegardes: sauvegardes::Sauvegardes::new(), convertisseur: convertisseur::Convertisseur::new(), notes: notes::Notes::new(), reseau: reseau::Reseau::new(), discord: discord::Discord::new(), capture: capture::Capture::new(), mixeur: mixeur::Mixeur::new(), theme, maj,
             maj_ignoree: false, disques: (None, vec![]), lance_au_demarrage: std::env::args().any(|a| a == "--demarrage"), onglet: 0,
         }
     }
@@ -117,6 +119,7 @@ impl App {
             (13, self.sauvegardes.resume()),
             (15, self.notes.resume()),
             (18, self.capture.resume()),
+            (19, self.mixeur.resume()),
         ];
         egui::Grid::new("accueil").num_columns(2).spacing([16.0, 10.0]).show(ui, |ui| {
             for (i, texte) in lignes {
@@ -181,6 +184,7 @@ impl eframe::App for App {
         if self.capture.tic(jeu.is_some()) {
             self.onglet = 18;
         }
+        self.mixeur.tic(jeu.as_deref());
         self.discord.tic(jeu, self.minecraft.statut());
         if self.presse.tic(ctx) {
             self.onglet = PRESSE;
@@ -232,6 +236,7 @@ impl eframe::App for App {
             16 => self.reseau.ui(ui),
             17 => self.discord.ui(ui),
             18 => self.capture.ui(ui),
+            19 => self.mixeur.ui(ui),
             _ => {}
         });
     }

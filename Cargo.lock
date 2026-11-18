@@ -2571,7 +2571,7 @@ dependencies = [
 
 [[package]]
 name = "outils"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "ab_glyph",
  "aes-gcm",
@@ -2589,6 +2589,7 @@ dependencies = [
  "sha1",
  "sha2",
  "ureq",
+ "windows",
  "windows-sys 0.59.0",
  "zip",
 ]

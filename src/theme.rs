@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::{Arc, Mutex};
+use std::f32::consts::TAU;
 use std::time::{Duration, Instant};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
@@ -310,9 +311,9 @@ impl Theme {
             let taille = 3.0 + 5.0 * hasard(i, 2);
             let haut = ecran.height() + 40.0;
             let y = (hasard(i, 3) * haut + t * vitesse) % haut - 20.0;
-            let x = hasard(i, 4) * ecran.width() + (t * (0.4 + hasard(i, 5)) + 6.28 * hasard(i, 6)).sin() * 35.0 + y * 0.15;
+            let x = hasard(i, 4) * ecran.width() + (t * (0.4 + hasard(i, 5)) + TAU * hasard(i, 6)).sin() * 35.0 + y * 0.15;
             let x = x.rem_euclid(ecran.width() + 40.0) - 20.0;
-            let battement = (t * (1.5 + 2.0 * hasard(i, 7)) + 6.28 * hasard(i, 8)).cos().abs().max(0.25); // le pétale tourne sur lui-même
+            let battement = (t * (1.5 + 2.0 * hasard(i, 7)) + TAU * hasard(i, 8)).cos().abs().max(0.25); // le pétale tourne sur lui-même
             let rose = Color32::from_rgba_unmultiplied(255, (170.0 + 50.0 * hasard(i, 9)) as u8, (195.0 + 30.0 * hasard(i, 10)) as u8, 190);
             peintre.add(egui::Shape::ellipse_filled(ecran.min + egui::vec2(x, y), egui::vec2(taille, taille * 0.6 * battement), rose));
         }
@@ -343,7 +344,7 @@ impl Theme {
             let vitesse = 15.0 + 35.0 * hasard(i, 31);
             let r = 1.0 + 2.5 * hasard(i, 32);
             let y = (hasard(i, 33) * haut + t * vitesse) % haut - 10.0;
-            let x = (hasard(i, 34) * ecran.width() + (t * 0.6 + 6.28 * hasard(i, 35)).sin() * 20.0).rem_euclid(ecran.width());
+            let x = (hasard(i, 34) * ecran.width() + (t * 0.6 + TAU * hasard(i, 35)).sin() * 20.0).rem_euclid(ecran.width());
             peintre.circle_filled(ecran.min + egui::vec2(x, y), r, Color32::from_rgba_unmultiplied(255, 255, 255, (120.0 + 100.0 * hasard(i, 36)) as u8));
         }
     }
@@ -352,9 +353,9 @@ impl Theme {
         let t = ctx.input(|i| i.time) as f32;
         for i in 0..self.nombre(28) {
             // dérive lente + scintillement
-            let x = ecran.width() * (hasard(i, 41) + 0.08 * (t * (0.15 + 0.2 * hasard(i, 42)) + 6.28 * hasard(i, 43)).sin()).rem_euclid(1.0);
-            let y = ecran.height() * (0.25 + 0.75 * hasard(i, 44) + 0.06 * (t * (0.2 + 0.2 * hasard(i, 45)) + 6.28 * hasard(i, 46)).cos()).rem_euclid(1.0);
-            let eclat = ((t * (0.8 + hasard(i, 47)) + 6.28 * hasard(i, 48)).sin() * 0.5 + 0.5).powf(2.0);
+            let x = ecran.width() * (hasard(i, 41) + 0.08 * (t * (0.15 + 0.2 * hasard(i, 42)) + TAU * hasard(i, 43)).sin()).rem_euclid(1.0);
+            let y = ecran.height() * (0.25 + 0.75 * hasard(i, 44) + 0.06 * (t * (0.2 + 0.2 * hasard(i, 45)) + TAU * hasard(i, 46)).cos()).rem_euclid(1.0);
+            let eclat = ((t * (0.8 + hasard(i, 47)) + TAU * hasard(i, 48)).sin() * 0.5 + 0.5).powf(2.0);
             let c = ecran.min + egui::vec2(x, y);
             let (r, g, b) = if hasard(i, 49) > 0.5 { (255, 230, 140) } else { (255, 150, 210) };
             peintre.circle_filled(c, 7.0, Color32::from_rgba_unmultiplied(r, g, b, (40.0 * eclat) as u8));
