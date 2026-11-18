@@ -7,6 +7,7 @@ mod demarrage;
 mod discord;
 mod convertisseur;
 mod disque;
+mod economiseur;
 mod dnd;
 mod lanceur;
 mod macros;
@@ -48,7 +49,7 @@ fn racine() -> PathBuf {
 const ONGLETS: &[&str] = &[
     "🏠 Accueil", "📂 Tri Téléchargements", "🎮 Lanceur Jeux", "🔒 Coffre", "🌐 Traducteur", "📋 Presse-papiers",
     "⛏ Serveur Minecraft", "📊 Moniteur Jeu", "🚀 Optimiseur", "✏ Renommer", "⏱ Minuteur", "🎨 Personnaliser",
-    "💽 Espace disque", "💾 Sauvegardes jeux", "🔁 Convertisseur", "📝 Notes", "📡 Réseau", "💬 Discord", "📸 Capture", "🎚 Mixeur audio", "🗓 Planificateur", "📱 Téléphone", "🌙 Ne pas déranger", "🔌 Démarrage PC", "🏷 Promos Steam", "🧩 Mods", "⬆ Mises à jour logiciels", "🩺 Santé des disques", "🗄 Coffre de fichiers", "🎯 Viseur", "⌨ Macros", "💭 Traduction instantanée",
+    "💽 Espace disque", "💾 Sauvegardes jeux", "🔁 Convertisseur", "📝 Notes", "📡 Réseau", "💬 Discord", "📸 Capture", "🎚 Mixeur audio", "🗓 Planificateur", "📱 Téléphone", "🌙 Ne pas déranger", "🔌 Démarrage PC", "🏷 Promos Steam", "🧩 Mods", "⬆ Mises à jour logiciels", "🩺 Santé des disques", "🗄 Coffre de fichiers", "🎯 Viseur", "⌨ Macros", "💭 Traduction instantanée", "🌌 Économiseur d'écran",
 ];
 const PRESSE: usize = 5;
 
@@ -87,6 +88,7 @@ struct App {
     viseur: viseur::Viseur,
     macros: macros::Macros,
     tradinstant: tradinstant::TradInstant,
+    economiseur: economiseur::Economiseur,
     theme: theme::Theme,
     maj: systeme::MajPartagee,
     maj_ignoree: bool,
@@ -114,7 +116,8 @@ impl App {
             tri: tri::Tri::new(&racine), lanceur: lanceur::Lanceur::new(), coffre: coffre::CoffreUi::new(), traducteur: traducteur::Traducteur::new(),
             presse: pressepapiers::PressePapiers::new(), minecraft, moniteur: moniteur::Moniteur::new(&racine),
             optimiseur: optimiseur::Optimiseur::new(), renommer: renommer::Renommer::new(), minuteur: minuteur::Minuteur::new(), disque: disque::Disque::new(), sauvegardes, convertisseur: convertisseur::Convertisseur::new(), notes: notes::Notes::new(), reseau: reseau::Reseau::new(), discord: discord::Discord::new(), capture: capture::Capture::new(), mixeur: mixeur::Mixeur::new(), planif, telephone, dnd: dnd::Dnd::new(), demarrage: demarrage::DemarragePc::new(), promos: promos::Promos::new(), mods: mods::Mods::new(), majlog: majlogiciels::MajLogiciels::new(),
-            sante: santedisque::SanteDisque::new(), coffre_f: coffrefichiers::CoffreFichiers::new(), viseur: viseur::Viseur::new(), macros: macros::Macros::new(), tradinstant: tradinstant::TradInstant::new(), theme, maj,
+            sante: santedisque::SanteDisque::new(), coffre_f: coffrefichiers::CoffreFichiers::new(), viseur: viseur::Viseur::new(), macros: macros::Macros::new(), tradinstant: tradinstant::TradInstant::new(),
+            economiseur: economiseur::Economiseur::new(theme.dossier_fonds().to_path_buf()), theme, maj,
             maj_ignoree: false, disques: (None, vec![]), lance_au_demarrage: std::env::args().any(|a| a == "--demarrage"), onglet: 0,
         }
     }
@@ -287,6 +290,7 @@ impl eframe::App for App {
             29 => self.viseur.ui(ui),
             30 => self.macros.ui(ui),
             31 => self.tradinstant.ui(ui),
+            32 => self.economiseur.ui(ui),
             23 => {
                 if self.demarrage.ui(ui) {
                     self.onglet = 8;
@@ -298,6 +302,15 @@ impl eframe::App for App {
 }
 
 fn main() -> eframe::Result {
+    // lancé par Windows comme économiseur d'écran (Outils.scr) : /s plein écran, /p aperçu (ignoré)
+    let arg = std::env::args().nth(1).map(|a| a.to_ascii_lowercase()).unwrap_or_default();
+    let est_scr = std::env::current_exe().ok().and_then(|e| e.extension().map(|x| x.eq_ignore_ascii_case("scr"))).unwrap_or(false);
+    if arg.starts_with("/p") {
+        return Ok(());
+    }
+    if arg.starts_with("/s") || est_scr {
+        return economiseur::lancer(); // la copie .scr ne lance jamais le hub
+    }
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size([1100.0, 720.0]).with_title("Outils"),
         ..Default::default()

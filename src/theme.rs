@@ -213,6 +213,30 @@ impl Theme {
         t
     }
 
+    /// Pour l'économiseur d'écran : mêmes réglages et effets, sans fil ni effet sur Windows.
+    pub fn pour_economiseur(dossier_fonds: PathBuf) -> Self {
+        let mut r: Reglages = std::fs::read_to_string(fichier()).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
+        r.fond_windows = false;
+        r.rotation = false;
+        Theme { r, a_appliquer: true, a_police: true, texture: None, texture_de: None, dossier_fonds, fond_applique: None, rotation: Arc::default(), erreur: None }
+    }
+
+    pub fn dossier_fonds(&self) -> &Path {
+        &self.dossier_fonds
+    }
+
+    pub fn fonds(&self) -> Vec<PathBuf> {
+        fonds_dispo(&self.dossier_fonds)
+    }
+
+    pub fn image(&self) -> Option<&PathBuf> {
+        self.r.image.as_ref()
+    }
+
+    pub fn choisir_image(&mut self, p: Option<PathBuf>) {
+        self.r.image = p;
+    }
+
     fn enregistrer(&self) {
         let f = fichier();
         let _ = std::fs::create_dir_all(f.parent().unwrap());

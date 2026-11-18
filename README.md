@@ -32,6 +32,14 @@ Plan, liste et graphe : [PLAN.md](PLAN.md).
 | Ne pas déranger | pendant les jeux, sur une plage horaire ou à la main : mode Ne pas déranger de Windows, notifications d'Outils coupées, son des applis choisies baissé |
 | Démarrage PC | durée des derniers démarrages et ce qui les a ralentis (journal Diagnostics-Performance, admin) |
 | Promos Steam | prix de la liste de souhaits (profil public) et de jeux ajoutés, alerte en promo ou sous un prix voulu, vérification toutes les 6 h |
+| Mods | par jeu : activer / désactiver chaque mod (dossier `_desactives`), profils, ajout par glisser-déposer |
+| Mises à jour logiciels | `winget upgrade` : liste, mise à jour d'un logiciel, de la sélection ou de tout |
+| Santé des disques | état Windows, température, usure, heures, erreurs (SMART en admin) ; alerte toutes les 12 h |
+| Coffre de fichiers | dossier ou fichier chiffré en `.coffre` (zip + AES-256-GCM par blocs, Argon2id) |
+| Viseur | croix / point / cercle au centre de l'écran, transparent aux clics, Ctrl+Alt+X |
+| Macros | enregistrement clavier/souris (arrêt Ctrl+Alt+F12), lecture Ctrl+Alt+F1-F11, répétitions, vitesse, Échap pour arrêter |
+| Traduction instantanée | Ctrl+Alt+T sur un texte sélectionné : bulle de traduction (Google), clic pour copier |
+| Économiseur d'écran | fonds + effets + horloge ; installé comme `%APPDATA%\Outils\Outils.scr` |
 
 ## Options (onglet Personnaliser)
 
