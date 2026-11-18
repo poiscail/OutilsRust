@@ -233,7 +233,7 @@ fn lancer_ok(prog: &str, args: &[&str]) -> R {
 }
 
 /// PowerShell caché ; script encodé pour éviter tout souci de guillemets.
-fn ps(script: &str) -> Result<String, String> {
+pub(crate) fn ps(script: &str) -> Result<String, String> {
     let s = format!("[Console]::OutputEncoding=[Text.Encoding]::UTF8; $ProgressPreference='SilentlyContinue'; $ErrorActionPreference='Stop'\ntry {{\n{script}\n}} catch {{ [Console]::Out.Write('ERREUR:' + $_.Exception.Message); exit 1 }}");
     let u: Vec<u8> = s.encode_utf16().flat_map(u16::to_le_bytes).collect();
     let o = Command::new("powershell.exe").args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-EncodedCommand", &B64.encode(u)])
@@ -261,11 +261,11 @@ fn svc_off(noms: &[&str]) -> R {
     Ok(())
 }
 
-fn est_admin() -> bool {
+pub(crate) fn est_admin() -> bool {
     unsafe { windows_sys::Win32::UI::Shell::IsUserAnAdmin() != 0 }
 }
 
-fn relancer_admin() -> bool {
+pub(crate) fn relancer_admin() -> bool {
     use windows_sys::Win32::UI::Shell::ShellExecuteW;
     let Ok(exe) = std::env::current_exe() else { return false };
     let (op, f) = (w("runas"), w(&exe.to_string_lossy()));
