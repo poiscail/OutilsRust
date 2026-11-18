@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Outils</title>
+<style>
+  :root { --fond:#120a10; --carte:#1e1019; --bord:#3a1f33; --rose:#ff5fa2; --texte:#f5dce8; --gris:#b49aaa; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui, sans-serif; background:var(--fond); color:var(--texte); padding:16px; }
+  h1 { font-size:22px; margin:4px 0 16px; }
+  h2 { font-size:15px; color:var(--gris); text-transform:uppercase; letter-spacing:.06em; margin:22px 0 10px; }
+  .grille { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; }
+  button, .fichier a { background:var(--carte); color:var(--texte); border:1px solid var(--bord); border-radius:14px; padding:16px 8px;
+    font-size:16px; width:100%; text-decoration:none; display:block; text-align:center; }
+  button:active { background:var(--rose); color:#000; }
+  .large { grid-column:span 3; }
+  .double { grid-column:span 2; }
+  #etat { color:var(--gris); min-height:20px; margin-top:10px; }
+  .fichier { display:flex; gap:10px; align-items:center; margin-bottom:8px; }
+  .fichier a { flex:1; text-align:left; padding:12px 14px; }
+  .petit { color:var(--gris); font-size:13px; }
+  .barre { height:8px; background:var(--carte); border-radius:4px; overflow:hidden; margin-top:8px; }
+  .barre div { height:100%; width:0; background:var(--rose); }
+  label.envoi { display:block; text-align:center; border:2px dashed var(--bord); border-radius:14px; padding:22px; }
+  input[type=file] { display:none; }
+</style>
+</head>
+<body>
+<h1>🌸 Outils</h1>
+
+<h2>Son et musique</h2>
+<div class="grille">
+  <button onclick="cmd('vol_moins')">🔉 −</button>
+  <button onclick="cmd('muet')">🔇</button>
+  <button onclick="cmd('vol_plus')">🔊 +</button>
+  <button onclick="cmd('precedent')">⏮</button>
+  <button onclick="cmd('lecture')">⏯</button>
+  <button onclick="cmd('suivant')">⏭</button>
+</div>
+
+<h2>PC</h2>
+<div class="grille">
+  <button class="double" onclick="cmd('verrouiller')">🔒 Verrouiller</button>
+  <button onclick="if(confirm('Mettre le PC en veille ?'))cmd('veille')">🌙 Veille</button>
+</div>
+
+<h2>Serveur Minecraft · <span id="mc">…</span></h2>
+<div class="grille">
+  <button class="double" onclick="cmd('mc_demarrer')">▶ Démarrer</button>
+  <button onclick="if(confirm('Arrêter le serveur ?'))cmd('mc_arreter')">⏹ Arrêter</button>
+</div>
+<div id="etat"></div>
+
+<h2>Fichiers partagés par le PC</h2>
+<div id="fichiers" class="petit">…</div>
+
+<h2>Envoyer vers le PC</h2>
+<label class="envoi">📤 Choisir des photos ou fichiers<input type="file" id="choix" multiple></label>
+<div id="envoi" class="petit"></div>
+<div class="barre"><div id="progres"></div></div>
+
+<script>
+const etat = document.getElementById('etat');
+async function cmd(a) {
+  try {
+    const r = await fetch('/cmd/' + a, { method: 'POST' });
+    etat.textContent = await r.text();
+  } catch (e) { etat.textContent = 'PC injoignable'; }
+  setTimeout(maj, 800);
+}
+async function maj() {
+  try {
+    const j = await (await fetch('/etat')).json();
+    document.getElementById('mc').textContent = j.mc;
+    const f = document.getElementById('fichiers');
+    f.innerHTML = '';
+    if (!j.fichiers.length) f.textContent = 'Aucun fichier partagé (ajoute-les dans Outils → Téléphone).';
+    for (const x of j.fichiers) {
+      const d = document.createElement('div'); d.className = 'fichier';
+      const a = document.createElement('a'); a.href = '/f/' + x.i; a.textContent = '⬇ ' + x.nom;
+      const t = document.createElement('span'); t.className = 'petit'; t.textContent = x.taille;
+      d.append(a, t); f.append(d);
+    }
+  } catch (e) { document.getElementById('mc').textContent = 'PC injoignable'; }
+}
+function envoyer(liste, i) {
+  if (i >= liste.length) { document.getElementById('envoi').textContent = '✔ ' + liste.length + ' fichier(s) envoyé(s)'; return; }
+  const f = liste[i];
+  const x = new XMLHttpRequest();
+  x.open('POST', '/envoyer?nom=' + encodeURIComponent(f.name));
+  x.upload.onprogress = e => { if (e.lengthComputable) document.getElementById('progres').style.width = (100 * e.loaded / e.total) + '%'; };
+  x.onload = () => envoyer(liste, i + 1);
+  x.onerror = () => { document.getElementById('envoi').textContent = '✖ échec pour ' + f.name; };
+  document.getElementById('envoi').textContent = 'Envoi de ' + f.name + ' (' + (i + 1) + '/' + liste.length + ')…';
+  x.send(f);
+}
+document.getElementById('choix').onchange = e => envoyer([...e.target.files], 0);
+maj(); setInterval(maj, 5000);
+</script>
+</body>
+</html>

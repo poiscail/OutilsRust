@@ -1,0 +1,511 @@
+//! Téléphone : petit serveur web sur le réseau local, ouvert en scannant un QR code.
+//! - Télécommande : volume, lecture / pause, piste suivante, verrouiller, veille, serveur Minecraft.
+//! - Fichiers : télécharger sur le téléphone les fichiers partagés, envoyer des fichiers vers le PC.
+//! Protégé par une clé aléatoire dans l'adresse. Réglages dans %APPDATA%\Outils\telephone.json.
+use crate::minecraft::Pilote;
+use eframe::egui::{self, Color32};
+use serde::{Deserialize, Serialize};
+use std::io::{BufRead, BufReader, Read, Write};
+use std::net::{TcpListener, TcpStream, UdpSocket};
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[serde(default)]
+pub struct Reglages {
+    pub port: u16,
+    pub cle: String,
+    pub auto: bool, // démarre avec Outils
+    pub dossier_reception: PathBuf,
+    pub fichiers: Vec<PathBuf>,
+}
+
+impl Default for Reglages {
+    fn default() -> Self {
+        let dl = PathBuf::from(std::env::var("USERPROFILE").unwrap_or_default()).join("Downloads").join("Depuis le téléphone");
+        Reglages { port: 8642, cle: nouvelle_cle(), auto: false, dossier_reception: dl, fichiers: vec![] }
+    }
+}
+
+fn fichier() -> PathBuf {
+    PathBuf::from(std::env::var("APPDATA").unwrap_or(".".into())).join("Outils").join("telephone.json")
+}
+
+pub fn nouvelle_cle() -> String {
+    const A: &[u8] = b"abcdefghjkmnpqrstuvwxyz23456789";
+    let mut b = [0u8; 14];
+    let _ = getrandom::getrandom(&mut b);
+    b.iter().map(|x| A[*x as usize % A.len()] as char).collect()
+}
+
+/// Adresse IP du PC sur le réseau local.
+pub fn ip_locale() -> Option<String> {
+    let s = UdpSocket::bind("0.0.0.0:0").ok()?;
+    s.connect("192.168.1.1:80").ok()?; // aucun paquet n'est envoyé : sert à choisir l'interface
+    Some(s.local_addr().ok()?.ip().to_string())
+}
+
+pub struct Requete {
+    pub methode: String,
+    pub chemin: String,
+    pub params: Vec<(String, String)>,
+    pub longueur: u64,
+    pub cookie_cle: Option<String>,
+}
+
+pub fn decoder_url(s: &str) -> String {
+    let b = s.as_bytes();
+    let mut out = Vec::with_capacity(b.len());
+    let mut i = 0;
+    while i < b.len() {
+        match b[i] {
+            b'+' => out.push(b' '),
+            b'%' if i + 2 < b.len() => {
+                match u8::from_str_radix(std::str::from_utf8(&b[i + 1..i + 3]).unwrap_or("zz"), 16) {
+                    Ok(v) => {
+                        out.push(v);
+                        i += 2;
+                    }
+                    Err(_) => out.push(b'%'),
+                }
+            }
+            c => out.push(c),
+        }
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+/// Lit la ligne de requête et les en-têtes (le corps reste dans le lecteur).
+pub fn lire_requete(r: &mut impl BufRead) -> Option<Requete> {
+    let mut l = String::new();
+    r.read_line(&mut l).ok()?;
+    let mut p = l.split_whitespace();
+    let methode = p.next()?.to_string();
+    let cible = p.next()?.to_string();
+    let (chemin, requete) = cible.split_once('?').unwrap_or((&cible, ""));
+    let params = requete.split('&').filter(|x| !x.is_empty()).map(|x| {
+        let (a, b) = x.split_once('=').unwrap_or((x, ""));
+        (decoder_url(a), decoder_url(b))
+    }).collect();
+    let (mut longueur, mut cookie_cle) = (0, None);
+    loop {
+        let mut h = String::new();
+        if r.read_line(&mut h).ok()? == 0 || h.trim().is_empty() {
+            break;
+        }
+        let (k, v) = h.split_once(':')?;
+        match k.trim().to_ascii_lowercase().as_str() {
+            "content-length" => longueur = v.trim().parse().unwrap_or(0),
+            "cookie" => cookie_cle = v.split(';').find_map(|c| c.trim().strip_prefix("k=").map(str::to_string)),
+            _ => {}
+        }
+    }
+    Some(Requete { methode, chemin: decoder_url(chemin), params, longueur, cookie_cle })
+}
+
+impl Requete {
+    pub fn param(&self, k: &str) -> Option<&str> {
+        self.params.iter().find(|(a, _)| a == k).map(|(_, b)| b.as_str())
+    }
+}
+
+/// Nom de fichier reçu sans dossier ni caractère interdit.
+pub fn nom_recu(n: &str) -> String {
+    let base = n.rsplit(['/', '\\']).next().unwrap_or("");
+    let s: String = base.chars().map(|c| if r#":*?"<>|"#.contains(c) || c.is_control() { '_' } else { c }).collect();
+    let s = s.trim().trim_matches('.').to_string();
+    if s.is_empty() { "fichier".into() } else { s }
+}
+
+fn libre(dossier: &Path, nom: &str) -> PathBuf {
+    let p = dossier.join(nom);
+    if !p.exists() {
+        return p;
+    }
+    let (base, ext) = match nom.rsplit_once('.') {
+        Some((b, e)) => (b.to_string(), format!(".{e}")),
+        None => (nom.to_string(), String::new()),
+    };
+    (2..).map(|i| dossier.join(format!("{base} ({i}){ext}"))).find(|p| !p.exists()).unwrap()
+}
+
+fn repondre(s: &mut TcpStream, code: &str, type_: &str, corps: &[u8], extra: &str) {
+    let _ = write!(s, "HTTP/1.1 {code}\r\nContent-Type: {type_}\r\nContent-Length: {}\r\nConnection: close\r\nCache-Control: no-store\r\n{extra}\r\n", corps.len());
+    let _ = s.write_all(corps);
+}
+
+fn touche(vk: u16) {
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
+    let mk = |haut: bool| {
+        let mut i: INPUT = unsafe { std::mem::zeroed() };
+        i.r#type = INPUT_KEYBOARD;
+        i.Anonymous.ki = KEYBDINPUT { wVk: vk, wScan: 0, dwFlags: if haut { KEYEVENTF_KEYUP } else { 0 }, time: 0, dwExtraInfo: 0 };
+        i
+    };
+    let seq = [mk(false), mk(true)];
+    unsafe { SendInput(2, seq.as_ptr(), std::mem::size_of::<INPUT>() as i32) };
+}
+
+fn json_echappe(s: &str) -> String {
+    serde_json::to_string(s).unwrap_or_else(|_| "\"\"".into())
+}
+
+const PAGE: &str = include_str!("telephone.html");
+
+struct Contexte {
+    r: Arc<Mutex<Reglages>>,
+    mc: Pilote,
+    journal: Arc<Mutex<Vec<String>>>,
+}
+
+fn noter(c: &Contexte, m: String) {
+    let mut j = c.journal.lock().unwrap();
+    j.insert(0, m);
+    j.truncate(30);
+}
+
+fn servir(mut s: TcpStream, c: &Contexte) {
+    let _ = s.set_read_timeout(Some(Duration::from_secs(30)));
+    let Ok(clone) = s.try_clone() else { return };
+    let mut lecteur = BufReader::new(clone);
+    let Some(req) = lire_requete(&mut lecteur) else { return };
+    let reg = c.r.lock().unwrap().clone();
+    let ok = req.param("k").or(req.cookie_cle.as_deref()) == Some(reg.cle.as_str());
+    if !ok {
+        repondre(&mut s, "403 Forbidden", "text/plain; charset=utf-8", "Clé absente ou expirée : rescanne le QR code dans Outils.".as_bytes(), "");
+        return;
+    }
+    let cookie = format!("Set-Cookie: k={}; Path=/; Max-Age=31536000; SameSite=Strict\r\n", reg.cle);
+    match (req.methode.as_str(), req.chemin.as_str()) {
+        ("GET", "/") => repondre(&mut s, "200 OK", "text/html; charset=utf-8", PAGE.as_bytes(), &cookie),
+        ("GET", "/etat") => {
+            let mc = match c.mc.statut() {
+                None => "arrêté".to_string(),
+                Some((false, _)) => "démarrage…".to_string(),
+                Some((true, j)) => format!("en ligne · {} joueur(s)", j.len()),
+            };
+            let fichiers: Vec<String> = reg.fichiers.iter().enumerate().map(|(i, p)| {
+                let taille = p.metadata().map(|m| crate::disque::taille_lisible(m.len())).unwrap_or_else(|_| "introuvable".into());
+                format!("{{\"i\":{i},\"nom\":{},\"taille\":{}}}", json_echappe(&p.file_name().unwrap_or_default().to_string_lossy()), json_echappe(&taille))
+            }).collect();
+            let corps = format!("{{\"mc\":{},\"fichiers\":[{}]}}", json_echappe(&mc), fichiers.join(","));
+            repondre(&mut s, "200 OK", "application/json", corps.as_bytes(), "");
+        }
+        ("GET", f) if f.starts_with("/f/") => {
+            let p = f[3..].parse::<usize>().ok().and_then(|i| reg.fichiers.get(i)).cloned();
+            match p.and_then(|p| std::fs::File::open(&p).ok().map(|f| (p, f))) {
+                Some((p, mut fi)) => {
+                    let n = fi.metadata().map(|m| m.len()).unwrap_or(0);
+                    let nom = p.file_name().unwrap_or_default().to_string_lossy().replace('"', "");
+                    let _ = write!(s, "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {n}\r\nContent-Disposition: attachment; filename=\"{nom}\"\r\nConnection: close\r\n\r\n");
+                    let _ = std::io::copy(&mut fi, &mut s);
+                    noter(c, format!("📤 {nom} envoyé au téléphone"));
+                }
+                None => repondre(&mut s, "404 Not Found", "text/plain", b"introuvable", ""),
+            }
+        }
+        ("POST", "/envoyer") => {
+            let nom = nom_recu(req.param("nom").unwrap_or("fichier"));
+            let _ = std::fs::create_dir_all(&reg.dossier_reception);
+            let dest = libre(&reg.dossier_reception, &nom);
+            let res = std::fs::File::create(&dest).and_then(|mut f| std::io::copy(&mut (&mut lecteur).take(req.longueur), &mut f));
+            match res {
+                Ok(n) if n == req.longueur => {
+                    noter(c, format!("📥 {nom} reçu ({})", crate::disque::taille_lisible(n)));
+                    crate::systeme::notifier("Téléphone", &format!("{nom} reçu dans {}", reg.dossier_reception.display()));
+                    repondre(&mut s, "200 OK", "text/plain; charset=utf-8", "ok".as_bytes(), "");
+                }
+                _ => {
+                    let _ = std::fs::remove_file(&dest);
+                    repondre(&mut s, "500 Internal Server Error", "text/plain; charset=utf-8", "réception interrompue".as_bytes(), "");
+                }
+            }
+        }
+        ("POST", a) if a.starts_with("/cmd/") => {
+            use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
+            let action = &a[5..];
+            let r: Result<&str, String> = match action {
+                "vol_plus" => {
+                    for _ in 0..2 {
+                        touche(VK_VOLUME_UP);
+                    }
+                    Ok("Volume +")
+                }
+                "vol_moins" => {
+                    for _ in 0..2 {
+                        touche(VK_VOLUME_DOWN);
+                    }
+                    Ok("Volume −")
+                }
+                "muet" => {
+                    touche(VK_VOLUME_MUTE);
+                    Ok("Muet")
+                }
+                "lecture" => {
+                    touche(VK_MEDIA_PLAY_PAUSE);
+                    Ok("Lecture / pause")
+                }
+                "suivant" => {
+                    touche(VK_MEDIA_NEXT_TRACK);
+                    Ok("Piste suivante")
+                }
+                "precedent" => {
+                    touche(VK_MEDIA_PREV_TRACK);
+                    Ok("Piste précédente")
+                }
+                "verrouiller" => {
+                    unsafe { windows_sys::Win32::System::Shutdown::LockWorkStation() };
+                    Ok("PC verrouillé")
+                }
+                "veille" => {
+                    std::thread::spawn(|| {
+                        std::thread::sleep(Duration::from_secs(2));
+                        unsafe { windows_sys::Win32::System::Power::SetSuspendState(0, 0, 0) };
+                    });
+                    Ok("Mise en veille")
+                }
+                "mc_demarrer" => c.mc.demarrer().map(|_| "Serveur Minecraft : démarrage"),
+                "mc_arreter" => {
+                    let mc = c.mc.clone();
+                    std::thread::spawn(move || mc.arreter());
+                    Ok("Serveur Minecraft : arrêt")
+                }
+                _ => Err("action inconnue".into()),
+            };
+            match r {
+                Ok(m) => {
+                    noter(c, format!("📱 {m}"));
+                    repondre(&mut s, "200 OK", "text/plain; charset=utf-8", m.as_bytes(), "");
+                }
+                Err(e) => repondre(&mut s, "400 Bad Request", "text/plain; charset=utf-8", e.as_bytes(), ""),
+            }
+        }
+        _ => repondre(&mut s, "404 Not Found", "text/plain", b"introuvable", ""),
+    }
+}
+
+pub struct Telephone {
+    r: Arc<Mutex<Reglages>>,
+    mc: Pilote,
+    marche: Arc<AtomicBool>,
+    erreur: Arc<Mutex<Option<String>>>,
+    journal: Arc<Mutex<Vec<String>>>,
+    qr: Option<(String, egui::TextureHandle)>,
+}
+
+impl Telephone {
+    pub fn new(mc: Pilote) -> Self {
+        let r: Reglages = std::fs::read_to_string(fichier()).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
+        let auto = r.auto;
+        let mut t = Telephone { r: Arc::new(Mutex::new(r)), mc, marche: Arc::default(), erreur: Arc::default(), journal: Arc::default(), qr: None };
+        t.enregistrer(); // garde la clé générée
+        if auto {
+            t.demarrer();
+        }
+        t
+    }
+
+    fn enregistrer(&self) {
+        let f = fichier();
+        let _ = std::fs::create_dir_all(f.parent().unwrap());
+        let _ = std::fs::write(f, serde_json::to_string_pretty(&*self.r.lock().unwrap()).unwrap_or_default());
+    }
+
+    fn demarrer(&mut self) {
+        if self.marche.load(Relaxed) {
+            return;
+        }
+        let port = self.r.lock().unwrap().port;
+        let ecoute = match TcpListener::bind(("0.0.0.0", port)) {
+            Ok(l) => l,
+            Err(e) => {
+                *self.erreur.lock().unwrap() = Some(format!("Port {port} indisponible : {e}"));
+                return;
+            }
+        };
+        let _ = ecoute.set_nonblocking(true);
+        *self.erreur.lock().unwrap() = None;
+        self.marche.store(true, Relaxed);
+        let ctx = Arc::new(Contexte { r: self.r.clone(), mc: self.mc.clone(), journal: self.journal.clone() });
+        let marche = self.marche.clone();
+        std::thread::spawn(move || {
+            while marche.load(Relaxed) {
+                match ecoute.accept() {
+                    Ok((s, _)) => {
+                        let _ = s.set_nonblocking(false);
+                        let c = ctx.clone();
+                        std::thread::spawn(move || servir(s, &c));
+                    }
+                    Err(_) => std::thread::sleep(Duration::from_millis(80)),
+                }
+            }
+        });
+    }
+
+    fn adresse(&self) -> Option<String> {
+        let r = self.r.lock().unwrap();
+        ip_locale().map(|ip| format!("http://{ip}:{}/?k={}", r.port, r.cle))
+    }
+
+    pub fn resume(&self) -> String {
+        if self.marche.load(Relaxed) { "Serveur actif (scanne le QR code)".into() } else { "Arrêté".into() }
+    }
+
+    pub fn ui(&mut self, ui: &mut egui::Ui) {
+        ui.heading("Téléphone");
+        ui.weak("Le téléphone doit être sur le même Wi-Fi que le PC. Au premier lancement, Windows demande d'autoriser Outils dans le pare-feu : accepte pour les réseaux privés.");
+        let avant = self.r.lock().unwrap().clone();
+        let mut r = avant.clone();
+        let marche = self.marche.load(Relaxed);
+        ui.horizontal(|ui| {
+            if marche {
+                if ui.button("⏹ Arrêter").clicked() {
+                    self.marche.store(false, Relaxed);
+                }
+                ui.colored_label(Color32::LIGHT_GREEN, "● en marche");
+            } else if ui.button("▶ Démarrer").clicked() {
+                self.demarrer();
+            }
+            ui.label("Port");
+            ui.add_enabled(!marche, egui::DragValue::new(&mut r.port).range(1024..=65535));
+            ui.checkbox(&mut r.auto, "Démarrer avec Outils");
+            if ui.button("🔑 Nouvelle clé").on_hover_text("Les anciens QR codes ne marcheront plus").clicked() {
+                r.cle = nouvelle_cle();
+                self.qr = None;
+            }
+        });
+        if let Some(e) = self.erreur.lock().unwrap().clone() {
+            ui.colored_label(Color32::LIGHT_RED, e);
+        }
+        ui.columns(2, |c| {
+            let ui = &mut c[0];
+            if marche {
+                match self.adresse() {
+                    Some(url) => {
+                        if self.qr.as_ref().is_none_or(|(u, _)| u != &url) {
+                            if let Ok(code) = qrcode::QrCode::new(url.as_bytes()) {
+                                let w = code.width();
+                                let marge = 4;
+                                let n = w + 2 * marge;
+                                let couleurs = code.to_colors();
+                                let mut px = vec![255u8; n * n];
+                                for y in 0..w {
+                                    for x in 0..w {
+                                        if couleurs[y * w + x] == qrcode::Color::Dark {
+                                            px[(y + marge) * n + x + marge] = 0;
+                                        }
+                                    }
+                                }
+                                let img = egui::ColorImage::from_gray([n, n], &px);
+                                let t = ui.ctx().load_texture("qr", img, egui::TextureOptions::NEAREST);
+                                self.qr = Some((url.clone(), t));
+                            }
+                        }
+                        if let Some((_, t)) = &self.qr {
+                            ui.add(egui::Image::new(t).fit_to_exact_size(egui::vec2(240.0, 240.0)));
+                        }
+                        ui.label("Scanne avec l'appareil photo du téléphone, ou ouvre :");
+                        ui.monospace(&url);
+                        if ui.small_button("Copier l'adresse").clicked() {
+                            ui.ctx().copy_text(url);
+                        }
+                    }
+                    None => {
+                        ui.colored_label(Color32::LIGHT_RED, "Pas de réseau local détecté.");
+                    }
+                }
+            } else {
+                ui.weak("Démarre le serveur pour afficher le QR code.");
+            }
+            let ui = &mut c[1];
+            ui.strong("Fichiers à récupérer sur le téléphone");
+            let mut retirer = None;
+            for (i, p) in r.fichiers.iter().enumerate() {
+                ui.horizontal(|ui| {
+                    ui.label(p.file_name().unwrap_or_default().to_string_lossy());
+                    if !p.exists() {
+                        ui.colored_label(Color32::LIGHT_RED, "introuvable");
+                    }
+                    if ui.small_button("✖").clicked() {
+                        retirer = Some(i);
+                    }
+                });
+            }
+            if let Some(i) = retirer {
+                r.fichiers.remove(i);
+            }
+            if ui.button("➕ Ajouter des fichiers…").clicked() {
+                if let Some(v) = rfd::FileDialog::new().pick_files() {
+                    r.fichiers.extend(v);
+                }
+            }
+            let deposes: Vec<PathBuf> = ui.ctx().input(|i| i.raw.dropped_files.iter().filter_map(|f| f.path.clone()).collect());
+            r.fichiers.extend(deposes.into_iter().filter(|p| p.is_file()));
+            ui.add_space(8.0);
+            ui.strong("Fichiers reçus du téléphone");
+            ui.horizontal(|ui| {
+                ui.monospace(r.dossier_reception.display().to_string());
+                if ui.small_button("Changer…").clicked() {
+                    if let Some(d) = rfd::FileDialog::new().pick_folder() {
+                        r.dossier_reception = d;
+                    }
+                }
+                if ui.small_button("📂").clicked() {
+                    let _ = std::fs::create_dir_all(&r.dossier_reception);
+                    let _ = std::process::Command::new("explorer").arg(&r.dossier_reception).spawn();
+                }
+            });
+            ui.add_space(8.0);
+            ui.strong("Activité");
+            for l in self.journal.lock().unwrap().iter().take(12) {
+                ui.label(l);
+            }
+        });
+        if marche {
+            ui.ctx().request_repaint_after(Duration::from_secs(1));
+        }
+        if r != avant {
+            *self.r.lock().unwrap() = r;
+            self.enregistrer();
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn requetes() {
+        let brut = b"POST /envoyer?nom=photo%20%C3%A9t%C3%A9.jpg&k=abc HTTP/1.1\r\nHost: x\r\nContent-Length: 5\r\nCookie: a=1; k=zzz\r\n\r\nhello";
+        let mut r = BufReader::new(&brut[..]);
+        let q = lire_requete(&mut r).unwrap();
+        assert_eq!(q.methode, "POST");
+        assert_eq!(q.chemin, "/envoyer");
+        assert_eq!(q.param("nom"), Some("photo été.jpg"));
+        assert_eq!(q.param("k"), Some("abc"));
+        assert_eq!(q.longueur, 5);
+        assert_eq!(q.cookie_cle.as_deref(), Some("zzz"));
+        let mut corps = String::new();
+        r.read_to_string(&mut corps).unwrap();
+        assert_eq!(corps, "hello");
+    }
+
+    #[test]
+    fn noms_surs() {
+        assert_eq!(nom_recu("../../Windows/evil.exe"), "evil.exe");
+        assert_eq!(nom_recu("C:\\a\\b:c.txt"), "b_c.txt");
+        assert_eq!(nom_recu(".."), "fichier");
+        assert_eq!(decoder_url("a%2"), "a%2");
+    }
+
+    #[test]
+    fn cles() {
+        let (a, b) = (nouvelle_cle(), nouvelle_cle());
+        assert_eq!(a.len(), 14);
+        assert_ne!(a, b);
+    }
+}
