@@ -209,7 +209,7 @@ impl Historique {
 
 // ---------- Windows : presse-papiers, raccourci, collage ----------
 
-mod win {
+pub(crate) mod win {
     use std::path::Path;
     use std::ptr::null_mut;
     use std::time::Duration;
