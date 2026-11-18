@@ -904,7 +904,7 @@ mod tests {
     #[test]
     fn textes() {
         assert_eq!(valeurs("    Profil Tous les utilisateurs : Maison\n    All User Profile : Box\n", &["Profil Tous les utilisateurs", "All User Profile"]), vec!["Maison", "Box"]);
-        assert_eq!(progression_ytdlp("[download]  42.3% of 10.00MiB at 1.00MiB/s"), Some(0.423));
+        assert!((progression_ytdlp("[download]  42.3% of 10.00MiB at 1.00MiB/s").unwrap() - 0.423).abs() < 1e-5);
         assert_eq!(texte_html("<html><style>x{}</style><p>Prix&nbsp;: 10 &euro;</p><script>a()</script><p>En stock</p></html>"), "Prix : 10 €\nEn stock");
         assert_eq!(difference("a\nb", "a\nc"), Some("c".into()));
         assert_eq!(port_connu(25565), "Minecraft Java");

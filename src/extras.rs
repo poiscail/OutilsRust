@@ -1,7 +1,7 @@
 //! Liste des outils ajoutés en lot (trait `Outil`), dans l'ordre du menu de chaque catégorie.
 use crate::minecraft::Pilote;
 use crate::outil::Outil;
-use crate::{bureau, mcplus, fichiers2, images, listes, ludique, minijeux, quotidien, pdf, reseau2, speedrun, steam2, systeme2, tests_materiel, video, voix};
+use crate::{bureau, creatif, mcplus, fichiers2, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
 
 pub fn tous(mc: Pilote) -> Vec<Box<dyn Outil>> {
     vec![
@@ -67,6 +67,14 @@ pub fn tous(mc: Pilote) -> Vec<Box<dyn Outil>> {
         Box::new(listes::Liste::new(&listes::LECTURE)),
         Box::new(voix::Voix::new()),
         Box::new(ludique::MotsDePasse::new()),
+        // créatif
+        Box::new(creatif::Editeur::new()),
+        Box::new(creatif::Memes::new()),
+        Box::new(creatif::CreateurGif::new()),
+        Box::new(creatif::Palettes::new()),
+        Box::new(creatif::Icones::new()),
+        Box::new(son::EnregistreurSon::new()),
+        Box::new(son::Egaliseur::new()),
         // fun
         Box::new(ludique::Des::new()),
         Box::new(minijeux::MiniJeux::new()),

@@ -40,6 +40,15 @@ Plan, liste et graphe : [PLAN.md](PLAN.md).
 | Macros | enregistrement clavier/souris (arrêt Ctrl+Alt+F12), lecture Ctrl+Alt+F1-F11, répétitions, vitesse, Échap pour arrêter |
 | Traduction instantanée | Ctrl+Alt+T sur un texte sélectionné : bulle de traduction (Google), clic pour copier |
 | Économiseur d'écran | fonds + effets + horloge ; installé comme `%APPDATA%\Outils\Outils.scr` |
+| **Menu** | outils rangés par catégorie (Jeux, Minecraft, Fichiers, Système, Réseau, Quotidien, Créatif, Fun) avec recherche |
+| Jeux | jeux gratuits (Epic, Steam, GOG) et sorties attendues, jeux à finir, succès Steam, roue « à quoi on joue », chrono speedrun, réflexes, sensibilité entre jeux, tests souris et clavier |
+| Minecraft + | installer un serveur (Paper, Fabric, Vanilla), plugins et mods Modrinth, réglages `server.properties`, opérateurs, restauration à une date, TPS / mémoire et prégénération Chunky |
+| Fichiers + | favoris, visionneuse, images en double, photos (date de prise de vue, EXIF/GPS), vidéo rapide (Discord, découpe, son), PDF, archives (7-Zip), gros fichiers oubliés, déplacement avec jonction, récupération (corbeille, Windows File Recovery), destructeur |
+| Système + | infos du PC, processus, services, pilotes, batterie / alimentation / test RAM, vitesse des disques, écrans, bureaux virtuels, transparence (Ctrl+Alt+Page↑/↓), plantages, réparation SFC/DISM |
+| Réseau + | téléchargement de vidéos (yt-dlp), bloqueur de pubs et de sites (hosts), DNS le plus rapide, mots de passe Wi-Fi, ports ouverts, coupures internet, Wake-on-LAN, surveillance de pages, liens courts |
+| Quotidien + | tâches, Kanban, réveil (sort de veille), temps d'écran, mode concentration, liens, films et séries, livres et mangas, voix (mémos, lecture à voix haute Ctrl+Alt+L, sous-titres), mots de passe |
+| Créatif + | éditeur d'images, mèmes, GIF, palette, icônes et dossiers colorés, enregistrement du son du PC, égaliseur (Equalizer APO) |
+| Fun + | dés et tirage au sort, mini-jeux (serpent, casse-briques, démineur) |
 
 ## Options (onglet Personnaliser)
 
