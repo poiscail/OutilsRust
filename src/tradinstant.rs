@@ -37,7 +37,7 @@ pub fn inchange(a: &str, b: &str) -> bool {
     n(a) == n(b)
 }
 
-mod win {
+pub(crate) mod win {
     use super::*;
     use std::ptr::{null, null_mut};
     use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, RECT, WPARAM};
