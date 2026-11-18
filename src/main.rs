@@ -35,6 +35,7 @@ mod promos;
 mod quotidien;
 mod renommer;
 mod reseau;
+mod reseau2;
 mod santedisque;
 mod sauvegardes;
 mod speedrun;
