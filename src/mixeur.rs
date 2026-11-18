@@ -352,6 +352,16 @@ impl Mixeur {
         self.message = format!("Profil audio « {jeu} » appliqué.");
     }
 
+    /// Pour les autres outils (Ne pas déranger) : envoie un ordre au fil audio.
+    pub fn envoyer(&self, o: Ordre) {
+        let _ = self.tx.send(o);
+    }
+
+    /// Applis qui jouent du son, regroupées par exe.
+    pub fn applis(&self) -> Vec<Session> {
+        par_appli(&self.etat.lock().unwrap().sessions)
+    }
+
     pub fn resume(&self) -> String {
         let e = self.etat.lock().unwrap();
         let sortie = e.defaut.as_ref().and_then(|d| e.sorties.iter().find(|s| &s.0 == d)).map(|s| s.1.clone()).unwrap_or_else(|| "?".into());

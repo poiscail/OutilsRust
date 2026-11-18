@@ -5,6 +5,7 @@ mod coffre;
 mod discord;
 mod convertisseur;
 mod disque;
+mod dnd;
 mod lanceur;
 mod minecraft;
 mod minuteur;
@@ -38,7 +39,7 @@ fn racine() -> PathBuf {
 const ONGLETS: &[&str] = &[
     "🏠 Accueil", "📂 Tri Téléchargements", "🎮 Lanceur Jeux", "🔒 Coffre", "🌐 Traducteur", "📋 Presse-papiers",
     "⛏ Serveur Minecraft", "📊 Moniteur Jeu", "🚀 Optimiseur", "✏ Renommer", "⏱ Minuteur", "🎨 Personnaliser",
-    "💽 Espace disque", "💾 Sauvegardes jeux", "🔁 Convertisseur", "📝 Notes", "📡 Réseau", "💬 Discord", "📸 Capture", "🎚 Mixeur audio", "🗓 Planificateur", "📱 Téléphone",
+    "💽 Espace disque", "💾 Sauvegardes jeux", "🔁 Convertisseur", "📝 Notes", "📡 Réseau", "💬 Discord", "📸 Capture", "🎚 Mixeur audio", "🗓 Planificateur", "📱 Téléphone", "🌙 Ne pas déranger",
 ];
 const PRESSE: usize = 5;
 
@@ -67,6 +68,7 @@ struct App {
     mixeur: mixeur::Mixeur,
     planif: planif::Planif,
     telephone: telephone::Telephone,
+    dnd: dnd::Dnd,
     theme: theme::Theme,
     maj: systeme::MajPartagee,
     maj_ignoree: bool,
@@ -93,7 +95,7 @@ impl App {
         App {
             tri: tri::Tri::new(&racine), lanceur: lanceur::Lanceur::new(), coffre: coffre::CoffreUi::new(), traducteur: traducteur::Traducteur::new(),
             presse: pressepapiers::PressePapiers::new(), minecraft, moniteur: moniteur::Moniteur::new(&racine),
-            optimiseur: optimiseur::Optimiseur::new(), renommer: renommer::Renommer::new(), minuteur: minuteur::Minuteur::new(), disque: disque::Disque::new(), sauvegardes, convertisseur: convertisseur::Convertisseur::new(), notes: notes::Notes::new(), reseau: reseau::Reseau::new(), discord: discord::Discord::new(), capture: capture::Capture::new(), mixeur: mixeur::Mixeur::new(), planif, telephone, theme, maj,
+            optimiseur: optimiseur::Optimiseur::new(), renommer: renommer::Renommer::new(), minuteur: minuteur::Minuteur::new(), disque: disque::Disque::new(), sauvegardes, convertisseur: convertisseur::Convertisseur::new(), notes: notes::Notes::new(), reseau: reseau::Reseau::new(), discord: discord::Discord::new(), capture: capture::Capture::new(), mixeur: mixeur::Mixeur::new(), planif, telephone, dnd: dnd::Dnd::new(), theme, maj,
             maj_ignoree: false, disques: (None, vec![]), lance_au_demarrage: std::env::args().any(|a| a == "--demarrage"), onglet: 0,
         }
     }
@@ -130,6 +132,7 @@ impl App {
             (19, self.mixeur.resume()),
             (20, self.planif.resume()),
             (21, self.telephone.resume()),
+            (22, self.dnd.resume()),
         ];
         egui::Grid::new("accueil").num_columns(2).spacing([16.0, 10.0]).show(ui, |ui| {
             for (i, texte) in lignes {
@@ -195,6 +198,7 @@ impl eframe::App for App {
             self.onglet = 18;
         }
         self.mixeur.tic(jeu.as_deref());
+        self.dnd.tic(jeu.as_deref(), &self.mixeur);
         self.discord.tic(jeu, self.minecraft.statut());
         if self.presse.tic(ctx) {
             self.onglet = PRESSE;
@@ -249,6 +253,7 @@ impl eframe::App for App {
             19 => self.mixeur.ui(ui),
             20 => self.planif.ui(ui),
             21 => self.telephone.ui(ui),
+            22 => self.dnd.ui(ui, &self.mixeur),
             _ => {}
         });
     }
