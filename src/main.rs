@@ -39,6 +39,7 @@ mod reseau2;
 mod santedisque;
 mod sauvegardes;
 mod speedrun;
+mod steam2;
 mod systeme;
 mod systeme2;
 mod tests_materiel;

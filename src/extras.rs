@@ -1,10 +1,13 @@
 //! Liste des outils ajoutés en lot (trait `Outil`), dans l'ordre du menu de chaque catégorie.
 use crate::outil::Outil;
-use crate::{bureau, fichiers2, images, listes, ludique, minijeux, quotidien, pdf, reseau2, speedrun, systeme2, tests_materiel, video, voix};
+use crate::{bureau, fichiers2, images, listes, ludique, minijeux, quotidien, pdf, reseau2, speedrun, steam2, systeme2, tests_materiel, video, voix};
 
 pub fn tous() -> Vec<Box<dyn Outil>> {
     vec![
         // jeux
+        Box::new(steam2::Sorties::new()),
+        Box::new(steam2::AFinir::new()),
+        Box::new(steam2::SuccesUi::new()),
         Box::new(ludique::Tirage::new()),
         Box::new(speedrun::Speedrun::new()),
         Box::new(ludique::Reflexes::new()),

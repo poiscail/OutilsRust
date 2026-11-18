@@ -56,7 +56,7 @@ pub fn steamid_dans(vdf: &str) -> Option<String> {
     premier
 }
 
-fn steamid_local() -> Option<String> {
+pub fn steamid_local() -> Option<String> {
     let vdf = std::fs::read_to_string(crate::lanceur::steam_racine()?.join("config").join("loginusers.vdf")).ok()?;
     steamid_dans(&vdf)
 }
