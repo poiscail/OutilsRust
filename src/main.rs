@@ -16,6 +16,7 @@ mod notes;
 mod optimiseur;
 mod planif;
 mod pressepapiers;
+mod promos;
 mod renommer;
 mod reseau;
 mod sauvegardes;
@@ -40,7 +41,7 @@ fn racine() -> PathBuf {
 const ONGLETS: &[&str] = &[
     "🏠 Accueil", "📂 Tri Téléchargements", "🎮 Lanceur Jeux", "🔒 Coffre", "🌐 Traducteur", "📋 Presse-papiers",
     "⛏ Serveur Minecraft", "📊 Moniteur Jeu", "🚀 Optimiseur", "✏ Renommer", "⏱ Minuteur", "🎨 Personnaliser",
-    "💽 Espace disque", "💾 Sauvegardes jeux", "🔁 Convertisseur", "📝 Notes", "📡 Réseau", "💬 Discord", "📸 Capture", "🎚 Mixeur audio", "🗓 Planificateur", "📱 Téléphone", "🌙 Ne pas déranger", "⏱ Démarrage PC",
+    "💽 Espace disque", "💾 Sauvegardes jeux", "🔁 Convertisseur", "📝 Notes", "📡 Réseau", "💬 Discord", "📸 Capture", "🎚 Mixeur audio", "🗓 Planificateur", "📱 Téléphone", "🌙 Ne pas déranger", "🔌 Démarrage PC", "🏷 Promos Steam",
 ];
 const PRESSE: usize = 5;
 
@@ -71,6 +72,7 @@ struct App {
     telephone: telephone::Telephone,
     dnd: dnd::Dnd,
     demarrage: demarrage::DemarragePc,
+    promos: promos::Promos,
     theme: theme::Theme,
     maj: systeme::MajPartagee,
     maj_ignoree: bool,
@@ -97,7 +99,7 @@ impl App {
         App {
             tri: tri::Tri::new(&racine), lanceur: lanceur::Lanceur::new(), coffre: coffre::CoffreUi::new(), traducteur: traducteur::Traducteur::new(),
             presse: pressepapiers::PressePapiers::new(), minecraft, moniteur: moniteur::Moniteur::new(&racine),
-            optimiseur: optimiseur::Optimiseur::new(), renommer: renommer::Renommer::new(), minuteur: minuteur::Minuteur::new(), disque: disque::Disque::new(), sauvegardes, convertisseur: convertisseur::Convertisseur::new(), notes: notes::Notes::new(), reseau: reseau::Reseau::new(), discord: discord::Discord::new(), capture: capture::Capture::new(), mixeur: mixeur::Mixeur::new(), planif, telephone, dnd: dnd::Dnd::new(), demarrage: demarrage::DemarragePc::new(), theme, maj,
+            optimiseur: optimiseur::Optimiseur::new(), renommer: renommer::Renommer::new(), minuteur: minuteur::Minuteur::new(), disque: disque::Disque::new(), sauvegardes, convertisseur: convertisseur::Convertisseur::new(), notes: notes::Notes::new(), reseau: reseau::Reseau::new(), discord: discord::Discord::new(), capture: capture::Capture::new(), mixeur: mixeur::Mixeur::new(), planif, telephone, dnd: dnd::Dnd::new(), demarrage: demarrage::DemarragePc::new(), promos: promos::Promos::new(), theme, maj,
             maj_ignoree: false, disques: (None, vec![]), lance_au_demarrage: std::env::args().any(|a| a == "--demarrage"), onglet: 0,
         }
     }
@@ -135,6 +137,7 @@ impl App {
             (20, self.planif.resume()),
             (21, self.telephone.resume()),
             (22, self.dnd.resume()),
+            (24, self.promos.resume()),
         ];
         egui::Grid::new("accueil").num_columns(2).spacing([16.0, 10.0]).show(ui, |ui| {
             for (i, texte) in lignes {
@@ -225,11 +228,14 @@ impl eframe::App for App {
             ui.add_space(8.0);
             ui.heading("Outils");
             ui.separator();
-            for (i, n) in ONGLETS.iter().enumerate() {
-                if ui.selectable_label(self.onglet == i, *n).clicked() {
-                    self.onglet = i;
+            // 25 onglets : la liste défile si la fenêtre est petite
+            egui::ScrollArea::vertical().id_salt("menu").max_height(ui.available_height() - 24.0).show(ui, |ui| {
+                for (i, n) in ONGLETS.iter().enumerate() {
+                    if ui.selectable_label(self.onglet == i, *n).clicked() {
+                        self.onglet = i;
+                    }
                 }
-            }
+            });
             ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| ui.weak(concat!("v", env!("CARGO_PKG_VERSION"))));
         });
         egui::CentralPanel::default().show(ctx, |ui| match self.onglet {
@@ -256,6 +262,7 @@ impl eframe::App for App {
             20 => self.planif.ui(ui),
             21 => self.telephone.ui(ui),
             22 => self.dnd.ui(ui, &self.mixeur),
+            24 => self.promos.ui(ui),
             23 => {
                 if self.demarrage.ui(ui) {
                     self.onglet = 8;

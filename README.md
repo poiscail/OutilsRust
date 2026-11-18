@@ -27,6 +27,11 @@ Plan, liste et graphe : [PLAN.md](PLAN.md).
 | Discord | statut Rich Presence (jeu en cours, serveur Minecraft) avec un ID d'application ; webhook : serveur allumé/éteint, joueurs |
 | Capture | Ctrl+Alt+S zone, W fenêtre, P écran, C pipette, M règle, R replay ; éditeur (flèche, cadre, surligneur, flou) ; vidéo et replay des dernières secondes via ffmpeg |
 | Mixeur audio | volume général et par appli, sortie par défaut, Ctrl+Alt+A sortie suivante, profils appliqués au lancement d'un jeu |
+| Planificateur | tâches à heure fixe : sauvegardes des jeux, nettoyage, serveur Minecraft (démarrer, arrêter, redémarrer, sauvegarder, commande), programme, notification, veille/arrêt du PC |
+| Téléphone | serveur web local ouvert par QR code : télécommande (son, musique, verrouiller, veille, serveur Minecraft), fichiers à récupérer, envoi de photos vers le PC |
+| Ne pas déranger | pendant les jeux, sur une plage horaire ou à la main : mode Ne pas déranger de Windows, notifications d'Outils coupées, son des applis choisies baissé |
+| Démarrage PC | durée des derniers démarrages et ce qui les a ralentis (journal Diagnostics-Performance, admin) |
+| Promos Steam | prix de la liste de souhaits (profil public) et de jeux ajoutés, alerte en promo ou sous un prix voulu, vérification toutes les 6 h |
 
 ## Options (onglet Personnaliser)
 
