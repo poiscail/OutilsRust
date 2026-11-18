@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 //! Outils : tous les outils dans un seul programme.
+mod bureau;
 mod capture;
 mod coffre;
 mod coffrefichiers;
@@ -38,6 +39,7 @@ mod santedisque;
 mod sauvegardes;
 mod speedrun;
 mod systeme;
+mod systeme2;
 mod tests_materiel;
 mod telephone;
 mod theme;
