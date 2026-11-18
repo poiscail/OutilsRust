@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 //! Outils : tous les outils dans un seul programme.
 mod coffre;
+mod convertisseur;
 mod disque;
 mod lanceur;
 mod minecraft;
@@ -30,7 +31,7 @@ fn racine() -> PathBuf {
 const ONGLETS: &[&str] = &[
     "🏠 Accueil", "📂 Tri Téléchargements", "🎮 Lanceur Jeux", "🔒 Coffre", "🌐 Traducteur", "📋 Presse-papiers",
     "⛏ Serveur Minecraft", "📊 Moniteur Jeu", "🚀 Optimiseur", "✏ Renommer", "⏱ Minuteur", "🎨 Personnaliser",
-    "💽 Espace disque", "💾 Sauvegardes jeux",
+    "💽 Espace disque", "💾 Sauvegardes jeux", "🔁 Convertisseur",
 ];
 const PRESSE: usize = 5;
 
@@ -51,6 +52,7 @@ struct App {
     minuteur: minuteur::Minuteur,
     disque: disque::Disque,
     sauvegardes: sauvegardes::Sauvegardes,
+    convertisseur: convertisseur::Convertisseur,
     theme: theme::Theme,
     maj: systeme::MajPartagee,
     maj_ignoree: bool,
@@ -73,7 +75,7 @@ impl App {
         App {
             tri: tri::Tri::new(&racine), lanceur: lanceur::Lanceur::new(), coffre: coffre::CoffreUi::new(), traducteur: traducteur::Traducteur::new(),
             presse: pressepapiers::PressePapiers::new(), minecraft: minecraft::Minecraft::new(), moniteur: moniteur::Moniteur::new(&racine),
-            optimiseur: optimiseur::Optimiseur::new(), renommer: renommer::Renommer::new(), minuteur: minuteur::Minuteur::new(), disque: disque::Disque::new(), sauvegardes: sauvegardes::Sauvegardes::new(), theme, maj,
+            optimiseur: optimiseur::Optimiseur::new(), renommer: renommer::Renommer::new(), minuteur: minuteur::Minuteur::new(), disque: disque::Disque::new(), sauvegardes: sauvegardes::Sauvegardes::new(), convertisseur: convertisseur::Convertisseur::new(), theme, maj,
             maj_ignoree: false, disques: (None, vec![]), lance_au_demarrage: std::env::args().any(|a| a == "--demarrage"), onglet: 0,
         }
     }
@@ -208,6 +210,7 @@ impl eframe::App for App {
             11 => self.theme.ui(ui),
             12 => self.disque.ui(ui),
             13 => self.sauvegardes.ui(ui),
+            14 => self.convertisseur.ui(ui),
             _ => {}
         });
     }
