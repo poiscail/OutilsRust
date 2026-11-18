@@ -737,6 +737,20 @@ Get-ScheduledTask -TaskPath '\Microsoft\Windows\Application Experience\' -EA Sil
     ]
 }
 
+/// Nettoyage rapide (tâches de nettoyage cochées par défaut), utilisable depuis un autre fil.
+pub fn nettoyage_rapide() -> String {
+    let l = Log(Arc::default());
+    let mut faits = 0;
+    let mut erreurs = vec![];
+    for t in taches().into_iter().filter(|t| t.groupe == "clean" && t.defaut) {
+        match (t.run)(&l) {
+            Ok(()) => faits += 1,
+            Err(e) => erreurs.push(format!("{} : {e}", t.nom)),
+        }
+    }
+    if erreurs.is_empty() { format!("Nettoyage : {faits} tâche(s) faites.") } else { format!("Nettoyage : {faits} faite(s), erreurs : {}", erreurs.join(" ; ")) }
+}
+
 fn point_restauration() -> R {
     reg_d(r"HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore", "SystemRestorePointCreationFrequency", 0)?;
     ps("Enable-ComputerRestore -Drive \"$env:SystemDrive\\\"\nCheckpoint-Computer -Description 'Avant Optimiseur Windows' -RestorePointType MODIFY_SETTINGS").map(drop)

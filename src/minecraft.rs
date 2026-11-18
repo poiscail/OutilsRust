@@ -290,6 +290,61 @@ fn mesure(pid: u32) -> Option<(u64, usize)> {
     }
 }
 
+// ---------- pilotage depuis un autre fil ----------
+
+#[derive(Clone)]
+pub struct Pilote {
+    srv: Serveur,
+    veille: Arc<Mutex<Option<Veille>>>,
+    tx: Sender<Msg>,
+}
+
+impl Pilote {
+    pub fn statut(&self) -> Option<(bool, Vec<String>)> {
+        if !self.srv.actif() {
+            return None;
+        }
+        let e = self.srv.etat.lock().unwrap();
+        Some((e.pret, e.joueurs.iter().cloned().collect()))
+    }
+
+    /// Démarre avec la configuration enregistrée.
+    pub fn demarrer(&self) -> R<()> {
+        if self.srv.actif() {
+            return Ok(());
+        }
+        let cfg: Config = fs::read(fichier_config()).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default();
+        let jar = PathBuf::from(&cfg.jar);
+        let ram = cfg.ram.parse::<u32>().ok().filter(|r| *r >= 512 && jar.is_file()).ok_or("serveur non configuré (jar / RAM)")?;
+        let java = if cfg.java.is_empty() { java_par_defaut() } else { cfg.java };
+        if let Some(v) = self.veille.lock().unwrap().take() {
+            v.fermer();
+            thread::sleep(Duration::from_millis(120));
+        }
+        self.srv.demarrer(&java, &jar, ram, self.tx.clone()).map_err(err)
+    }
+
+    /// Arrêt propre (bloque jusqu'à 60 s).
+    pub fn arreter(&self) {
+        self.srv.arreter();
+    }
+
+    pub fn commande(&self, texte: &str) {
+        self.srv.commande(texte);
+    }
+
+    /// Sauvegarde du monde (serveur arrêté ou après save-all).
+    pub fn sauvegarder(&self) -> R<PathBuf> {
+        let cfg: Config = fs::read(fichier_config()).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default();
+        let dossier = Path::new(&cfg.jar).parent().map(Path::to_path_buf).ok_or("serveur non configuré")?;
+        if self.srv.actif() {
+            self.srv.commande("save-all flush");
+            thread::sleep(Duration::from_secs(5));
+        }
+        sauvegarder(&dossier, 10)
+    }
+}
+
 // ---------- mode veille ----------
 
 fn varint(r: &mut impl Read) -> io::Result<u32> {
@@ -901,7 +956,7 @@ pub struct Minecraft {
     cfg: Config,
     srv: Serveur,
     playit: Playit,
-    veille: Option<Veille>,
+    veille: Arc<Mutex<Option<Veille>>>,
     tx: Sender<Msg>,
     rx: Receiver<Msg>,
     console: VecDeque<String>,
@@ -935,7 +990,7 @@ impl Minecraft {
             cfg.java = java_par_defaut();
         }
         let (tx, rx) = channel();
-        let mut m = Minecraft { auto_vu: cfg.auto.clone(), cfg, srv: Serveur::default(), playit: Playit::default(), veille: None, tx, rx,
+        let mut m = Minecraft { auto_vu: cfg.auto.clone(), cfg, srv: Serveur::default(), playit: Playit::default(), veille: Arc::default(), tx, rx,
             console: VecDeque::new(), cmd: String::new(), historique: vec![], pos_h: 0, onglet: Onglet::Console,
             arret_en_cours: false, sauvegarde_en_cours: false, etat_b: String::new(), prochaine_auto: None, vide_depuis: None,
             mods: vec![], mods_sel: BTreeSet::new(), mods_jar: None, import_en_cours: false, partage_en_cours: false,
@@ -944,6 +999,11 @@ impl Minecraft {
             m.basculer_en_ligne();
         }
         m
+    }
+
+    /// Poignée utilisable depuis n'importe quel fil (planificateur, téléphone).
+    pub fn pilote(&self) -> Pilote {
+        Pilote { srv: self.srv.clone(), veille: self.veille.clone(), tx: self.tx.clone() }
     }
 
     /// None si arrêté, sinon (prêt, joueurs connectés).
@@ -1006,7 +1066,7 @@ impl Minecraft {
             return;
         };
         self.enregistrer();
-        if let Some(v) = self.veille.take() {
+        if let Some(v) = self.veille.lock().unwrap().take() {
             v.fermer(); // libère le port pour le serveur
             thread::sleep(Duration::from_millis(120));
         }
@@ -1232,8 +1292,8 @@ impl Minecraft {
     fn gerer_veille(&mut self, actif: bool) {
         let d = self.dossier().filter(|_| self.cfg.veille && !actif && Path::new(&self.cfg.jar).is_file());
         match d {
-            Some(d) if self.veille.is_none() => match Veille::ouvrir(port(&d), self.tx.clone()) {
-                Ok(v) => self.veille = Some(v),
+            Some(d) if self.veille.lock().unwrap().is_none() => match Veille::ouvrir(port(&d), self.tx.clone()) {
+                Ok(v) => *self.veille.lock().unwrap() = Some(v),
                 Err(e) => {
                     self.cfg.veille = false;
                     self.log(format!("[Veille impossible : port occupé ({e})]"));
@@ -1241,7 +1301,7 @@ impl Minecraft {
             },
             Some(_) => {}
             None => {
-                if let Some(v) = self.veille.take() {
+                if let Some(v) = self.veille.lock().unwrap().take() {
                     v.fermer();
                 }
             }
@@ -1407,7 +1467,7 @@ impl Minecraft {
                     ("CPU", self.cpu_txt.clone()),
                     ("RAM", self.ram_txt.clone()),
                     ("Adresse publique", if self.cfg.adresse.is_empty() { "—".into() } else { self.cfg.adresse.clone() }),
-                    ("Mode veille", if self.veille.is_some() { "À l'écoute".into() } else { "Inactif".into() }),
+                    ("Mode veille", if self.veille.lock().unwrap().is_some() { "À l'écoute".into() } else { "Inactif".into() }),
                 ];
                 egui::Grid::new("mc_etat").num_columns(2).spacing([24.0, 6.0]).show(ui, |ui| {
                     for (k, v) in lignes {
@@ -1540,7 +1600,7 @@ impl Drop for Minecraft {
         self.enregistrer();
         self.srv.arreter();
         self.playit.arreter();
-        if let Some(v) = self.veille.take() {
+        if let Some(v) = self.veille.lock().unwrap().take() {
             v.fermer();
         }
     }

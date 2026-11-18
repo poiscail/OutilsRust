@@ -138,6 +138,12 @@ pub fn suggestions() -> Vec<(String, PathBuf)> {
     v
 }
 
+/// Sauvegarde tous les jeux suivis ; renvoie un compte-rendu.
+pub fn tout_sauvegarder(r: &Reglages) -> String {
+    let erreurs: Vec<String> = r.jeux.iter().filter_map(|j| sauvegarder(j, &r.destination, r.garder).err().map(|e| format!("{} : {e}", j.nom))).collect();
+    if erreurs.is_empty() { format!("{} jeu(x) sauvegardé(s).", r.jeux.len()) } else { erreurs.join(" · ") }
+}
+
 fn date_archive(p: &Path) -> String {
     // ..._AAAAMMJJ_HHMMSS.zip -> JJ/MM/AAAA HH:MM
     let n = p.file_stem().unwrap_or_default().to_string_lossy();
@@ -232,6 +238,11 @@ impl Sauvegardes {
                 Err(x) => format!("Erreur : {x}"),
             };
         });
+    }
+
+    /// Réglages partagés, pour sauvegarder depuis un autre fil (planificateur, téléphone).
+    pub fn poignee(&self) -> Arc<Mutex<Reglages>> {
+        self.r.clone()
     }
 
     pub fn resume(&self) -> String {
