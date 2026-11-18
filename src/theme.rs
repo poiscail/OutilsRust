@@ -22,6 +22,10 @@ pub struct Reglages {
     image: Option<PathBuf>,
     police: Option<String>, // nom du fichier dans le dossier des polices
     petales: bool,
+    pluie: bool,
+    lucioles: bool,
+    neige: bool,
+    intensite: f32, // nombre de particules, 0.3..3
     rotation: bool, // change d'image de fond tout seul
     rotation_min: u32,
     fond_windows: bool, // l'image de fond devient aussi celle du bureau
@@ -37,7 +41,7 @@ impl Default for Reglages {
     fn default() -> Self {
         Reglages {
             sombre: true, accent: [90, 140, 220], fond: [20, 20, 24], panneau: [27, 27, 27], texte: [210, 210, 210], opacite: 1.0, assombrir: 0.3, zoom: 1.0, image: None,
-            police: None, petales: false, rotation: false, rotation_min: 10, fond_windows: false, notifs: false, demarrage: false, zone: false, raccourci: false, maj: true,
+            police: None, petales: false, pluie: false, lucioles: false, neige: false, intensite: 1.0, rotation: false, rotation_min: 10, fond_windows: false, notifs: false, demarrage: false, zone: false, raccourci: false, maj: true,
             fonds_installes: Vec::new(),
         }
     }
@@ -312,7 +316,50 @@ impl Theme {
             let rose = Color32::from_rgba_unmultiplied(255, (170.0 + 50.0 * hasard(i, 9)) as u8, (195.0 + 30.0 * hasard(i, 10)) as u8, 190);
             peintre.add(egui::Shape::ellipse_filled(ecran.min + egui::vec2(x, y), egui::vec2(taille, taille * 0.6 * battement), rose));
         }
-        ctx.request_repaint_after(Duration::from_millis(33));
+    }
+
+    fn nombre(&self, base: u32) -> u32 {
+        (base as f32 * self.r.intensite.clamp(0.2, 4.0)).round() as u32
+    }
+
+    fn peindre_pluie(&self, ctx: &egui::Context, peintre: &egui::Painter, ecran: Rect) {
+        let t = ctx.input(|i| i.time) as f32;
+        let haut = ecran.height() + 80.0;
+        for i in 0..self.nombre(90) {
+            let vitesse = 700.0 + 500.0 * hasard(i, 21);
+            let long = 10.0 + 18.0 * hasard(i, 22);
+            let y = (hasard(i, 23) * haut + t * vitesse) % haut - 40.0;
+            let x = (hasard(i, 24) * (ecran.width() + 60.0) + y * 0.12).rem_euclid(ecran.width() + 60.0) - 30.0;
+            let a = (60.0 + 80.0 * hasard(i, 25)) as u8;
+            let p = ecran.min + egui::vec2(x, y);
+            peintre.line_segment([p, p + egui::vec2(long * 0.12, long)], egui::Stroke::new(1.0f32, Color32::from_rgba_unmultiplied(190, 200, 255, a)));
+        }
+    }
+
+    fn peindre_neige(&self, ctx: &egui::Context, peintre: &egui::Painter, ecran: Rect) {
+        let t = ctx.input(|i| i.time) as f32;
+        let haut = ecran.height() + 20.0;
+        for i in 0..self.nombre(70) {
+            let vitesse = 15.0 + 35.0 * hasard(i, 31);
+            let r = 1.0 + 2.5 * hasard(i, 32);
+            let y = (hasard(i, 33) * haut + t * vitesse) % haut - 10.0;
+            let x = (hasard(i, 34) * ecran.width() + (t * 0.6 + 6.28 * hasard(i, 35)).sin() * 20.0).rem_euclid(ecran.width());
+            peintre.circle_filled(ecran.min + egui::vec2(x, y), r, Color32::from_rgba_unmultiplied(255, 255, 255, (120.0 + 100.0 * hasard(i, 36)) as u8));
+        }
+    }
+
+    fn peindre_lucioles(&self, ctx: &egui::Context, peintre: &egui::Painter, ecran: Rect) {
+        let t = ctx.input(|i| i.time) as f32;
+        for i in 0..self.nombre(28) {
+            // dérive lente + scintillement
+            let x = ecran.width() * (hasard(i, 41) + 0.08 * (t * (0.15 + 0.2 * hasard(i, 42)) + 6.28 * hasard(i, 43)).sin()).rem_euclid(1.0);
+            let y = ecran.height() * (0.25 + 0.75 * hasard(i, 44) + 0.06 * (t * (0.2 + 0.2 * hasard(i, 45)) + 6.28 * hasard(i, 46)).cos()).rem_euclid(1.0);
+            let eclat = ((t * (0.8 + hasard(i, 47)) + 6.28 * hasard(i, 48)).sin() * 0.5 + 0.5).powf(2.0);
+            let c = ecran.min + egui::vec2(x, y);
+            let (r, g, b) = if hasard(i, 49) > 0.5 { (255, 230, 140) } else { (255, 150, 210) };
+            peintre.circle_filled(c, 7.0, Color32::from_rgba_unmultiplied(r, g, b, (40.0 * eclat) as u8));
+            peintre.circle_filled(c, 2.2, Color32::from_rgba_unmultiplied(r, g, b, (230.0 * eclat) as u8));
+        }
     }
 
     /// À appeler au début de chaque image, avant les panneaux : peint le fond dessous.
@@ -344,8 +391,20 @@ impl Theme {
             let voile = (self.r.assombrir.clamp(0.0, 1.0) * 255.0) as u8;
             peintre.rect_filled(ecran, 0.0, Color32::from_black_alpha(voile));
         }
+        if self.r.pluie {
+            self.peindre_pluie(ctx, &peintre, ecran);
+        }
+        if self.r.neige {
+            self.peindre_neige(ctx, &peintre, ecran);
+        }
+        if self.r.lucioles {
+            self.peindre_lucioles(ctx, &peintre, ecran);
+        }
         if self.r.petales {
             self.peindre_petales(ctx, &peintre, ecran);
+        }
+        if self.r.petales || self.r.pluie || self.r.neige || self.r.lucioles {
+            ctx.request_repaint_after(Duration::from_millis(33));
         }
     }
 
@@ -474,7 +533,13 @@ impl Theme {
 
         ui.separator();
         ui.strong("Effets");
-        ui.checkbox(&mut self.r.petales, "Pétales de sakura animés");
+        ui.horizontal_wrapped(|ui| {
+            ui.checkbox(&mut self.r.petales, "🌸 Pétales de sakura");
+            ui.checkbox(&mut self.r.pluie, "🌧 Pluie");
+            ui.checkbox(&mut self.r.neige, "❄ Neige");
+            ui.checkbox(&mut self.r.lucioles, "✨ Lucioles");
+        });
+        ui.add(egui::Slider::new(&mut self.r.intensite, 0.3..=3.0).text("intensité"));
 
         ui.separator();
         ui.strong("Options");
