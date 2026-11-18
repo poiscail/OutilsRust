@@ -18,7 +18,7 @@ Plan, liste et graphe : [PLAN.md](PLAN.md).
 | Accueil | disques, état du serveur, du tri, du coffre, du minuteur et des mises à jour |
 | Renommer | renommage en lot (rechercher/remplacer, préfixe, suffixe, numérotation), aperçu et conflits |
 | Minuteur | Pomodoro (travail / pause), son et notification à la fin |
-| Personnaliser | couleurs, polices importées (`%APPDATA%\Outils\polices`), image de fond et rotation auto, fond d'écran Windows, pétales |
+| Personnaliser | couleurs, polices importées (`%APPDATA%\Outils\polices`), image de fond (6 fonds japonais inclus dans l’exe, déposés dans `fonds\` au lancement) et rotation auto, fond d'écran Windows, pétales |
 
 ## Options (onglet Personnaliser)
 

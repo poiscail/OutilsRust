@@ -30,6 +30,7 @@ pub struct Reglages {
     pub zone: bool,
     raccourci: bool,
     pub maj: bool,
+    fonds_installes: Vec<String>, // fonds de base déjà déposés une fois (pas remis si supprimés)
 }
 
 impl Default for Reglages {
@@ -37,6 +38,7 @@ impl Default for Reglages {
         Reglages {
             sombre: true, accent: [90, 140, 220], fond: [20, 20, 24], panneau: [27, 27, 27], texte: [210, 210, 210], opacite: 1.0, assombrir: 0.3, zoom: 1.0, image: None,
             police: None, petales: false, rotation: false, rotation_min: 10, fond_windows: false, notifs: false, demarrage: false, zone: false, raccourci: false, maj: true,
+            fonds_installes: Vec::new(),
         }
     }
 }
@@ -76,6 +78,35 @@ fn polices_dispo() -> Vec<String> {
 /// Vraie police lisible ? (egui plante sur un fichier invalide, donc on vérifie avant)
 fn police_valide(b: &[u8]) -> bool {
     ab_glyph::FontRef::try_from_slice(b).is_ok()
+}
+
+/// Fonds livrés dans l'exe (la mise à jour ne télécharge que l'exe).
+const FONDS_BASE: &[(&str, &[u8])] = &[
+    ("fond_pagode_cascade_violet.jpg", include_bytes!("../fonds/fond_pagode_cascade_violet.jpg")),
+    ("fond_pagode_lune_lac.jpg", include_bytes!("../fonds/fond_pagode_lune_lac.jpg")),
+    ("fond_ruelle_pluie_tour.jpg", include_bytes!("../fonds/fond_ruelle_pluie_tour.jpg")),
+    ("fond_sakura_torii_lune.jpg", include_bytes!("../fonds/fond_sakura_torii_lune.jpg")),
+    ("fond_sanctuaire_fuji_pont.jpg", include_bytes!("../fonds/fond_sanctuaire_fuji_pont.jpg")),
+    ("fond_tokyo_pluie_neon.jpg", include_bytes!("../fonds/fond_tokyo_pluie_neon.jpg")),
+];
+
+/// Dépose les fonds de base pas encore installés. Un fond déjà présent sous un autre format
+/// (ancien .png) n'est pas dupliqué ; un fond supprimé par l'utilisateur n'est pas remis.
+/// Renvoie true si la liste des fonds installés a changé.
+fn installer_fonds_base(dossier: &Path, installes: &mut Vec<String>) -> bool {
+    let mut change = false;
+    for (nom, octets) in FONDS_BASE {
+        if installes.iter().any(|n| n == nom) {
+            continue;
+        }
+        let racine = Path::new(nom).file_stem().unwrap_or_default();
+        let deja = fonds_dispo(dossier).iter().any(|p| p.file_stem() == Some(racine));
+        if deja || (std::fs::create_dir_all(dossier).is_ok() && std::fs::write(dossier.join(nom), octets).is_ok()) {
+            installes.push(nom.to_string());
+            change = true;
+        }
+    }
+    change
 }
 
 fn fonds_dispo(dossier: &Path) -> Vec<PathBuf> {
@@ -141,9 +172,10 @@ pub struct Theme {
 
 impl Theme {
     pub fn new() -> Self {
-        let r: Reglages = std::fs::read_to_string(fichier()).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
+        let mut r: Reglages = std::fs::read_to_string(fichier()).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
         let exe = std::env::current_exe().unwrap_or_default();
         let dossier_fonds = exe.parent().unwrap_or(Path::new(".")).join("fonds");
+        let fonds_nouveaux = installer_fonds_base(&dossier_fonds, &mut r.fonds_installes);
         let rotation = Arc::new(Mutex::new(Rotation::default()));
         let (rot, dossier) = (rotation.clone(), dossier_fonds.clone());
         std::thread::spawn(move || {
@@ -167,6 +199,9 @@ impl Theme {
         });
         let t = Theme { r, a_appliquer: true, a_police: true, texture: None, texture_de: None, dossier_fonds, fond_applique: None, rotation, erreur: None };
         t.appliquer_options();
+        if fonds_nouveaux {
+            t.enregistrer();
+        }
         if t.r.demarrage {
             systeme::demarrage(true); // remet le bon chemin si l'exe a bougé
         }
@@ -499,5 +534,25 @@ mod tests {
         assert!(!police_valide(b"pas une police"));
         let arial = std::fs::read(r"C:\Windows\Fonts\arial.ttf").unwrap();
         assert!(police_valide(&arial));
+    }
+
+    #[test]
+    fn fonds_base() {
+        let d = std::env::temp_dir().join(format!("outils_fonds_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        std::fs::write(d.join("fond_pagode_lune_lac.png"), b"ancien").unwrap(); // ancien format : pas de doublon
+        let mut faits = Vec::new();
+        assert!(installer_fonds_base(&d, &mut faits));
+        assert_eq!(faits.len(), FONDS_BASE.len());
+        assert!(!d.join("fond_pagode_lune_lac.jpg").exists());
+        assert_eq!(fonds_dispo(&d).len(), FONDS_BASE.len());
+        for (_, o) in FONDS_BASE {
+            assert!(image::load_from_memory(o).is_ok());
+        }
+        std::fs::remove_file(d.join("fond_tokyo_pluie_neon.jpg")).unwrap(); // supprimé : pas remis
+        assert!(!installer_fonds_base(&d, &mut faits));
+        assert!(!d.join("fond_tokyo_pluie_neon.jpg").exists());
+        let _ = std::fs::remove_dir_all(&d);
     }
 }
