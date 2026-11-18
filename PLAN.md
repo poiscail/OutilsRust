@@ -45,3 +45,15 @@ graph TD
 - `serde_json` : données ; `notify` : surveillance de dossiers ; `ureq` : HTTP ; `zip`, `image`
 - `argon2` + `aes-gcm` : coffre
 - Toolchain `stable-x86_64-pc-windows-gnu` (pas besoin de Visual Studio)
+
+## Plus tard : bot Discord relié à Outils (quand le nouveau PC sera là)
+
+Un vrai bot (jeton de bot, pas seulement le statut Rich Presence ni le webhook actuels) qui tourne avec Outils
+et pilote ses outils depuis Discord, par exemple :
+
+- `/serveur statut|démarrer|arrêter|sauvegarder` : serveur Minecraft (via `minecraft::Pilote`, déjà utilisable depuis un fil).
+- `/joueurs`, `/tps`, annonces auto (déjà en partie dans l'onglet Discord, par webhook).
+- `/pc statut` (CPU, RAM, températures du Moniteur Jeu), `/capture` (envoie une capture d'écran), `/promos`.
+- Rôles autorisés par commande, journal des commandes dans Outils.
+- Lien technique : passerelle Discord (WebSocket) ou commandes « slash » par HTTP ; à faire tourner en continu, donc sur
+  la machine la plus puissante / allumée le plus souvent.

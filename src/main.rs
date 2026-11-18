@@ -8,11 +8,15 @@ mod discord;
 mod convertisseur;
 mod disque;
 mod economiseur;
+mod extras;
+mod outil;
 mod dnd;
 mod lanceur;
+mod ludique;
 mod macros;
 mod majlogiciels;
 mod minecraft;
+mod minijeux;
 mod minuteur;
 mod mixeur;
 mod moniteur;
@@ -26,7 +30,9 @@ mod renommer;
 mod reseau;
 mod santedisque;
 mod sauvegardes;
+mod speedrun;
 mod systeme;
+mod tests_materiel;
 mod telephone;
 mod theme;
 mod traducteur;
@@ -35,6 +41,7 @@ mod tradinstant;
 mod tri;
 
 use eframe::egui;
+use outil::Cat;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering::Relaxed;
 use std::time::{Duration, Instant};
@@ -52,6 +59,14 @@ const ONGLETS: &[&str] = &[
     "💽 Espace disque", "💾 Sauvegardes jeux", "🔁 Convertisseur", "📝 Notes", "📡 Réseau", "💬 Discord", "📸 Capture", "🎚 Mixeur audio", "🗓 Planificateur", "📱 Téléphone", "🌙 Ne pas déranger", "🔌 Démarrage PC", "🏷 Promos Steam", "🧩 Mods", "⬆ Mises à jour logiciels", "🩺 Santé des disques", "🗄 Coffre de fichiers", "🎯 Viseur", "⌨ Macros", "💭 Traduction instantanée", "🌌 Économiseur d'écran",
 ];
 const PRESSE: usize = 5;
+/// Catégorie de chaque onglet historique (None : l'Accueil, toujours en haut).
+const CATS: [Option<Cat>; 33] = [
+    None, Some(Cat::Fichiers), Some(Cat::Jeux), Some(Cat::Quotidien), Some(Cat::Quotidien), Some(Cat::Quotidien), Some(Cat::Minecraft),
+    Some(Cat::Jeux), Some(Cat::Systeme), Some(Cat::Fichiers), Some(Cat::Quotidien), Some(Cat::Fun), Some(Cat::Fichiers), Some(Cat::Jeux),
+    Some(Cat::Fichiers), Some(Cat::Quotidien), Some(Cat::Reseau), Some(Cat::Reseau), Some(Cat::Creatif), Some(Cat::Creatif), Some(Cat::Systeme),
+    Some(Cat::Reseau), Some(Cat::Quotidien), Some(Cat::Systeme), Some(Cat::Jeux), Some(Cat::Jeux), Some(Cat::Systeme), Some(Cat::Systeme),
+    Some(Cat::Fichiers), Some(Cat::Jeux), Some(Cat::Jeux), Some(Cat::Quotidien), Some(Cat::Fun),
+];
 
 fn go(octets: u64) -> String {
     format!("{:.0} Go", octets as f64 / (1u64 << 30) as f64)
@@ -94,7 +109,9 @@ struct App {
     maj_ignoree: bool,
     disques: (Option<Instant>, Vec<(String, u64, u64)>),
     lance_au_demarrage: bool, // lancé par Windows : on démarre rangé
-    onglet: usize,            // index dans ONGLETS
+    onglet: usize,            // index dans ONGLETS, puis dans extras (à partir de ONGLETS.len())
+    extras: Vec<Box<dyn outil::Outil>>,
+    recherche: String,
 }
 
 impl App {
@@ -118,7 +135,7 @@ impl App {
             optimiseur: optimiseur::Optimiseur::new(), renommer: renommer::Renommer::new(), minuteur: minuteur::Minuteur::new(), disque: disque::Disque::new(), sauvegardes, convertisseur: convertisseur::Convertisseur::new(), notes: notes::Notes::new(), reseau: reseau::Reseau::new(), discord: discord::Discord::new(), capture: capture::Capture::new(), mixeur: mixeur::Mixeur::new(), planif, telephone, dnd: dnd::Dnd::new(), demarrage: demarrage::DemarragePc::new(), promos: promos::Promos::new(), mods: mods::Mods::new(), majlog: majlogiciels::MajLogiciels::new(),
             sante: santedisque::SanteDisque::new(), coffre_f: coffrefichiers::CoffreFichiers::new(), viseur: viseur::Viseur::new(), macros: macros::Macros::new(), tradinstant: tradinstant::TradInstant::new(),
             economiseur: economiseur::Economiseur::new(theme.dossier_fonds().to_path_buf()), theme, maj,
-            maj_ignoree: false, disques: (None, vec![]), lance_au_demarrage: std::env::args().any(|a| a == "--demarrage"), onglet: 0,
+            maj_ignoree: false, disques: (None, vec![]), lance_au_demarrage: std::env::args().any(|a| a == "--demarrage"), onglet: 0, extras: extras::tous(), recherche: String::new(),
         }
     }
 
@@ -178,13 +195,24 @@ impl App {
         ui.add_space(8.0);
         ui.separator();
         ui.strong("Tous les outils");
-        ui.horizontal_wrapped(|ui| {
-            for (i, n) in ONGLETS.iter().enumerate().skip(1) {
-                if ui.add(egui::Button::new(*n).min_size(egui::vec2(170.0, 34.0))).clicked() {
-                    self.onglet = i;
+        let tous = self.entrees();
+        for c in Cat::TOUTES {
+            ui.label(c.nom());
+            ui.horizontal_wrapped(|ui| {
+                for (i, n, _) in tous.iter().filter(|e| e.2 == Some(c)) {
+                    if ui.add(egui::Button::new(n.as_str()).min_size(egui::vec2(170.0, 30.0))).clicked() {
+                        self.onglet = *i;
+                    }
                 }
-            }
-        });
+            });
+        }
+    }
+
+    /// (index, nom, catégorie) de tous les onglets.
+    fn entrees(&self) -> Vec<(usize, String, Option<Cat>)> {
+        let mut v: Vec<(usize, String, Option<Cat>)> = ONGLETS.iter().enumerate().map(|(i, n)| (i, n.to_string(), CATS[i])).collect();
+        v.extend(self.extras.iter().enumerate().map(|(k, o)| (ONGLETS.len() + k, o.nom().to_string(), Some(o.cat()))));
+        v
     }
 }
 
@@ -218,6 +246,9 @@ impl eframe::App for App {
         self.notes.tic(ctx);
         self.reseau.tic();
         self.viseur.tic();
+        for o in &mut self.extras {
+            o.tic(ctx);
+        }
         let jeu = self.lanceur.jeu_actif();
         if self.capture.tic(jeu.is_some()) {
             self.onglet = 18;
@@ -248,12 +279,32 @@ impl eframe::App for App {
             ui.add_space(8.0);
             ui.heading("Outils");
             ui.separator();
-            // 25 onglets : la liste défile si la fenêtre est petite
+            ui.add(egui::TextEdit::singleline(&mut self.recherche).hint_text("🔍 Chercher un outil").desired_width(f32::INFINITY));
+            let tous = self.entrees();
+            let actuelle = tous.iter().find(|e| e.0 == self.onglet).and_then(|e| e.2);
             egui::ScrollArea::vertical().id_salt("menu").max_height(ui.available_height() - 24.0).show(ui, |ui| {
-                for (i, n) in ONGLETS.iter().enumerate() {
-                    if ui.selectable_label(self.onglet == i, *n).clicked() {
-                        self.onglet = i;
+                if ui.selectable_label(self.onglet == 0, ONGLETS[0]).clicked() {
+                    self.onglet = 0;
+                }
+                let q = self.recherche.trim().to_lowercase();
+                if !q.is_empty() {
+                    for (i, n, _) in tous.iter().filter(|e| e.0 != 0 && e.1.to_lowercase().contains(&q)) {
+                        if ui.selectable_label(self.onglet == *i, n.as_str()).clicked() {
+                            self.onglet = *i;
+                        }
                     }
+                    return;
+                }
+                for c in Cat::TOUTES {
+                    let id = ui.make_persistent_id(("cat", c));
+                    let etat = egui::collapsing_header::CollapsingState::load_with_default_open(ui.ctx(), id, actuelle == Some(c));
+                    etat.show_header(ui, |ui| ui.strong(c.nom())).body(|ui| {
+                        for (i, n, _) in tous.iter().filter(|e| e.2 == Some(c)) {
+                            if ui.selectable_label(self.onglet == *i, n.as_str()).clicked() {
+                                self.onglet = *i;
+                            }
+                        }
+                    });
                 }
             });
             ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| ui.weak(concat!("v", env!("CARGO_PKG_VERSION"))));
@@ -296,7 +347,11 @@ impl eframe::App for App {
                     self.onglet = 8;
                 }
             }
-            _ => {}
+            i => {
+                if let Some(o) = self.extras.get_mut(i.wrapping_sub(ONGLETS.len())) {
+                    o.ui(ui);
+                }
+            }
         });
     }
 }
