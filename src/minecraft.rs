@@ -98,7 +98,7 @@ pub fn port(dossier: &Path) -> u16 {
 }
 
 /// AAAAMMJJ_HHMMSS en heure locale.
-fn horodatage() -> String {
+pub fn horodatage() -> String {
     use windows_sys::Win32::System::SystemInformation::GetLocalTime;
     let mut t: windows_sys::Win32::Foundation::SYSTEMTIME = unsafe { std::mem::zeroed() };
     unsafe { GetLocalTime(&mut t) };
@@ -106,7 +106,7 @@ fn horodatage() -> String {
 }
 
 /// Zippe `src` avec des chemins relatifs à `base` ; ignore les fichiers illisibles (session.lock).
-fn zipper(src: &Path, base: &Path, dest: &Path) -> R<()> {
+pub fn zipper(src: &Path, base: &Path, dest: &Path) -> R<()> {
     let mut z = zip::ZipWriter::new(fs::File::create(dest).map_err(err)?);
     let opt = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated)
         .large_file(true);
