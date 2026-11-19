@@ -259,14 +259,35 @@ pub fn valeurs(t: &str, libelles: &[&str]) -> Vec<String> {
     t.lines().filter(|l| libelles.iter().any(|x| l.contains(x))).filter_map(|l| l.split_once(':').map(|(_, v)| v.trim().to_string())).filter(|v| !v.is_empty()).collect()
 }
 
+/// (nom, clé) d'un profil Wi-Fi exporté par « netsh wlan export profile key=clear » (XML).
+pub fn lire_profil_xml(x: &str) -> Option<(String, Option<String>)> {
+    let champ = |t: &str| regex::Regex::new(&format!(r"(?s)<{t}>(.*?)</{t}>")).ok()?.captures(x).map(|c| c[1].trim().to_string());
+    let nom = champ("name")?;
+    let dec = |s: String| s.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&apos;", "'");
+    Some((dec(nom), champ("keyMaterial").map(dec)))
+}
+
+fn profils_wifi() -> Vec<(String, Option<String>)> {
+    let d = std::env::temp_dir().join(format!("outils_wifi_{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&d);
+    let _ = std::fs::create_dir_all(&d);
+    let _ = Command::new("netsh").args(["wlan", "export", "profile", "key=clear"]).arg(format!("folder={}", d.display())).creation_flags(SANS_FENETRE).output();
+    let mut v: Vec<(String, Option<String>)> = std::fs::read_dir(&d).into_iter().flatten().flatten()
+        .filter_map(|e| lire_profil_xml(&String::from_utf8_lossy(&std::fs::read(e.path()).ok()?))).collect();
+    let _ = std::fs::remove_dir_all(&d); // les clés en clair ne restent pas sur le disque
+    v.sort_by_key(|x| x.0.to_lowercase());
+    v
+}
+
 pub struct WifiMdp {
-    liste: Option<Vec<(String, Option<String>)>>,
+    liste: Arc<Mutex<Option<Vec<(String, Option<String>)>>>>,
+    lance: bool,
     montrer: bool,
 }
 
 impl WifiMdp {
     pub fn new() -> Self {
-        WifiMdp { liste: None, montrer: false }
+        WifiMdp { liste: Arc::default(), lance: false, montrer: false }
     }
 }
 
@@ -279,21 +300,24 @@ impl Outil for WifiMdp {
     }
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.heading("Mots de passe Wi-Fi enregistrés");
-        if self.liste.is_none() {
-            let profils = valeurs(&sortie("netsh", &["wlan", "show", "profiles"]), &["Profil Tous les utilisateurs", "All User Profile"]);
-            self.liste = Some(profils.into_iter().map(|p| {
-                let d = sortie("netsh", &["wlan", "show", "profile", &format!("name=\"{p}\""), "key=clear"]);
-                let k = valeurs(&d, &["Contenu de la clé", "Contenu de la cl", "Key Content"]).into_iter().next();
-                (p, k)
-            }).collect());
+        if !self.lance {
+            self.lance = true;
+            let l = self.liste.clone();
+            std::thread::spawn(move || *l.lock().unwrap() = Some(profils_wifi()));
+        }
+        if self.liste.lock().unwrap().is_none() {
+            ui.spinner();
+            ui.ctx().request_repaint_after(Duration::from_millis(300));
+            return;
         }
         ui.horizontal(|ui| {
             ui.checkbox(&mut self.montrer, "Afficher les mots de passe");
             if ui.button("⟳").clicked() {
-                self.liste = None;
+                *self.liste.lock().unwrap() = None;
+                self.lance = false;
             }
         });
-        let l = self.liste.clone().unwrap_or_default();
+        let l = self.liste.lock().unwrap().clone().unwrap_or_default();
         if l.is_empty() {
             ui.weak("Aucun réseau Wi-Fi enregistré (PC en câble ?).");
         }
@@ -904,6 +928,13 @@ mod tests {
         let p = paquet_magique([1, 2, 3, 4, 5, 6]);
         assert_eq!(p.len(), 102);
         assert_eq!(&p[6..12], &[1, 2, 3, 4, 5, 6]);
+    }
+
+    #[test]
+    fn wifi_xml() {
+        let x = "<?xml version=\"1.0\"?><WLANProfile><name>Box &amp; Co</name><SSIDConfig/><MSM><security><sharedKey><keyMaterial>m0tDeP@sse</keyMaterial></sharedKey></security></MSM></WLANProfile>";
+        assert_eq!(lire_profil_xml(x), Some(("Box & Co".into(), Some("m0tDeP@sse".into()))));
+        assert_eq!(lire_profil_xml("<WLANProfile><name>Ouvert</name></WLANProfile>"), Some(("Ouvert".into(), None)));
     }
 
     #[test]

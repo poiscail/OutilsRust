@@ -64,7 +64,7 @@ fn video_sous(p: &Path, mo: f64) -> Result<PathBuf, String> {
          "-pass".into(), n.into(), "-passlogfile".into(), passe.as_os_str().to_owned(), "-vf".into(), "scale='min(1920,iw)':-2".into()].into_iter().collect()
     };
     let mut a1 = commun("1");
-    a1.extend(["-an".into(), "-f".into(), "mp4".into(), "NUL".into()]);
+    a1.extend(["-an".into(), "-f".into(), "null".into(), "NUL".into()]);
     ffmpeg(&a1.iter().map(|s| s.as_os_str()).collect::<Vec<_>>())?;
     let mut a2 = commun("2");
     a2.extend(["-c:a".into(), "aac".into(), "-b:a".into(), "96k".into(), "-movflags".into(), "+faststart".into(), dest.as_os_str().to_owned()]);

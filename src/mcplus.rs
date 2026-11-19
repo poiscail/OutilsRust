@@ -152,7 +152,7 @@ impl Installateur {
 
     fn charger(&mut self) {
         let (l, g) = (self.liste.clone(), self.genre);
-        *l.lock().unwrap() = None;
+        *l.lock().unwrap() = Some(Err("chargement des versions…".into()));
         self.version.clear();
         std::thread::spawn(move || *l.lock().unwrap() = Some(versions(g)));
     }
@@ -257,8 +257,9 @@ impl Plugins {
 
 /// Télécharge la dernière version compatible d'un projet Modrinth dans `dossier`.
 pub fn installer_projet(id: &str, chargeur: &str, version: &str, dossier: &Path) -> Result<String, String> {
-    let url = format!("https://api.modrinth.com/v2/project/{id}/version?loaders=[\"{chargeur}\"]&game_versions=[\"{version}\"]");
-    let v = json(&url)?;
+    let v: serde_json::Value = agent().get(&format!("https://api.modrinth.com/v2/project/{id}/version"))
+        .query("loaders", &format!("[\"{chargeur}\"]")).query("game_versions", &format!("[\"{version}\"]"))
+        .call().map_err(|e| e.to_string())?.into_json().map_err(|e| e.to_string())?;
     let f = v.as_array().and_then(|a| a.first()).and_then(|x| x["files"].as_array()?.iter().find(|f| f["primary"] == true).or(x["files"].as_array()?.first()).cloned())
         .ok_or(format!("pas de version pour {chargeur} {version}"))?;
     let (u, n) = (f["url"].as_str().ok_or("lien ?")?, f["filename"].as_str().ok_or("nom ?")?);
@@ -689,7 +690,7 @@ impl Performance {
         std::thread::spawn(move || {
             let mut prevenu = Instant::now() - Duration::from_secs(3600);
             loop {
-                std::thread::sleep(Duration::from_secs(60));
+                std::thread::sleep(Duration::from_secs(180)); // pas trop souvent : chaque mesure écrit une ligne dans la console
                 if m2.statut().is_none_or(|s| !s.0) {
                     *t2.lock().unwrap() = (None, None);
                     continue;
@@ -740,7 +741,7 @@ impl Outil for Performance {
                 ui.horizontal(|ui| {
                     match tps {
                         Some(t) => ui.label(RichText::new(format!("TPS {t:.1} / 20")).size(22.0).color(if t >= 18.0 { Color32::LIGHT_GREEN } else if t >= 15.0 { Color32::YELLOW } else { Color32::LIGHT_RED })),
-                        None => ui.weak(if chargeur_du_jar(&jar) == "paper" { "TPS : mesure chaque minute…" } else { "TPS : disponible avec Paper" }),
+                        None => ui.weak(if chargeur_du_jar(&jar) == "paper" { "TPS : mesure toutes les 3 minutes…" } else { "TPS : disponible avec Paper" }),
                     };
                     if let Some(r) = ram {
                         ui.label(RichText::new(format!("Mémoire {} / {} Mo prévus", crate::disque::taille_lisible(r), self.mc.ram())).size(18.0));

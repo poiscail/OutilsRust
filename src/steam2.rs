@@ -149,7 +149,7 @@ pub fn temps_de_jeu(vdf: &str) -> BTreeMap<u32, u64> {
 fn localconfig() -> Option<String> {
     let r = crate::lanceur::steam_racine()?;
     let sid: u64 = crate::promos::steamid_local()?.parse().ok()?;
-    let compte = sid - 76561197960265728;
+    let compte = sid.checked_sub(76561197960265728)?;
     std::fs::read_to_string(r.join("userdata").join(compte.to_string()).join("config").join("localconfig.vdf")).ok()
 }
 

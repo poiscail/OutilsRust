@@ -27,7 +27,17 @@ fn local(nom: &str) -> PathBuf {
 
 /// Vrai si le programme est disponible (copie d'Outils ou déjà installé sur le PC).
 pub fn present(nom: &str) -> bool {
-    local(nom).exists() || Command::new("where").arg(nom).creation_flags(SANS_FENETRE).output().is_ok_and(|o| o.status.success())
+    if local(nom).exists() {
+        return true;
+    }
+    static DANS_PATH: OnceLock<Mutex<HashMap<String, bool>>> = OnceLock::new();
+    let cache = DANS_PATH.get_or_init(Default::default);
+    if let Some(v) = cache.lock().unwrap().get(nom) {
+        return *v;
+    }
+    let v = Command::new("where").arg(nom).creation_flags(SANS_FENETRE).output().is_ok_and(|o| o.status.success());
+    cache.lock().unwrap().insert(nom.to_string(), v);
+    v
 }
 
 #[derive(Clone, Default)]
