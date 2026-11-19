@@ -43,11 +43,12 @@ Plan, liste et graphe : [PLAN.md](PLAN.md).
 | **Menu** | outils rangés par catégorie (Jeux, Minecraft, Fichiers, Système, Réseau, Quotidien, Créatif, Fun) avec recherche |
 | Jeux | jeux gratuits (Epic, Steam, GOG) et sorties attendues, jeux à finir, succès Steam, roue « à quoi on joue », chrono speedrun, réflexes, sensibilité entre jeux, tests souris et clavier |
 | Minecraft + | installer un serveur (Paper, Fabric, Vanilla), plugins et mods Modrinth, réglages `server.properties`, opérateurs, restauration à une date, TPS / mémoire et prégénération Chunky |
-| Fichiers + | favoris, visionneuse, images en double, photos (date de prise de vue, EXIF/GPS), vidéo rapide (Discord, découpe, son), PDF, archives (7-Zip), gros fichiers oubliés, déplacement avec jonction, récupération (corbeille, Windows File Recovery), destructeur |
+| Fichiers + | favoris, visionneuse, images en double, photos (date de prise de vue, EXIF/GPS), vidéo rapide (Discord, découpe, son), PDF, archives (zip et 7z intégrés, rar via Windows), gros fichiers oubliés, déplacement avec jonction, récupération (corbeille, Windows File Recovery), destructeur |
 | Système + | infos du PC, processus, services, pilotes, batterie / alimentation / test RAM, vitesse des disques, écrans, bureaux virtuels, transparence (Ctrl+Alt+Page↑/↓), plantages, réparation SFC/DISM |
 | Réseau + | téléchargement de vidéos (yt-dlp), bloqueur de pubs et de sites (hosts), DNS le plus rapide, mots de passe Wi-Fi, ports ouverts, coupures internet, Wake-on-LAN, surveillance de pages, liens courts |
 | Quotidien + | tâches, Kanban, réveil (sort de veille), temps d'écran, mode concentration, liens, films et séries, livres et mangas, voix (mémos, lecture à voix haute Ctrl+Alt+L, sous-titres), mots de passe |
 | Créatif + | éditeur d'images, mèmes, GIF, palette, icônes et dossiers colorés, enregistrement du son du PC, égaliseur (Equalizer APO) |
+| Programmes externes | ffmpeg / ffprobe et yt-dlp téléchargés tout seuls en version portable dans `%APPDATA%\Outils\bin` au premier besoin ; rien à installer à la main (sauf Equalizer APO, un pilote, installé en un clic depuis l'égaliseur) |
 | Fun + | dés et tirage au sort, mini-jeux (serpent, casse-briques, démineur) |
 
 ## Options (onglet Personnaliser)

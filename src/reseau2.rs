@@ -624,7 +624,7 @@ impl Outil for Telechargeur {
     }
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.heading("Télécharger une vidéo");
-        ui.weak("YouTube, Twitch (clips, rediffusions), et des centaines d'autres sites, via yt-dlp (winget install yt-dlp.yt-dlp ; ffmpeg conseillé). Uniquement pour ce que tu as le droit de garder.");
+        ui.weak("YouTube, Twitch (clips, rediffusions), et des centaines d'autres sites, via yt-dlp (téléchargé tout seul au premier usage, avec ffmpeg). Uniquement pour ce que tu as le droit de garder.");
         let (occupe, p, m) = self.e.lock().unwrap().clone();
         ui.add(egui::TextEdit::singleline(&mut self.url).hint_text("adresse de la vidéo").desired_width(f32::INFINITY));
         ui.horizontal(|ui| {
@@ -650,11 +650,16 @@ impl Outil for Telechargeur {
             *e.lock().unwrap() = (true, 0.0, "Démarrage…".into());
             std::thread::spawn(move || {
                 use std::io::BufRead;
-                let r = Command::new("yt-dlp").args(&a).stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::piped()).creation_flags(SANS_FENETRE).spawn();
+                *e.lock().unwrap() = (true, 0.0, "Préparation (premier usage : téléchargement de yt-dlp et ffmpeg)…".into());
+                let _ = crate::dependances::commande("ffmpeg"); // pour assembler image et son
+                let r = crate::dependances::commande("yt-dlp").and_then(|mut c| {
+                    c.args(["--ffmpeg-location", &crate::dependances::dossier().display().to_string()]).args(&a)
+                        .stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::piped()).spawn().map_err(|e| e.to_string())
+                });
                 let mut c = match r {
                     Ok(c) => c,
-                    Err(_) => {
-                        *e.lock().unwrap() = (false, 0.0, "yt-dlp introuvable : winget install yt-dlp.yt-dlp".into());
+                    Err(m) => {
+                        *e.lock().unwrap() = (false, 0.0, format!("✖ {m}"));
                         return;
                     }
                 };

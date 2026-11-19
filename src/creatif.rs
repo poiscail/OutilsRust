@@ -746,15 +746,15 @@ impl Outil for CreateurGif {
             let (d, f, l, e) = (self.duree, self.fps, self.largeur, self.etat.clone());
             *e.lock().unwrap() = (true, "Création…".into());
             std::thread::spawn(move || {
-                use std::os::windows::process::CommandExt;
+                
                 let dest = v.with_file_name(format!("{}.gif", v.file_stem().unwrap_or_default().to_string_lossy()));
                 let filtre = format!("fps={f},scale={l}:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4");
-                let o = std::process::Command::new("ffmpeg").args(["-y", "-v", "error", "-ss", &debut.to_string(), "-t", &d.to_string(), "-i"]).arg(&v)
-                    .args(["-vf", &filtre, "-loop", "0"]).arg(&dest).creation_flags(0x0800_0000).output();
+                let o = crate::dependances::commande("ffmpeg").map_err(std::io::Error::other).and_then(|mut c| c.args(["-y", "-v", "error", "-ss", &debut.to_string(), "-t", &d.to_string(), "-i"]).arg(&v)
+                    .args(["-vf", &filtre, "-loop", "0"]).arg(&dest).output());
                 *e.lock().unwrap() = (false, match o {
                     Ok(o) if o.status.success() => format!("✔ {} ({})", dest.display(), crate::disque::taille_lisible(dest.metadata().map(|m| m.len()).unwrap_or(0))),
                     Ok(o) => format!("✖ {}", String::from_utf8_lossy(&o.stderr).lines().last().unwrap_or("échec")),
-                    Err(_) => "✖ ffmpeg introuvable (winget install ffmpeg)".into(),
+                    Err(e) => format!("✖ {e}"),
                 });
             });
         }

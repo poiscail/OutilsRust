@@ -1,4 +1,4 @@
-//! Voix : mémos vocaux (136, micro via ffmpeg), lecture à voix haute (137, voix de Windows, Ctrl+Alt+L
+//! Voix : mémos vocaux (136, micro lu directement), lecture à voix haute (137, voix de Windows, Ctrl+Alt+L
 //! lit la sélection), sous-titres en direct (138, « Sous-titres en direct » de Windows 11).
 use crate::outil::{charger, enregistrer, Cat, Outil};
 use eframe::egui::{self, Color32};
@@ -13,20 +13,6 @@ use std::time::Instant;
 
 const SANS_FENETRE: u32 = 0x0800_0000;
 
-/// Micros listés par `ffmpeg -list_devices true -f dshow -i dummy` (sortie d'erreur).
-pub fn lire_micros(sortie: &str) -> Vec<String> {
-    sortie.lines().filter(|l| l.contains("(audio)")).filter_map(|l| {
-        let a = l.find('"')?;
-        let b = l[a + 1..].find('"')? + a + 1;
-        Some(l[a + 1..b].to_string())
-    }).collect()
-}
-
-fn micros() -> Vec<String> {
-    Command::new("ffmpeg").args(["-hide_banner", "-list_devices", "true", "-f", "dshow", "-i", "dummy"]).creation_flags(SANS_FENETRE).output()
-        .map(|o| lire_micros(&String::from_utf8_lossy(&o.stderr))).unwrap_or_default()
-}
-
 fn dossier_memos() -> PathBuf {
     PathBuf::from(std::env::var("USERPROFILE").unwrap_or_default()).join("Documents").join("Mémos vocaux")
 }
@@ -34,7 +20,6 @@ fn dossier_memos() -> PathBuf {
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
 #[serde(default)]
 struct Reglages {
-    micro: String,
     voix: String,
     vitesse: i32, // -10..10
     raccourci: bool,
@@ -42,7 +27,7 @@ struct Reglages {
 
 impl Default for Reglages {
     fn default() -> Self {
-        Reglages { micro: String::new(), voix: String::new(), vitesse: 0, raccourci: true }
+        Reglages { voix: String::new(), vitesse: 0, raccourci: true }
     }
 }
 
@@ -65,9 +50,9 @@ fn voix_installees() -> Vec<String> {
 
 pub struct Voix {
     r: Arc<Mutex<Reglages>>,
-    micros: Option<Vec<String>>,
     voix: Option<Vec<String>>,
-    enreg: Option<(Child, PathBuf, Instant)>,
+    enreg: Option<(Arc<AtomicBool>, Instant)>,
+    fin_memo: Arc<Mutex<String>>,
     lecture: Arc<Mutex<Option<Child>>>,
     texte: String,
     message: String,
@@ -105,7 +90,7 @@ impl Voix {
                 }
             }
         });
-        Voix { r, micros: None, voix: None, enreg: None, lecture, texte: String::new(), message: String::new(), actif }
+        Voix { r, voix: None, enreg: None, fin_memo: Arc::default(), lecture, texte: String::new(), message: String::new(), actif }
     }
 }
 
@@ -123,45 +108,35 @@ impl Outil for Voix {
 
         // --- mémos vocaux ---
         ui.strong("🎙 Mémos vocaux");
-        if self.micros.is_none() {
-            self.micros = Some(micros());
-        }
-        let liste = self.micros.clone().unwrap_or_default();
-        if r.micro.is_empty() {
-            r.micro = liste.first().cloned().unwrap_or_default();
-        }
         ui.horizontal(|ui| {
-            egui::ComboBox::from_id_salt("micro").selected_text(if r.micro.is_empty() { "aucun micro (ffmpeg installé ?)" } else { r.micro.as_str() }).width(260.0).show_ui(ui, |ui| {
-                for m in &liste {
-                    ui.selectable_value(&mut r.micro, m.clone(), m);
+            let en_cours = self.enreg.as_ref().is_some_and(|(s, _)| !s.load(Relaxed));
+            if !en_cours {
+                if ui.button("⏺ Enregistrer").on_hover_text("Micro par défaut de Windows").clicked() {
+                    let d = dossier_memos();
+                    let _ = std::fs::create_dir_all(&d);
+                    let f = d.join(format!("Memo_{}.wav", crate::minecraft::horodatage()));
+                    let stop = Arc::new(AtomicBool::new(false));
+                    let (s2, msg) = (stop.clone(), self.fin_memo.clone());
+                    std::thread::spawn(move || {
+                        let niveau = Mutex::new(0.0);
+                        let r = crate::son::enregistrer_boucle(&f, &s2, &niveau, true);
+                        *msg.lock().unwrap() = match r {
+                            Ok(sec) => format!("✔ {sec:.0} s : {}", f.file_name().unwrap_or_default().to_string_lossy()),
+                            Err(e) => format!("✖ micro : {e}"),
+                        };
+                    });
+                    self.enreg = Some((stop, Instant::now()));
                 }
-            });
-            match &mut self.enreg {
-                None => {
-                    if ui.add_enabled(!r.micro.is_empty(), egui::Button::new("⏺ Enregistrer")).clicked() {
-                        let d = dossier_memos();
-                        let _ = std::fs::create_dir_all(&d);
-                        let f = d.join(format!("Memo_{}.m4a", crate::minecraft::horodatage()));
-                        match Command::new("ffmpeg").args(["-y", "-v", "error", "-f", "dshow", "-i"]).arg(format!("audio={}", r.micro)).args(["-c:a", "aac", "-b:a", "128k"]).arg(&f)
-                            .stdin(Stdio::piped()).creation_flags(SANS_FENETRE).spawn() {
-                            Ok(c) => self.enreg = Some((c, f, Instant::now())),
-                            Err(_) => self.message = "ffmpeg introuvable (winget install ffmpeg).".into(),
-                        }
-                    }
+            } else if let Some((stop, t)) = &self.enreg {
+                ui.colored_label(Color32::RED, format!("⏺ {:02}:{:02}", t.elapsed().as_secs() / 60, t.elapsed().as_secs() % 60));
+                ui.ctx().request_repaint_after(std::time::Duration::from_millis(500));
+                if ui.button("⏹ Arrêter").clicked() {
+                    stop.store(true, Relaxed);
                 }
-                Some((_, _, t)) => {
-                    ui.colored_label(Color32::RED, format!("⏺ {:02}:{:02}", t.elapsed().as_secs() / 60, t.elapsed().as_secs() % 60));
-                    ui.ctx().request_repaint_after(std::time::Duration::from_millis(500));
-                    if ui.button("⏹ Arrêter").clicked() {
-                        if let Some((mut c, f, _)) = self.enreg.take() {
-                            if let Some(mut e) = c.stdin.take() {
-                                let _ = e.write_all(b"q");
-                            }
-                            let _ = c.wait();
-                            self.message = format!("Enregistré : {}", f.file_name().unwrap_or_default().to_string_lossy());
-                        }
-                    }
-                }
+            }
+            let fin = self.fin_memo.lock().unwrap().clone();
+            if !fin.is_empty() {
+                ui.label(fin);
             }
             if ui.button("📂").clicked() {
                 let _ = std::fs::create_dir_all(dossier_memos());
@@ -233,13 +208,3 @@ impl Outil for Voix {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn liste_micros() {
-        let s = "[dshow @ 0x1] \"HD Webcam\" (video)\n[dshow @ 0x1] \"Microphone (Realtek Audio)\" (audio)\n[dshow @ 0x1]   Alternative name \"@device_cm_{...}\"\n";
-        assert_eq!(lire_micros(s), vec!["Microphone (Realtek Audio)".to_string()]);
-    }
-}

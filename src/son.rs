@@ -36,19 +36,20 @@ fn dossier_sons() -> PathBuf {
 }
 
 /// Enregistre le son du PC jusqu'à `stop` ; écrit un WAV 16 bits. Renvoie la durée en secondes.
-fn enregistrer_boucle(dest: &Path, stop: &AtomicBool, niveau: &Mutex<f32>) -> Result<f64, String> {
+/// `micro` : enregistre le micro par défaut au lieu de ce qui sort des haut-parleurs.
+pub fn enregistrer_boucle(dest: &Path, stop: &AtomicBool, niveau: &Mutex<f32>, micro: bool) -> Result<f64, String> {
     use windows::Win32::Media::Audio::*;
     use windows::Win32::System::Com::*;
     let e = |x: windows::core::Error| x.message();
     unsafe {
         let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
         let en: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).map_err(e)?;
-        let dev = en.GetDefaultAudioEndpoint(eRender, eConsole).map_err(e)?;
+        let dev = en.GetDefaultAudioEndpoint(if micro { eCapture } else { eRender }, eConsole).map_err(e)?;
         let client: IAudioClient = dev.Activate(CLSCTX_ALL, None).map_err(e)?;
         let fmt = client.GetMixFormat().map_err(e)?;
         let (canaux, freq, bits, bloc) = ((*fmt).nChannels, (*fmt).nSamplesPerSec, (*fmt).wBitsPerSample, (*fmt).nBlockAlign as usize);
         let flottant = bits == 32 && ((*fmt).wFormatTag == 3 || (*fmt).wFormatTag == 0xFFFE);
-        client.Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_LOOPBACK, 10_000_000, 0, fmt, None).map_err(e)?;
+        client.Initialize(AUDCLNT_SHAREMODE_SHARED, if micro { 0 } else { AUDCLNT_STREAMFLAGS_LOOPBACK }, 10_000_000, 0, fmt, None).map_err(e)?;
         let capture: IAudioCaptureClient = client.GetService().map_err(e)?;
         let mut f = std::io::BufWriter::new(std::fs::File::create(dest).map_err(|x| x.to_string())?);
         f.write_all(&entete_wav(canaux, freq, 0)).map_err(|x| x.to_string())?;
@@ -157,13 +158,11 @@ impl Outil for EnregistreurSon {
                 act.store(true, Relaxed);
                 self.debut = Some(Instant::now());
                 std::thread::spawn(move || {
-                    let r = enregistrer_boucle(&wav, &stop, &niv);
+                    let r = enregistrer_boucle(&wav, &stop, &niv, false);
                     let mut fin = wav.clone();
                     if r.is_ok() && mp3 {
-                        use std::os::windows::process::CommandExt;
                         let m = wav.with_extension("mp3");
-                        let ok = std::process::Command::new("ffmpeg").args(["-y", "-v", "error", "-i"]).arg(&wav).args(["-b:a", "192k"]).arg(&m)
-                            .creation_flags(0x0800_0000).status().is_ok_and(|s| s.success());
+                        let ok = crate::dependances::commande("ffmpeg").is_ok_and(|mut c| c.args(["-y", "-v", "error", "-i"]).arg(&wav).args(["-b:a", "192k"]).arg(&m).status().is_ok_and(|s| s.success()));
                         if ok {
                             let _ = std::fs::remove_file(&wav);
                             fin = m;
@@ -227,11 +226,12 @@ impl Default for Eq {
 pub struct Egaliseur {
     e: Eq,
     message: String,
+    installation: Arc<Mutex<String>>,
 }
 
 impl Egaliseur {
     pub fn new() -> Self {
-        Egaliseur { e: charger("egaliseur"), message: String::new() }
+        Egaliseur { e: charger("egaliseur"), message: String::new(), installation: Arc::default() }
     }
 
     fn appliquer(&mut self) {
@@ -264,9 +264,30 @@ impl Outil for Egaliseur {
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.heading("Égaliseur audio");
         if !dossier_apo().exists() {
-            ui.label("Windows n'a pas d'égaliseur pour tout le son : il faut le petit logiciel gratuit Equalizer APO (une fois). Pendant l'installation, coche ton casque / tes haut-parleurs, puis redémarre le PC.");
-            if ui.button("Télécharger Equalizer APO").clicked() {
-                let _ = std::process::Command::new("explorer").arg("https://sourceforge.net/projects/equalizerapo/").spawn();
+            ui.label("Windows n'a pas d'égaliseur pour tout le son : il faut le module audio gratuit Equalizer APO, à installer une seule fois (c'est un pilote, Outils ne peut pas le remplacer).");
+            let etat = self.installation.lock().unwrap().clone();
+            if etat.is_empty() {
+                if ui.button(RichText::new("📥 Installer Equalizer APO").size(16.0)).clicked() {
+                    let e = self.installation.clone();
+                    *e.lock().unwrap() = "Téléchargement (12 Mo)…".into();
+                    std::thread::spawn(move || {
+                        let f = std::env::temp_dir().join("EqualizerAPO-installation.exe");
+                        let r = ureq::AgentBuilder::new().user_agent("Outils").build().get("https://sourceforge.net/projects/equalizerapo/files/latest/download").call()
+                            .map_err(|x| x.to_string())
+                            .and_then(|r| {
+                                let mut out = std::fs::File::create(&f).map_err(|x| x.to_string())?;
+                                std::io::copy(&mut r.into_reader(), &mut out).map_err(|x| x.to_string())
+                            })
+                            .and_then(|_| std::process::Command::new(&f).spawn().map_err(|x| x.to_string()));
+                        *e.lock().unwrap() = match r {
+                            Ok(_) => "Installateur lancé : accepte, coche ton casque / tes haut-parleurs dans la liste, puis redémarre le PC.".into(),
+                            Err(x) => format!("✖ {x}"),
+                        };
+                    });
+                }
+            } else {
+                ui.label(etat);
+                ui.ctx().request_repaint_after(Duration::from_millis(500));
             }
             ui.weak("Ensuite, cet onglet le pilote directement : réglages appliqués instantanément.");
             return;

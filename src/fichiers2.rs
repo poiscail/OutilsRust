@@ -56,9 +56,30 @@ pub fn extraire(a: &Path) -> Result<PathBuf, String> {
         z.extract(&dest).map_err(|e| e.to_string())?;
         return Ok(dest);
     }
-    let s = sept_zip().ok_or("7-Zip est nécessaire pour ce format : winget install 7zip.7zip")?;
-    let o = Command::new(s).arg("x").arg(a).arg(format!("-o{}", dest.display())).arg("-y").creation_flags(SANS_FENETRE).output().map_err(|e| e.to_string())?;
-    if o.status.success() { Ok(dest) } else { Err(String::from_utf8_lossy(&o.stderr).trim().to_string()) }
+    std::fs::create_dir_all(&dest).map_err(|e| e.to_string())?;
+    if ext == "7z" {
+        // décompresseur 7z intégré (pur Rust)
+        return sevenz_rust2::decompress_file(a, &dest).map(|_| dest.clone()).map_err(|e| format!("7z : {e}"));
+    }
+    // rar, tar, gz, xz, bz2, iso, cab… : tar.exe intégré à Windows (libarchive)
+    let tar = PathBuf::from(std::env::var("SystemRoot").unwrap_or("C:\\Windows".into())).join(r"System32\tar.exe");
+    let o = Command::new(tar).arg("-xf").arg(a).arg("-C").arg(&dest).creation_flags(SANS_FENETRE).output().map_err(|e| e.to_string())?;
+    if o.status.success() {
+        return Ok(dest);
+    }
+    // dernier recours : 7-Zip s'il est installé
+    if let Some(s) = sept_zip() {
+        let o = Command::new(s).arg("x").arg(a).arg(format!("-o{}", dest.display())).arg("-y").creation_flags(SANS_FENETRE).output().map_err(|e| e.to_string())?;
+        if o.status.success() {
+            return Ok(dest);
+        }
+    }
+    let _ = std::fs::remove_dir(&dest);
+    Err(if ext == "rar" {
+        "ce .rar n'a pas pu être ouvert : Windows 11 (version 23H2 ou plus récente) sait les lire tout seul ; sur un Windows plus ancien, il faut 7-Zip.".into()
+    } else {
+        String::from_utf8_lossy(&o.stderr).trim().to_string()
+    })
 }
 
 pub struct Archives {
@@ -93,8 +114,8 @@ impl Outil for Archives {
                 self.liste.clear();
             }
             match sept_zip() {
-                Some(_) => ui.weak("7-Zip trouvé : rar, 7z, tar… pris en charge"),
-                None => ui.weak("zip seulement (installe 7-Zip pour rar et 7z)"),
+                Some(_) => ui.weak("zip, 7z, rar, tar, gz, iso…"),
+                None => ui.weak("zip, 7z, tar, gz, iso… et rar (Windows 11 récent) : rien à installer"),
             };
         });
         let mut retirer = None;

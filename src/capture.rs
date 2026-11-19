@@ -8,14 +8,12 @@ use eframe::egui::{self, Color32, Pos2, Sense, Stroke};
 use image::RgbaImage;
 use serde::{Deserialize, Serialize};
 use std::io::Write as _;
-use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering::Relaxed};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
 #[serde(default)]
@@ -637,8 +635,8 @@ enum Video {
 }
 
 fn lancer_ffmpeg(args: &[String]) -> Result<Child, String> {
-    Command::new("ffmpeg").args(args).stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::null()).creation_flags(CREATE_NO_WINDOW).spawn()
-        .map_err(|_| "ffmpeg introuvable : installe-le (winget install ffmpeg).".to_string())
+    crate::dependances::commande_ou_telecharger("ffmpeg")?.args(args).stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::null()).spawn()
+        .map_err(|e| e.to_string())
 }
 
 /// Arrêt propre (« q ») pour que la vidéo soit lisible, sinon on tue.
@@ -934,7 +932,7 @@ impl Capture {
                 ui.add(egui::DragValue::new(&mut r.replay_secondes).range(10..=300).suffix(" s"));
             });
             ui.checkbox(&mut r.replay_auto_jeu, "Activer le replay tout seul pendant un jeu (détecté via le Lanceur)");
-            ui.weak("Vidéo de l'écran principal, sans le son, via ffmpeg (winget install ffmpeg). Le replay consomme un peu de CPU en continu.");
+            ui.weak("Vidéo de l'écran principal, sans le son, via ffmpeg (téléchargé tout seul au premier usage). Le replay consomme un peu de CPU en continu.");
         });
         if !r.couleurs.is_empty() {
             ui.horizontal_wrapped(|ui| {
@@ -1188,8 +1186,8 @@ fn sauver_replay(v: &Mutex<Video>, r: &Reglages) -> String {
     }
     let _ = std::fs::create_dir_all(&r.dossier);
     let sortie = r.dossier.join(format!("Replay_{}.mp4", horodatage()));
-    let ok = Command::new("ffmpeg").args(["-y", "-v", "error", "-err_detect", "ignore_err", "-f", "concat", "-safe", "0", "-i"]).arg(&fichier_liste)
-        .args(["-c", "copy", "-movflags", "+faststart"]).arg(&sortie).creation_flags(CREATE_NO_WINDOW).status().is_ok_and(|s| s.success());
+    let ok = crate::dependances::commande("ffmpeg").is_ok_and(|mut c| c.args(["-y", "-v", "error", "-err_detect", "ignore_err", "-f", "concat", "-safe", "0", "-i"]).arg(&fichier_liste)
+        .args(["-c", "copy", "-movflags", "+faststart"]).arg(&sortie).status().is_ok_and(|s| s.success()));
     if ok || sortie.exists() { format!("Replay enregistré : {}", sortie.display()) } else { "Échec de l'assemblage du replay.".into() }
 }
 

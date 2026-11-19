@@ -111,21 +111,71 @@ pub fn pivoter(entree: &Path, pages: &[u32], angle: i64, sortie: &Path) -> Resul
     Ok(())
 }
 
-/// Compresse : avec Ghostscript s'il est installé (images réduites), sinon recompression des flux seulement.
-pub fn compresser(entree: &Path, sortie: &Path, qualite: &str) -> Result<String, String> {
-    use std::os::windows::process::CommandExt;
-    for gs in ["gswin64c", "gswin32c", "gs"] {
-        let r = std::process::Command::new(gs).args(["-sDEVICE=pdfwrite", "-dCompatibilityLevel=1.5", &format!("-dPDFSETTINGS=/{qualite}"), "-dNOPAUSE", "-dQUIET", "-dBATCH"])
-            .arg(format!("-sOutputFile={}", sortie.display())).arg(entree).creation_flags(0x0800_0000).status();
-        if let Ok(s) = r {
-            return if s.success() { Ok("compressé avec Ghostscript".into()) } else { Err("Ghostscript a échoué".into()) };
+/// Nombre de composantes d'un JPEG (1 = gris, 3 = couleur, 4 = CMJN), lu dans l'en-tête SOF.
+pub fn composantes_jpeg(b: &[u8]) -> Option<u8> {
+    let mut i = 2;
+    while i + 9 < b.len() {
+        if b[i] != 0xFF {
+            return None;
+        }
+        let m = b[i + 1];
+        let l = u16::from_be_bytes([b[i + 2], b[i + 3]]) as usize;
+        if matches!(m, 0xC0..=0xC3 | 0xC5..=0xC7 | 0xC9..=0xCB | 0xCD..=0xCF) {
+            return b.get(i + 9).copied();
+        }
+        i += 2 + l;
+    }
+    None
+}
+
+/// Réencode une image JPEG d'un PDF : réduite si plus grande que `max_cote`, qualité `q`.
+/// None si ce n'est pas plus petit (ou pas traitable : CMJN, format inconnu).
+pub fn reduire_jpeg(b: &[u8], max_cote: u32, q: u8) -> Option<(Vec<u8>, u32, u32)> {
+    let n = composantes_jpeg(b)?;
+    if n != 1 && n != 3 {
+        return None;
+    }
+    let mut img = image::load_from_memory_with_format(b, image::ImageFormat::Jpeg).ok()?;
+    if img.width().max(img.height()) > max_cote {
+        img = img.resize(max_cote, max_cote, image::imageops::FilterType::Lanczos3);
+    }
+    let mut out = vec![];
+    let enc = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, q);
+    let r = if n == 1 { image::DynamicImage::ImageLuma8(img.to_luma8()).write_with_encoder(enc) } else { image::DynamicImage::ImageRgb8(img.to_rgb8()).write_with_encoder(enc) };
+    r.ok()?;
+    (out.len() < b.len()).then(|| (out, img.width(), img.height()))
+}
+
+/// Compresse un PDF sans programme externe : images JPEG réduites et recompressées, puis flux compressés.
+/// `niveau` : 0 = petit (écran), 1 = moyen, 2 = bonne qualité.
+pub fn compresser(entree: &Path, sortie: &Path, niveau: usize) -> Result<String, String> {
+    let (max_cote, q) = [(1200, 55), (1800, 70), (2600, 85)][niveau.min(2)];
+    let mut d = Document::load(entree).map_err(err)?;
+    let mut n = 0;
+    for o in d.objects.values_mut() {
+        let Object::Stream(st) = o else { continue };
+        let image = st.dict.get(b"Subtype").and_then(|x| x.as_name()).is_ok_and(|x| x == b"Image");
+        let jpeg = match st.dict.get(b"Filter") {
+            Ok(Object::Name(f)) => f == b"DCTDecode",
+            Ok(Object::Array(a)) => a.len() == 1 && a[0].as_name().is_ok_and(|x| x == b"DCTDecode"),
+            _ => false,
+        };
+        if !image || !jpeg {
+            continue;
+        }
+        if let Some((b, w, h)) = reduire_jpeg(&st.content, max_cote, q) {
+            st.set_content(b);
+            st.dict.set("Width", w as i64);
+            st.dict.set("Height", h as i64);
+            st.dict.set("BitsPerComponent", 8);
+            st.dict.remove(b"DecodeParms");
+            n += 1;
         }
     }
-    let mut d = Document::load(entree).map_err(err)?;
     d.prune_objects();
     d.compress();
     d.save(sortie).map_err(err)?;
-    Ok("flux recompressés (installe Ghostscript pour réduire aussi les images : winget install ArtifexSoftware.GhostScript)".into())
+    Ok(format!("{n} image(s) allégée(s)"))
 }
 
 fn suffixe(p: &Path, s: &str) -> PathBuf {
@@ -259,7 +309,7 @@ impl Outil for OutilPdf {
             if ui.add_enabled(premier.is_some(), egui::Button::new("🗜 Compresser")).clicked() {
                 let p = premier.clone().unwrap().0;
                 let s = suffixe(&p, "(compressé)");
-                self.message = match compresser(&p, &s, niveaux[self.qualite].0) {
+                self.message = match compresser(&p, &s, self.qualite) {
                     Ok(m) => {
                         let (a, b) = (p.metadata().map(|m| m.len()).unwrap_or(0), s.metadata().map(|m| m.len()).unwrap_or(0));
                         format!("✔ {} → {} ({m})", crate::disque::taille_lisible(a), crate::disque::taille_lisible(b))
@@ -277,6 +327,17 @@ impl Outil for OutilPdf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn images_pdf() {
+        let mut jpeg = vec![];
+        image::RgbImage::from_fn(3000, 2000, |x, y| image::Rgb([(x % 256) as u8, (y % 256) as u8, 128])).write_with_encoder(image::codecs::jpeg::JpegEncoder::new_with_quality(&mut jpeg, 95)).unwrap();
+        assert_eq!(composantes_jpeg(&jpeg), Some(3));
+        let (b, w, h) = reduire_jpeg(&jpeg, 1200, 60).unwrap();
+        assert_eq!((w, h), (1200, 800));
+        assert!(b.len() < jpeg.len());
+        assert_eq!(composantes_jpeg(b"pas un jpeg"), None);
+    }
 
     #[test]
     fn plages() {

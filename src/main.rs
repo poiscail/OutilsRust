@@ -6,6 +6,7 @@ mod coffre;
 mod coffrefichiers;
 mod creatif;
 mod demarrage;
+mod dependances;
 mod discord;
 mod convertisseur;
 mod disque;

@@ -4,7 +4,6 @@ use eframe::egui::{self, Color32, RichText};
 use regex::Regex;
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -17,7 +16,6 @@ type Trad<'a> = &'a mut dyn FnMut(&str) -> R<String>;
 type Progres<'a> = &'a mut dyn FnMut(usize, usize) -> R<()>;
 
 const ANNULE: &str = "Arrêté";
-const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 fn re(motif: &str) -> Regex {
     Regex::new(motif).unwrap()
@@ -598,10 +596,9 @@ fn lister(chemins: &[PathBuf]) -> Vec<PathBuf> {
     fichiers
 }
 
-/// Lance ffmpeg (à installer à part) sans ouvrir de console ; Err(stderr) s'il échoue.
+/// Lance ffmpeg (téléchargé tout seul au besoin) sans ouvrir de console ; Err(stderr) s'il échoue.
 fn ffmpeg(args: &[&std::ffi::OsStr]) -> R<()> {
-    let r = Command::new("ffmpeg").args(["-y", "-v", "error"]).args(args).creation_flags(CREATE_NO_WINDOW).output()
-        .map_err(|_| "ffmpeg introuvable : installe-le (winget install ffmpeg) pour les vidéos.".to_string())?;
+    let r = crate::dependances::commande("ffmpeg")?.args(["-y", "-v", "error"]).args(args).output().map_err(|e| e.to_string())?;
     if r.status.success() { Ok(()) } else { Err(String::from_utf8_lossy(&r.stderr).trim().to_string()) }
 }
 

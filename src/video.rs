@@ -2,12 +2,9 @@
 //! sans réencoder (86), extraire le son en MP3 (87).
 use crate::outil::{Cat, Outil};
 use eframe::egui::{self, RichText};
-use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::sync::{Arc, Mutex};
 
-const SANS_FENETRE: u32 = 0x0800_0000;
 
 /// « 1:23 », « 01:02:03.5 », « 83 » → secondes.
 pub fn lire_temps(t: &str) -> Option<f64> {
@@ -25,13 +22,12 @@ pub fn debit_video(mo: f64, duree: f64, audio_kbps: f64) -> f64 {
 }
 
 fn duree(p: &Path) -> Option<f64> {
-    let o = Command::new("ffprobe").args(["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0"]).arg(p).creation_flags(SANS_FENETRE).output().ok()?;
+    let o = crate::dependances::commande("ffprobe").ok()?.args(["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0"]).arg(p).output().ok()?;
     String::from_utf8_lossy(&o.stdout).trim().parse().ok()
 }
 
 fn ffmpeg(args: &[&std::ffi::OsStr]) -> Result<(), String> {
-    let o = Command::new("ffmpeg").args(["-y", "-v", "error"]).args(args).creation_flags(SANS_FENETRE).output()
-        .map_err(|_| "ffmpeg introuvable : winget install ffmpeg".to_string())?;
+    let o = crate::dependances::commande("ffmpeg")?.args(["-y", "-v", "error"]).args(args).output().map_err(|e| e.to_string())?;
     if o.status.success() { Ok(()) } else { Err(String::from_utf8_lossy(&o.stderr).lines().last().unwrap_or("échec").to_string()) }
 }
 
@@ -58,7 +54,7 @@ pub fn image_sous(p: &Path, max: u64) -> Result<PathBuf, String> {
 }
 
 fn video_sous(p: &Path, mo: f64) -> Result<PathBuf, String> {
-    let d = duree(p).ok_or("durée illisible (ffprobe introuvable ?)")?;
+    let d = duree(p).ok_or("durée de la vidéo illisible")?;
     let v = debit_video(mo, d, 96.0);
     let dest = sortie(p, "(compressée)", "mp4");
     let passe = std::env::temp_dir().join("outils_passe");

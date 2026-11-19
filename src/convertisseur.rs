@@ -2,13 +2,10 @@
 //! vidéos et sons avec ffmpeg (compression, extraction audio, GIF).
 use eframe::egui;
 use image::{codecs::jpeg::JpegEncoder, imageops::FilterType, DynamicImage, ImageFormat};
-use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
 use std::sync::{Arc, Mutex};
 
-const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 pub const IMAGES: &[&str] = &["png", "jpg", "jpeg", "webp", "bmp", "gif", "tif", "tiff", "ico"];
 pub const MEDIAS: &[&str] = &["mp4", "mkv", "avi", "mov", "webm", "flv", "wmv", "m4v", "mp3", "wav", "flac", "ogg", "m4a", "aac", "opus", "wma"];
 const SORTIES_IMAGE: &[&str] = &["png", "jpg", "webp", "bmp", "ico"];
@@ -143,9 +140,9 @@ pub fn args_media(o: &Options) -> Vec<String> {
 
 pub fn convertir_media(entree: &Path, o: &Options, stop: &AtomicBool) -> Result<PathBuf, String> {
     let dest = sortie(entree, o.dossier.as_deref(), &o.format_media);
-    let mut enfant = Command::new("ffmpeg").args(["-y", "-v", "error", "-i"]).arg(entree).args(args_media(o)).arg(&dest)
-        .stderr(std::process::Stdio::piped()).stdout(std::process::Stdio::null()).creation_flags(CREATE_NO_WINDOW).spawn()
-        .map_err(|_| "ffmpeg introuvable : installe-le (winget install ffmpeg).".to_string())?;
+    let mut enfant = crate::dependances::commande("ffmpeg")?.args(["-y", "-v", "error", "-i"]).arg(entree).args(args_media(o)).arg(&dest)
+        .stderr(std::process::Stdio::piped()).stdout(std::process::Stdio::null()).spawn()
+        .map_err(|e| e.to_string())?;
     loop {
         if let Some(st) = enfant.try_wait().map_err(|e| e.to_string())? {
             if st.success() {
