@@ -49,7 +49,14 @@ Plan, liste et graphe : [PLAN.md](PLAN.md).
 | Quotidien + | tâches, Kanban, réveil (sort de veille), temps d'écran, mode concentration, liens, films et séries, livres et mangas, voix (mémos, lecture à voix haute Ctrl+Alt+L, sous-titres), mots de passe |
 | Créatif + | éditeur d'images, mèmes, GIF, palette, icônes et dossiers colorés, enregistrement du son du PC, égaliseur (Equalizer APO) |
 | Programmes externes | ffmpeg / ffprobe et yt-dlp téléchargés tout seuls en version portable dans `%APPDATA%\Outils\bin` au premier besoin ; rien à installer à la main (sauf Equalizer APO, un pilote, installé en un clic depuis l'égaliseur) |
-| Fun + | dés et tirage au sort, mini-jeux (serpent, casse-briques, démineur) |
+| Fun + | dés et tirage au sort, mini-jeux (serpent, casse-briques, démineur), quiz (seul ou à plusieurs) |
+| Outils lui-même | rapport de plantage (un onglet qui plante n'arrête plus tout), journal unique, sauvegarde / restauration des réglages, synchro entre PC (dossier OneDrive/Drive), mode portable (`Outils-donnees` à côté de l'exe), onglets favoris (clic droit), palette Ctrl+Alt+K |
+| Jeux ++ | overlay en jeu (FPS, CPU, GPU, Ctrl+Alt+H), statistiques de jeu, batterie de manette, compteur de clics et touches, test d'écran, mode stream (masque les onglets sensibles), scènes OBS automatiques, « ça tourne sur mon PC ? », mods du Workshop, nettoyage des jeux, remappage de touches par jeu |
+| Minecraft ++ | plusieurs serveurs, carte web BlueMap, liste blanche et bannis avec les têtes, statistiques des joueurs, messages de bienvenue, carte des régions (régénération), ouverture des ports en UPnP et test de NAT, sauvegarde du monde avant de changer de version |
+| Fichiers ++ | synchro clé USB au branchement, surveillance de dossiers, renommage d'épisodes de séries, recherche dans le contenu (texte, Word, Excel, PDF…), corbeille automatique, installateurs oubliés, vérification SHA-256, gestionnaire de téléchargements (pause / reprise) |
+| Système ++ | test de stabilité (stress CPU + température), fenêtres en grille (Ctrl+Alt+pavé numérique) et toujours au-dessus (Ctrl+Alt+T), points de restauration, antivirus Defender, couper internet à une appli, qui utilise la webcam / le micro, rappel de redémarrage Windows Update, démarrage retardé |
+| Quotidien ++ | météo (aussi sur l'Accueil), agenda avec rappels, raccourcis de texte (« ;bjr » → texte complet partout), dictée vocale, eau et calories, presse-papiers PC ↔ téléphone |
+| Créatif ++ | micro avec anti-bruit IA et changeur de voix (via VB-CABLE, installé en un clic), captures stylées, générateur de fonds d'écran (un nouveau chaque jour en option) |
 
 ## Options (onglet Personnaliser)
 
