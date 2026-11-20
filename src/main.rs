@@ -20,6 +20,7 @@ mod dnd;
 mod hosts;
 mod images;
 mod jeux2;
+mod jeux3;
 mod lanceur;
 mod listes;
 mod ludique;

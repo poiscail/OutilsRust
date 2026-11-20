@@ -1,7 +1,7 @@
 //! Liste des outils ajoutés en lot (trait `Outil`), dans l'ordre du menu de chaque catégorie.
 use crate::minecraft::Pilote;
 use crate::outil::Outil;
-use crate::{bureau, coeur, jeux2, creatif, dependances, mcplus, fichiers2, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
+use crate::{bureau, coeur, jeux2, jeux3, creatif, dependances, mcplus, fichiers2, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
 
 pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>> {
     vec![
@@ -17,6 +17,11 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         Box::new(jeux2::StatsJeu::new()),
         Box::new(jeux2::ModeStream::new()),
         Box::new(jeux2::Manette::new()),
+        Box::new(jeux3::Obs::new()),
+        Box::new(jeux3::Comparatif::new()),
+        Box::new(jeux3::NettoyageJeux::new()),
+        Box::new(jeux3::Workshop::new()),
+        Box::new(jeux3::Remappage::new()),
         Box::new(steam2::Sorties::new()),
         Box::new(steam2::AFinir::new()),
         Box::new(steam2::SuccesUi::new()),
