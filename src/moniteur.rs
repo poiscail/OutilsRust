@@ -981,6 +981,21 @@ fn moteur(etat: Arc<Mutex<Etat>>, hist: PathBuf, arret: mpsc::Receiver<()>) {
     m.quitter();
 }
 
+// ---------- lecture depuis d'autres outils (overlay, statistiques) ----------
+
+#[derive(Clone, Copy, Default, Debug)]
+pub struct Instantane {
+    pub fps: f32,
+    pub cpu: f32,
+    pub cpu_t: f32,
+    pub gpu: f32,
+    pub gpu_t: f32,
+    pub ram: f32,
+}
+
+/// Lit les dernières mesures ; `garder_eveille` demande des mesures complètes (comme si l'onglet était ouvert).
+pub type Lecteur = Arc<dyn Fn(bool) -> (Instantane, Option<String>) + Send + Sync>;
+
 // ---------- interface ----------
 
 pub struct Moniteur {
@@ -1003,6 +1018,18 @@ impl Moniteur {
         let (e, hist) = (etat.clone(), dossier.join("historique"));
         let fil = thread::spawn(move || moteur(e, hist, rx));
         Moniteur { etat, dossier, cfg, admin: est_admin(), temperatures: false, reglages: false, arret: Some(tx), fil: Some(fil) }
+    }
+
+    pub fn lecteur(&self) -> Lecteur {
+        let e = self.etat.clone();
+        Arc::new(move |eveille| {
+            let mut x = e.lock().unwrap_or_else(|p| p.into_inner());
+            if eveille {
+                x.vu = Some(Instant::now());
+            }
+            let m = x.m;
+            (Instantane { fps: m.fps, cpu: m.cpu, cpu_t: m.cpu_t, gpu: m.gpu, gpu_t: m.gpu_t, ram: m.ram }, x.jeu.clone())
+        })
     }
 
     /// Overlay FPS en jeu (toujours au-dessus, clics traversants).

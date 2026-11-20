@@ -61,6 +61,16 @@ pub fn enregistrer<T: Serialize>(nom: &str, v: &T) {
     }
 }
 
+/// Jeu en cours (mis à jour par la fenêtre principale à chaque image), pour les outils qui en dépendent.
+pub static JEU_ACTIF: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+
+pub fn jeu_actif() -> Option<String> {
+    JEU_ACTIF.lock().ok().and_then(|j| j.clone())
+}
+
+/// Mode stream actif : les onglets sensibles sont masqués.
+pub static STREAM: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 /// Nombre aléatoire 0..n (cryptographique, suffisant pour tout).
 pub fn hasard(n: u64) -> u64 {
     let mut b = [0u8; 8];

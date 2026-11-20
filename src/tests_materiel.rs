@@ -17,6 +17,10 @@ pub struct Brut {
     pub enfoncees: BTreeSet<u16>,        // touches enfoncées (vk)
     pub deja: BTreeSet<u16>,             // touches qui ont répondu au moins une fois
     pub max_simultanees: usize,
+    // compteur d'utilisation (depuis le lancement d'Outils)
+    pub touches: u64,
+    pub nb_clics: u64,
+    pub mickeys: f64, // distance parcourue par la souris, en unités brutes
 }
 
 static BRUT: OnceLock<Arc<Mutex<Brut>>> = OnceLock::new();
@@ -58,6 +62,7 @@ mod win {
                     let maintenant = Instant::now();
                     if r.header.dwType == RIM_TYPEMOUSE {
                         let s = r.data.mouse;
+                        b.mickeys += ((s.lLastX as f64).powi(2) + (s.lLastY as f64).powi(2)).sqrt();
                         if s.lLastX != 0 || s.lLastY != 0 {
                             b.mouvements.push_back(maintenant);
                             while b.mouvements.front().is_some_and(|t| maintenant.duration_since(*t) > Duration::from_secs(1)) {
@@ -74,6 +79,7 @@ mod win {
                                     b.doubles[k] += 1;
                                 }
                                 b.total_clics[k] += 1;
+                                b.nb_clics += 1;
                                 b.clics[k].push_back(maintenant);
                                 if b.clics[k].len() > 20 {
                                     b.clics[k].pop_front();
@@ -86,7 +92,9 @@ mod win {
                         if haut {
                             b.enfoncees.remove(&k.VKey);
                         } else {
-                            b.enfoncees.insert(k.VKey);
+                            if b.enfoncees.insert(k.VKey) {
+                                b.touches += 1; // pas les répétitions d'une touche maintenue
+                            }
                             b.deja.insert(k.VKey);
                             let n = b.enfoncees.len();
                             b.max_simultanees = b.max_simultanees.max(n);

@@ -1,9 +1,9 @@
 //! Liste des outils ajoutés en lot (trait `Outil`), dans l'ordre du menu de chaque catégorie.
 use crate::minecraft::Pilote;
 use crate::outil::Outil;
-use crate::{bureau, coeur, creatif, dependances, mcplus, fichiers2, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
+use crate::{bureau, coeur, jeux2, creatif, dependances, mcplus, fichiers2, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
 
-pub fn tous(mc: Pilote) -> Vec<Box<dyn Outil>> {
+pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>> {
     vec![
         // minecraft
         Box::new(mcplus::Installateur::new(mc.clone())),
@@ -13,6 +13,10 @@ pub fn tous(mc: Pilote) -> Vec<Box<dyn Outil>> {
         Box::new(mcplus::Restauration::new(mc.clone())),
         Box::new(mcplus::Performance::new(mc)),
         // jeux
+        Box::new(jeux2::Overlay::new(mesures)),
+        Box::new(jeux2::StatsJeu::new()),
+        Box::new(jeux2::ModeStream::new()),
+        Box::new(jeux2::Manette::new()),
         Box::new(steam2::Sorties::new()),
         Box::new(steam2::AFinir::new()),
         Box::new(steam2::SuccesUi::new()),
@@ -22,6 +26,8 @@ pub fn tous(mc: Pilote) -> Vec<Box<dyn Outil>> {
         Box::new(ludique::Sensibilite::new()),
         Box::new(tests_materiel::TestSouris),
         Box::new(tests_materiel::TestClavier),
+        Box::new(jeux2::TestEcran::new()),
+        Box::new(jeux2::Compteur::new()),
         // fichiers
         Box::new(fichiers2::Favoris::new()),
         Box::new(images::Visionneuse::new()),

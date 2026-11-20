@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 const IMAGES: &[&str] = &["png", "jpg", "jpeg", "webp", "bmp", "gif", "tif", "tiff"];
 
 /// Police Windows (première trouvée).
-fn police(noms: &[&str]) -> Option<FontVec> {
+pub(crate) fn police(noms: &[&str]) -> Option<FontVec> {
     let d = PathBuf::from(std::env::var("SystemRoot").unwrap_or("C:\\Windows".into())).join("Fonts");
     noms.iter().find_map(|n| FontVec::try_from_vec(std::fs::read(d.join(n)).ok()?).ok())
 }

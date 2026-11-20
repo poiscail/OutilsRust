@@ -19,6 +19,7 @@ mod pdf;
 mod dnd;
 mod hosts;
 mod images;
+mod jeux2;
 mod lanceur;
 mod listes;
 mod ludique;
@@ -151,10 +152,11 @@ impl App {
         let sauvegardes = sauvegardes::Sauvegardes::new();
         let planif = planif::Planif::new(planif::Executeur { mc: minecraft.pilote(), jeux: sauvegardes.poignee() });
         let telephone = telephone::Telephone::new(minecraft.pilote());
-        let extras = extras::tous(minecraft.pilote());
+        let moniteur = moniteur::Moniteur::new(&racine);
+        let extras = extras::tous(minecraft.pilote(), moniteur.lecteur());
         App {
             tri: tri::Tri::new(&racine), lanceur: lanceur::Lanceur::new(), coffre: coffre::CoffreUi::new(), traducteur: traducteur::Traducteur::new(),
-            presse: pressepapiers::PressePapiers::new(), minecraft, moniteur: moniteur::Moniteur::new(&racine),
+            presse: pressepapiers::PressePapiers::new(), minecraft, moniteur,
             optimiseur: optimiseur::Optimiseur::new(), renommer: renommer::Renommer::new(), minuteur: minuteur::Minuteur::new(), disque: disque::Disque::new(), sauvegardes, convertisseur: convertisseur::Convertisseur::new(), notes: notes::Notes::new(), reseau: reseau::Reseau::new(), discord: discord::Discord::new(), capture: capture::Capture::new(), mixeur: mixeur::Mixeur::new(), planif, telephone, dnd: dnd::Dnd::new(), demarrage: demarrage::DemarragePc::new(), promos: promos::Promos::new(), mods: mods::Mods::new(), majlog: majlogiciels::MajLogiciels::new(),
             sante: santedisque::SanteDisque::new(), coffre_f: coffrefichiers::CoffreFichiers::new(), viseur: viseur::Viseur::new(), macros: macros::Macros::new(), tradinstant: tradinstant::TradInstant::new(),
             economiseur: economiseur::Economiseur::new(theme.dossier_fonds().to_path_buf()), theme, maj,
@@ -282,6 +284,9 @@ impl eframe::App for App {
             o.tic(ctx);
         }
         let jeu = self.lanceur.jeu_actif();
+        if let Ok(mut j) = outil::JEU_ACTIF.lock() {
+            j.clone_from(&jeu);
+        }
         if self.capture.tic(jeu.is_some()) {
             self.onglet = 18;
         }
@@ -400,6 +405,12 @@ impl eframe::App for App {
                     self.erreur_onglet = None;
                 }
                 let _ = o;
+                return;
+            }
+            let sensible = [3, 5].contains(&self.onglet) || ["Wi-Fi", "Coffre de fichiers", "Mots de passe"].iter().any(|x| nom_onglet.contains(x));
+            if sensible && outil::STREAM.load(Relaxed) {
+                ui.heading("🎥 Masqué pendant le stream");
+                ui.weak("Le mode stream est actif (Jeux › Mode stream) : cet onglet contient des informations personnelles.");
                 return;
             }
             let onglet = self.onglet;
