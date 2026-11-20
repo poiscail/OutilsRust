@@ -24,6 +24,7 @@
   .barre div { height:100%; width:0; background:var(--rose); }
   label.envoi { display:block; text-align:center; border:2px dashed var(--bord); border-radius:14px; padding:22px; }
   input[type=file] { display:none; }
+  textarea { width:100%; background:var(--carte); color:var(--texte); border:1px solid var(--bord); border-radius:14px; padding:12px; font-size:16px; margin-bottom:10px; }
 </style>
 </head>
 <body>
@@ -51,6 +52,13 @@
   <button onclick="if(confirm('Arrêter le serveur ?'))cmd('mc_arreter')">⏹ Arrêter</button>
 </div>
 <div id="etat"></div>
+
+<h2>Presse-papiers</h2>
+<textarea id="presse" rows="4" placeholder="Texte à envoyer au PC, ou récupéré du PC"></textarea>
+<div class="grille">
+  <button class="double" onclick="presseDuPc()">📥 Récupérer celui du PC</button>
+  <button onclick="presseVersPc()">📤 Envoyer</button>
+</div>
 
 <h2>Fichiers partagés par le PC</h2>
 <div id="fichiers" class="petit">…</div>
@@ -83,6 +91,22 @@ async function maj() {
       d.append(a, t); f.append(d);
     }
   } catch (e) { document.getElementById('mc').textContent = 'PC injoignable'; }
+}
+async function presseDuPc() {
+  const z = document.getElementById('presse');
+  try {
+    z.value = await (await fetch('/presse')).text();
+    z.select();
+    // copie aussi sur le téléphone quand le navigateur le permet
+    if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(z.value); else document.execCommand('copy');
+    etat.textContent = 'Copié sur le téléphone ✔';
+  } catch (e) { etat.textContent = 'PC injoignable'; }
+}
+async function presseVersPc() {
+  try {
+    const r = await fetch('/presse', { method: 'POST', body: document.getElementById('presse').value });
+    etat.textContent = await r.text();
+  } catch (e) { etat.textContent = 'PC injoignable'; }
 }
 function envoyer(liste, i) {
   if (i >= liste.length) { document.getElementById('envoi').textContent = '✔ ' + liste.length + ' fichier(s) envoyé(s)'; return; }

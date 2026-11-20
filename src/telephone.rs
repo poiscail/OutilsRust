@@ -224,6 +224,21 @@ fn servir(mut s: TcpStream, c: &Contexte) {
                 }
             }
         }
+        ("GET", "/presse") => {
+            let t = crate::tradinstant::win::lire_presse_papiers().unwrap_or_default();
+            repondre(&mut s, "200 OK", "text/plain; charset=utf-8", t.as_bytes(), "");
+        }
+        ("POST", "/presse") => {
+            let mut b = vec![];
+            let _ = (&mut lecteur).take(req.longueur.min(1 << 20)).read_to_end(&mut b);
+            let t = String::from_utf8_lossy(&b).into_owned();
+            if crate::pressepapiers::win::ecrire_texte(&t, None, None) {
+                noter(c, format!("📋 Texte reçu dans le presse-papiers ({} caractères)", t.chars().count()));
+                repondre(&mut s, "200 OK", "text/plain; charset=utf-8", "Copié sur le PC ✔".as_bytes(), "");
+            } else {
+                repondre(&mut s, "500 Internal Server Error", "text/plain; charset=utf-8", "presse-papiers occupé".as_bytes(), "");
+            }
+        }
         ("POST", a) if a.starts_with("/cmd/") => {
             use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
             let action = &a[5..];

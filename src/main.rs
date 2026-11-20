@@ -33,6 +33,7 @@ mod mcplus;
 mod mcplus2;
 mod fichiers3;
 mod systeme3;
+mod quotidien2;
 mod mixeur;
 mod moniteur;
 mod mods;

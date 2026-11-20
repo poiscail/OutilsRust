@@ -1,7 +1,7 @@
 //! Liste des outils ajoutés en lot (trait `Outil`), dans l'ordre du menu de chaque catégorie.
 use crate::minecraft::Pilote;
 use crate::outil::Outil;
-use crate::{bureau, coeur, jeux2, jeux3, creatif, dependances, mcplus, mcplus2, fichiers2, fichiers3, systeme3, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
+use crate::{bureau, coeur, jeux2, jeux3, creatif, dependances, mcplus, mcplus2, fichiers2, fichiers3, systeme3, quotidien2, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
 
 pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>> {
     vec![
@@ -96,6 +96,11 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         // quotidien
         Box::new(listes::Liste::new(&listes::TACHES)),
         Box::new(listes::Kanban::new()),
+        Box::new(quotidien2::Meteo::new()),
+        Box::new(quotidien2::Agenda::new()),
+        Box::new(quotidien2::Raccourcis::new()),
+        Box::new(quotidien2::Dictee::new()),
+        Box::new(quotidien2::EauCalories::new()),
         Box::new(quotidien::Reveil::new()),
         Box::new(quotidien::TempsEcran::new()),
         Box::new(quotidien::ModeConcentration::new()),
