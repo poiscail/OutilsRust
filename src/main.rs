@@ -30,6 +30,7 @@ mod minecraft;
 mod minijeux;
 mod minuteur;
 mod mcplus;
+mod mcplus2;
 mod mixeur;
 mod moniteur;
 mod mods;

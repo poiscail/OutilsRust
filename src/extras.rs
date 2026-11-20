@@ -1,7 +1,7 @@
 //! Liste des outils ajoutés en lot (trait `Outil`), dans l'ordre du menu de chaque catégorie.
 use crate::minecraft::Pilote;
 use crate::outil::Outil;
-use crate::{bureau, coeur, jeux2, jeux3, creatif, dependances, mcplus, fichiers2, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
+use crate::{bureau, coeur, jeux2, jeux3, creatif, dependances, mcplus, mcplus2, fichiers2, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
 
 pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>> {
     vec![
@@ -11,7 +11,14 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         Box::new(mcplus::Plugins::new(mc.clone())),
         Box::new(mcplus::Operateurs::new(mc.clone())),
         Box::new(mcplus::Restauration::new(mc.clone())),
-        Box::new(mcplus::Performance::new(mc)),
+        Box::new(mcplus::Performance::new(mc.clone())),
+        Box::new(mcplus2::Serveurs::new(mc.clone())),
+        Box::new(mcplus2::CarteWeb::new(mc.clone())),
+        Box::new(mcplus2::ListeBlanche::new(mc.clone())),
+        Box::new(mcplus2::StatsJoueurs::new(mc.clone())),
+        Box::new(mcplus2::MessagesBienvenue::new(mc.clone())),
+        Box::new(mcplus2::Regions::new(mc.clone())),
+        Box::new(mcplus2::Ports::new(mc)),
         // jeux
         Box::new(jeux2::Overlay::new(mesures)),
         Box::new(jeux2::StatsJeu::new()),

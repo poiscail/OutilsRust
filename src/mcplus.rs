@@ -219,13 +219,21 @@ impl Outil for Installateur {
         });
         let occupe = etat_ui(ui, &self.e);
         if ui.add_enabled(!occupe && self.eula && !self.version.is_empty(), egui::Button::new(RichText::new("📥 Installer").size(16.0))).clicked() {
-            let (g, v, d, j) = (self.genre, self.version.clone(), self.dossier.clone(), self.jar.clone());
+            let (g, v, d, j, mc) = (self.genre, self.version.clone(), self.dossier.clone(), self.jar.clone(), self.mc.clone());
             en_fond(&self.e, move || {
+                // un monde existe déjà ici : on l'archive avant de changer de version
+                if mc.dossier().as_deref() == Some(d.as_path()) && d.join(crate::minecraft::nom_monde(&d)).is_dir() {
+                    if mc.statut().is_some() {
+                        mc.arreter();
+                    }
+                    mc.sauvegarder().map_err(|e| format!("sauvegarde avant mise à jour impossible : {e}"))?;
+                }
                 let jar = installer(g, &v, &d)?;
                 *j.lock().unwrap() = Some(jar.clone());
                 Ok(format!("✔ Installé : {} · réglé dans l'onglet Serveur Minecraft, prêt à démarrer.", jar.display()))
             });
         }
+        ui.weak("Si un monde existe déjà dans ce dossier, il est sauvegardé automatiquement avant le changement de version.");
         ui.weak("Java 21 est nécessaire pour les versions récentes (winget install EclipseAdoptium.Temurin.21.JRE).");
     }
 }
