@@ -45,13 +45,19 @@ fn script_toast(titre: &str, texte: &str) -> String {
 
 /// Notification Windows, si l'option est cochée. Ne bloque pas.
 pub fn notifier(titre: &str, texte: &str) {
+    crate::coeur::noter(titre, texte);
     if NOTIFS.load(Relaxed) {
-        notifier_toujours(titre, texte);
+        envoyer_toast(titre, texte);
     }
 }
 
 /// Notification Windows même si l'option est décochée (rappels demandés explicitement).
 pub fn notifier_toujours(titre: &str, texte: &str) {
+    crate::coeur::noter(titre, texte);
+    envoyer_toast(titre, texte);
+}
+
+fn envoyer_toast(titre: &str, texte: &str) {
     let utf16: Vec<u8> = script_toast(titre, texte).encode_utf16().flat_map(u16::to_le_bytes).collect();
     let _ = Command::new("powershell.exe").args(["-NoProfile", "-NonInteractive", "-EncodedCommand", &B64.encode(utf16)])
         .creation_flags(CREATE_NO_WINDOW).spawn();

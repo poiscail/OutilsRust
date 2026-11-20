@@ -2,6 +2,7 @@
 //! Outils : tous les outils dans un seul programme.
 mod bureau;
 mod capture;
+mod coeur;
 mod coffre;
 mod coffrefichiers;
 mod creatif;
@@ -128,6 +129,10 @@ struct App {
     onglet: usize,            // index dans ONGLETS, puis dans extras (à partir de ONGLETS.len())
     extras: Vec<Box<dyn outil::Outil>>,
     recherche: String,
+    favoris: Vec<String>,
+    palette: Option<(String, usize)>, // Ctrl+K : texte, ligne choisie
+    plantages: usize,
+    erreur_onglet: Option<(usize, String)>,
 }
 
 impl App {
@@ -137,6 +142,7 @@ impl App {
         let racine = racine();
         let theme = theme::Theme::new(); // règle aussi notifications, zone et raccourci
         systeme::lancer(cc.egui_ctx.clone());
+        coeur::raccourci_palette();
         let maj = systeme::MajPartagee::default();
         if theme.r.maj {
             systeme::verifier(maj.clone());
@@ -152,7 +158,7 @@ impl App {
             optimiseur: optimiseur::Optimiseur::new(), renommer: renommer::Renommer::new(), minuteur: minuteur::Minuteur::new(), disque: disque::Disque::new(), sauvegardes, convertisseur: convertisseur::Convertisseur::new(), notes: notes::Notes::new(), reseau: reseau::Reseau::new(), discord: discord::Discord::new(), capture: capture::Capture::new(), mixeur: mixeur::Mixeur::new(), planif, telephone, dnd: dnd::Dnd::new(), demarrage: demarrage::DemarragePc::new(), promos: promos::Promos::new(), mods: mods::Mods::new(), majlog: majlogiciels::MajLogiciels::new(),
             sante: santedisque::SanteDisque::new(), coffre_f: coffrefichiers::CoffreFichiers::new(), viseur: viseur::Viseur::new(), macros: macros::Macros::new(), tradinstant: tradinstant::TradInstant::new(),
             economiseur: economiseur::Economiseur::new(theme.dossier_fonds().to_path_buf()), theme, maj,
-            maj_ignoree: false, disques: (None, vec![]), lance_au_demarrage: std::env::args().any(|a| a == "--demarrage"), onglet: 0, extras, recherche: String::new(),
+            maj_ignoree: false, disques: (None, vec![]), lance_au_demarrage: std::env::args().any(|a| a == "--demarrage"), onglet: 0, extras, favoris: outil::charger("onglets_favoris"), palette: None, plantages: coeur::nouveaux_plantages(), erreur_onglet: None, recherche: String::new(),
         }
     }
 
@@ -199,6 +205,15 @@ impl App {
                 }
                 ui.label(texte);
                 ui.end_row();
+            }
+            for (k, o) in self.extras.iter().enumerate() {
+                if let Some(r) = o.resume() {
+                    if ui.button(o.nom()).clicked() {
+                        self.onglet = ONGLETS.len() + k;
+                    }
+                    ui.label(r);
+                    ui.end_row();
+                }
             }
             ui.label("🔄 Mise à jour");
             ui.horizontal(|ui| {
@@ -303,6 +318,22 @@ impl eframe::App for App {
                 if ui.selectable_label(self.onglet == 0, ONGLETS[0]).clicked() {
                     self.onglet = 0;
                 }
+                let mut basculer_favori: Option<String> = None;
+                for (i, n, _) in tous.iter().filter(|e| self.favoris.contains(&e.1)) {
+                    let r = ui.selectable_label(self.onglet == *i, format!("⭐ {n}"));
+                    if r.clicked() {
+                        self.onglet = *i;
+                    }
+                    r.context_menu(|ui| {
+                        if ui.button("Retirer des favoris").clicked() {
+                            basculer_favori = Some(n.clone());
+                            ui.close_menu();
+                        }
+                    });
+                }
+                if !self.favoris.is_empty() {
+                    ui.separator();
+                }
                 let q = self.recherche.trim().to_lowercase();
                 if !q.is_empty() {
                     for (i, n, _) in tous.iter().filter(|e| e.0 != 0 && e.1.to_lowercase().contains(&q)) {
@@ -317,16 +348,62 @@ impl eframe::App for App {
                     let etat = egui::collapsing_header::CollapsingState::load_with_default_open(ui.ctx(), id, actuelle == Some(c));
                     etat.show_header(ui, |ui| ui.strong(c.nom())).body(|ui| {
                         for (i, n, _) in tous.iter().filter(|e| e.2 == Some(c)) {
-                            if ui.selectable_label(self.onglet == *i, n.as_str()).clicked() {
+                            let r = ui.selectable_label(self.onglet == *i, n.as_str()).on_hover_text("Clic droit : favori");
+                            if r.clicked() {
                                 self.onglet = *i;
                             }
+                            r.context_menu(|ui| {
+                                if ui.button(if self.favoris.contains(n) { "Retirer des favoris" } else { "⭐ Ajouter aux favoris" }).clicked() {
+                                    basculer_favori = Some(n.clone());
+                                    ui.close_menu();
+                                }
+                            });
                         }
                     });
+                }
+                if let Some(n) = basculer_favori {
+                    if let Some(k) = self.favoris.iter().position(|f| *f == n) {
+                        self.favoris.remove(k);
+                    } else {
+                        self.favoris.push(n);
+                    }
+                    outil::enregistrer("onglets_favoris", &self.favoris);
                 }
             });
             ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| ui.weak(concat!("v", env!("CARGO_PKG_VERSION"))));
         });
-        egui::CentralPanel::default().show(ctx, |ui| match self.onglet {
+        let nom_onglet = self.entrees().into_iter().find(|e| e.0 == self.onglet).map(|e| e.1).unwrap_or_default();
+        if let Ok(mut o) = coeur::ONGLET.lock() {
+            o.clone_from(&nom_onglet);
+        }
+        egui::CentralPanel::default().show(ctx, |ui| {
+            if self.plantages > 0 {
+                ui.horizontal(|ui| {
+                    ui.colored_label(egui::Color32::from_rgb(255, 170, 80), format!("💥 Outils a rencontré {} plantage(s) : un rapport est prêt.", self.plantages));
+                    if ui.button("Voir").clicked() {
+                        if let Some(k) = self.extras.iter().position(|o| o.nom().starts_with("📜")) {
+                            self.onglet = ONGLETS.len() + k;
+                        }
+                        self.plantages = 0;
+                    }
+                    if ui.small_button("✖").clicked() {
+                        coeur::marquer_vus();
+                        self.plantages = 0;
+                    }
+                });
+                ui.separator();
+            }
+            if let Some((o, m)) = self.erreur_onglet.clone().filter(|e| e.0 == self.onglet) {
+                ui.colored_label(egui::Color32::LIGHT_RED, format!("💥 Cet onglet a planté : {m}"));
+                ui.weak("Le reste d'Outils marche toujours. Le rapport est dans Système › Journal et plantages : envoie-le-moi.");
+                if ui.button("Réessayer").clicked() {
+                    self.erreur_onglet = None;
+                }
+                let _ = o;
+                return;
+            }
+            let onglet = self.onglet;
+            let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| match onglet {
             0 => self.accueil(ui),
             1 => self.tri.ui(ui),
             2 => self.lanceur.ui(ui),
@@ -369,11 +446,20 @@ impl eframe::App for App {
                     o.ui(ui);
                 }
             }
+            }));
+            if let Err(e) = r {
+                let m = e.downcast_ref::<&str>().map(|s| s.to_string()).or_else(|| e.downcast_ref::<String>().cloned()).unwrap_or_else(|| "erreur inconnue".into());
+                self.erreur_onglet = Some((onglet, m));
+                self.plantages = coeur::nouveaux_plantages();
+            }
         });
+        self.palette_ui(ctx);
     }
 }
 
 fn main() -> eframe::Result {
+    coeur::activer_portable();
+    coeur::installer_crochet();
     // lancé par Windows comme économiseur d'écran (Outils.scr) : /s plein écran, /p aperçu (ignoré)
     let arg = std::env::args().nth(1).map(|a| a.to_ascii_lowercase()).unwrap_or_default();
     let est_scr = std::env::current_exe().ok().and_then(|e| e.extension().map(|x| x.eq_ignore_ascii_case("scr"))).unwrap_or(false);
@@ -388,4 +474,99 @@ fn main() -> eframe::Result {
         ..Default::default()
     };
     eframe::run_native("Outils", options, Box::new(|cc| Ok(Box::new(App::new(cc)))))
+}
+
+#[derive(Clone, Copy)]
+enum Commande {
+    Onglet(usize),
+    Capture(i32),
+    Veille,
+    Verrouiller,
+    ServeurDemarrer,
+    ServeurArreter,
+}
+
+impl App {
+    /// Ctrl+K : chercher un outil ou une action et la lancer au clavier.
+    fn palette_ui(&mut self, ctx: &egui::Context) {
+        let ouvrir = ctx.input_mut(|i| i.consume_shortcut(&egui::KeyboardShortcut::new(egui::Modifiers::COMMAND, egui::Key::K)))
+            || coeur::PALETTE.swap(false, Relaxed);
+        if ouvrir {
+            self.palette = Some((String::new(), 0));
+        }
+        let Some((mut q, mut sel)) = self.palette.clone() else { return };
+        let mut lignes: Vec<(String, Commande)> = self.entrees().into_iter().map(|(i, n, _)| (n, Commande::Onglet(i))).collect();
+        lignes.extend([
+            ("✂ Capture d'une zone".to_string(), Commande::Capture(1)),
+            ("🖥 Capture de l'écran entier".to_string(), Commande::Capture(3)),
+            ("💧 Pipette".to_string(), Commande::Capture(4)),
+            ("📏 Règle à l'écran".to_string(), Commande::Capture(5)),
+            ("🌙 Mettre le PC en veille".to_string(), Commande::Veille),
+            ("🔒 Verrouiller le PC".to_string(), Commande::Verrouiller),
+            ("⛏ Démarrer le serveur Minecraft".to_string(), Commande::ServeurDemarrer),
+            ("⛏ Arrêter le serveur Minecraft".to_string(), Commande::ServeurArreter),
+        ]);
+        let mut v: Vec<(usize, &(String, Commande))> = lignes.iter().filter_map(|l| coeur::correspond(&l.0, &q).map(|s| (s, l))).collect();
+        v.sort_by_key(|x| x.0);
+        let v: Vec<&(String, Commande)> = v.into_iter().map(|x| x.1).take(12).collect();
+        let mut choisie: Option<Commande> = None;
+        let mut fermer = false;
+        egui::Window::new("palette").title_bar(false).resizable(false).fixed_size([460.0, 0.0]).anchor(egui::Align2::CENTER_TOP, [0.0, 80.0]).show(ctx, |ui| {
+            let r = ui.add(egui::TextEdit::singleline(&mut q).hint_text("Chercher un outil ou une action…").desired_width(f32::INFINITY).font(egui::TextStyle::Heading));
+            r.request_focus();
+            if r.changed() {
+                sel = 0;
+            }
+            ui.input(|i| {
+                if i.key_pressed(egui::Key::ArrowDown) {
+                    sel = (sel + 1).min(v.len().saturating_sub(1));
+                }
+                if i.key_pressed(egui::Key::ArrowUp) {
+                    sel = sel.saturating_sub(1);
+                }
+                if i.key_pressed(egui::Key::Escape) {
+                    fermer = true;
+                }
+                if i.key_pressed(egui::Key::Enter) {
+                    choisie = v.get(sel).map(|l| l.1);
+                }
+            });
+            for (k, (n, c)) in v.iter().enumerate() {
+                if ui.selectable_label(k == sel, n).clicked() {
+                    choisie = Some(*c);
+                }
+            }
+            ui.weak("↑ ↓ pour choisir · Entrée pour lancer · Échap pour fermer · Ctrl+Alt+K de partout");
+        });
+        if let Some(c) = choisie {
+            fermer = true;
+            match c {
+                Commande::Onglet(i) => self.onglet = i,
+                Commande::Capture(k) => {
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
+                    self.capture.declencher(k);
+                }
+                Commande::Veille => {
+                    std::thread::spawn(|| {
+                        std::thread::sleep(Duration::from_secs(1));
+                        unsafe { windows_sys::Win32::System::Power::SetSuspendState(0, 0, 0) };
+                    });
+                }
+                Commande::Verrouiller => unsafe {
+                    windows_sys::Win32::System::Shutdown::LockWorkStation();
+                },
+                Commande::ServeurDemarrer => {
+                    let p = self.minecraft.pilote();
+                    std::thread::spawn(move || {
+                        let _ = p.demarrer();
+                    });
+                }
+                Commande::ServeurArreter => {
+                    let p = self.minecraft.pilote();
+                    std::thread::spawn(move || p.arreter());
+                }
+            }
+        }
+        self.palette = if fermer { None } else { Some((q, sel)) };
+    }
 }

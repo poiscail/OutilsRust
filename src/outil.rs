@@ -38,6 +38,10 @@ pub trait Outil {
     fn ui(&mut self, ui: &mut egui::Ui);
     /// Appelé à chaque image, même hors de l'onglet.
     fn tic(&mut self, _ctx: &egui::Context) {}
+    /// Ligne pour l'Accueil (None : rien à montrer).
+    fn resume(&self) -> Option<String> {
+        None
+    }
 }
 
 pub fn chemin(nom: &str) -> PathBuf {

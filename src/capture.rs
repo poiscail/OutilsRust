@@ -963,7 +963,7 @@ impl Capture {
     }
 
     /// Lance une action de capture comme le ferait le raccourci (dans un fil, la fenêtre se réduit d'abord).
-    fn declencher(&self, id: i32) {
+    pub fn declencher(&self, id: i32) {
         let (r, p, v) = (self.r.clone(), self.p.clone(), self.video.clone());
         std::thread::spawn(move || {
             std::thread::sleep(Duration::from_millis(350)); // laisse la fenêtre se réduire
