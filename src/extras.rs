@@ -1,7 +1,7 @@
 //! Liste des outils ajoutés en lot (trait `Outil`), dans l'ordre du menu de chaque catégorie.
 use crate::minecraft::Pilote;
 use crate::outil::Outil;
-use crate::{bureau, coeur, jeux2, jeux3, creatif, dependances, mcplus, mcplus2, fichiers2, fichiers3, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
+use crate::{bureau, coeur, jeux2, jeux3, creatif, dependances, mcplus, mcplus2, fichiers2, fichiers3, systeme3, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
 
 pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>> {
     vec![
@@ -20,7 +20,7 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         Box::new(mcplus2::Regions::new(mc.clone())),
         Box::new(mcplus2::Ports::new(mc)),
         // jeux
-        Box::new(jeux2::Overlay::new(mesures)),
+        Box::new(jeux2::Overlay::new(mesures.clone())),
         Box::new(jeux2::StatsJeu::new()),
         Box::new(jeux2::ModeStream::new()),
         Box::new(jeux2::Manette::new()),
@@ -75,6 +75,14 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         Box::new(bureau::Transparence::new()),
         Box::new(systeme2::Plantages::new()),
         Box::new(systeme2::Reparation::new()),
+        Box::new(systeme3::TestStabilite::new(mesures)),
+        Box::new(systeme3::Fenetres::new()),
+        Box::new(systeme3::Restauration::new()),
+        Box::new(systeme3::Antivirus::new()),
+        Box::new(systeme3::PareFeu::new()),
+        Box::new(systeme3::Espion::new()),
+        Box::new(systeme3::RappelMaj::new()),
+        Box::new(systeme3::DemarrageRetarde::new()),
         // réseau
         Box::new(reseau2::Telechargeur::new()),
         Box::new(reseau2::BloqueurUi::new()),

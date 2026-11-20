@@ -32,6 +32,7 @@ mod minuteur;
 mod mcplus;
 mod mcplus2;
 mod fichiers3;
+mod systeme3;
 mod mixeur;
 mod moniteur;
 mod mods;
@@ -147,6 +148,7 @@ impl App {
         let theme = theme::Theme::new(); // règle aussi notifications, zone et raccourci
         systeme::lancer(cc.egui_ctx.clone());
         coeur::raccourci_palette();
+        systeme3::lancer_retardes();
         let maj = systeme::MajPartagee::default();
         if theme.r.maj {
             systeme::verifier(maj.clone());

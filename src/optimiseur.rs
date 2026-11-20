@@ -16,7 +16,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use windows_sys::Win32::System::Registry::*;
 
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-type R = Result<(), String>;
+pub(crate) type R = Result<(), String>;
 
 fn w(s: &str) -> Vec<u16> {
     s.encode_utf16().chain([0]).collect()
@@ -62,7 +62,7 @@ fn local() -> windows_sys::Win32::Foundation::SYSTEMTIME {
 // ---------- outils généraux ----------
 
 /// Remplace les %VAR% connues ; laisse les autres telles quelles.
-fn exp(s: &str) -> String {
+pub(crate) fn exp(s: &str) -> String {
     let mut r = String::new();
     let mut reste = s;
     while let Some(i) = reste.find('%') {
@@ -220,12 +220,12 @@ fn vider(motifs: &[&str]) -> R {
     Ok(())
 }
 
-fn lancer(prog: &str, args: &[&str]) -> Result<i32, String> {
+pub(crate) fn lancer(prog: &str, args: &[&str]) -> Result<i32, String> {
     Command::new(prog).args(args).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null())
         .creation_flags(CREATE_NO_WINDOW).status().map(|s| s.code().unwrap_or(-1)).map_err(|e| format!("{prog} : {e}"))
 }
 
-fn lancer_ok(prog: &str, args: &[&str]) -> R {
+pub(crate) fn lancer_ok(prog: &str, args: &[&str]) -> R {
     match lancer(prog, args)? {
         0 => Ok(()),
         c => Err(format!("{prog} a renvoyé le code {c}")),
@@ -341,7 +341,7 @@ fn octets(u: &[u16]) -> Vec<u8> {
     u.iter().flat_map(|c| c.to_le_bytes()).collect()
 }
 
-fn reg_d(p: &str, nom: &str, v: u32) -> R {
+pub(crate) fn reg_d(p: &str, nom: &str, v: u32) -> R {
     reg_set(p, nom, REG_DWORD, &v.to_le_bytes())
 }
 
@@ -349,7 +349,7 @@ fn reg_s(p: &str, nom: &str, v: &str) -> R {
     reg_set(p, nom, REG_SZ, &octets(&w(v)))
 }
 
-fn reg_b(p: &str, nom: &str, v: &[u8]) -> R {
+pub(crate) fn reg_b(p: &str, nom: &str, v: &[u8]) -> R {
     reg_set(p, nom, REG_BINARY, v)
 }
 
@@ -368,7 +368,7 @@ fn dw(p: &str, l: &[(&str, u32)]) -> R {
     l.iter().try_for_each(|(n, v)| reg_d(p, n, *v))
 }
 
-fn reg_lire(p: &str, nom: &str) -> Option<(u32, Vec<u8>)> {
+pub(crate) fn reg_lire(p: &str, nom: &str) -> Option<(u32, Vec<u8>)> {
     let k = ouvrir(p, false, KEY_READ).ok()?;
     let n = w(nom);
     let (mut t, mut taille) = (0u32, 0u32);
@@ -390,12 +390,12 @@ fn utf16(b: &[u8]) -> String {
     String::from_utf16_lossy(&u)
 }
 
-fn reg_dword(p: &str, nom: &str) -> Option<u32> {
+pub(crate) fn reg_dword(p: &str, nom: &str) -> Option<u32> {
     let (t, b) = reg_lire(p, nom)?;
     (t == REG_DWORD && b.len() >= 4).then(|| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
 }
 
-fn reg_texte(p: &str, nom: &str) -> Option<String> {
+pub(crate) fn reg_texte(p: &str, nom: &str) -> Option<String> {
     let (t, b) = reg_lire(p, nom)?;
     let s = utf16(&b).trim_end_matches('\0').to_string();
     match t {
@@ -424,7 +424,7 @@ fn reg_suppr(p: &str, nom: &str) -> R {
     }
 }
 
-fn reg_sous_cles(p: &str) -> Vec<String> {
+pub(crate) fn reg_sous_cles(p: &str) -> Vec<String> {
     let Ok(k) = ouvrir(p, false, KEY_READ) else { return vec![] };
     let mut v = vec![];
     let mut buf = [0u16; 256];
@@ -438,7 +438,7 @@ fn reg_sous_cles(p: &str) -> Vec<String> {
     v
 }
 
-fn reg_noms(p: &str) -> Vec<String> {
+pub(crate) fn reg_noms(p: &str) -> Vec<String> {
     let Ok(k) = ouvrir(p, false, KEY_READ) else { return vec![] };
     let mut v = vec![];
     let mut buf = vec![0u16; 16384];
