@@ -300,7 +300,7 @@ pub fn lire_info(b: &[u8]) -> Option<(u64, i64, String)> {
     Some((taille, date, chemin))
 }
 
-fn corbeille() -> Vec<Supprime> {
+pub fn corbeille() -> Vec<Supprime> {
     let mut v = vec![];
     for (d, _, _) in crate::systeme::disques() {
         let racine = PathBuf::from(&d).join("$Recycle.Bin");

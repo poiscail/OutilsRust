@@ -1,7 +1,7 @@
 //! Liste des outils ajoutés en lot (trait `Outil`), dans l'ordre du menu de chaque catégorie.
 use crate::minecraft::Pilote;
 use crate::outil::Outil;
-use crate::{bureau, coeur, jeux2, jeux3, creatif, dependances, mcplus, mcplus2, fichiers2, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
+use crate::{bureau, coeur, jeux2, jeux3, creatif, dependances, mcplus, mcplus2, fichiers2, fichiers3, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
 
 pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>> {
     vec![
@@ -42,6 +42,14 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         Box::new(jeux2::Compteur::new()),
         // fichiers
         Box::new(fichiers2::Favoris::new()),
+        Box::new(fichiers3::SyncUsb::new()),
+        Box::new(fichiers3::Surveillance::new()),
+        Box::new(fichiers3::Episodes::new()),
+        Box::new(fichiers3::RechercheContenu::new()),
+        Box::new(fichiers3::CorbeilleAuto::new()),
+        Box::new(fichiers3::Installateurs::new()),
+        Box::new(fichiers3::Empreinte::new()),
+        Box::new(fichiers3::Telechargements::new()),
         Box::new(images::Visionneuse::new()),
         Box::new(images::DoublonsImages::new()),
         Box::new(images::PhotosOutils::new()),
