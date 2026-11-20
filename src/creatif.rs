@@ -16,7 +16,7 @@ pub(crate) fn police(noms: &[&str]) -> Option<FontVec> {
 }
 
 /// Largeur en pixels d'un texte.
-fn largeur(f: &FontVec, taille: f32, t: &str) -> f32 {
+pub(crate) fn largeur(f: &FontVec, taille: f32, t: &str) -> f32 {
     let s = f.as_scaled(PxScale::from(taille));
     t.chars().map(|c| s.h_advance(f.glyph_id(c))).sum()
 }

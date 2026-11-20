@@ -198,7 +198,7 @@ pub fn hex(c: [u8; 3]) -> String {
 // Windows : écran, fenêtre, presse-papiers, surimpression (zone / règle / pipette)
 // ===================================================================================================
 
-mod win {
+pub(crate) mod win {
     use super::*;
     use std::cell::RefCell;
     use std::ptr::{null, null_mut};
