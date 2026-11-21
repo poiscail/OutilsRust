@@ -238,7 +238,7 @@ pub fn scan_fivem(chemin: &Path) -> Vec<Jeu> {
     vec![Jeu { id: "fivem".into(), nom: "FiveM".into(), steam: true, ..g }]
 }
 
-fn chemin_processus(pid: u32) -> Option<String> {
+pub(crate) fn chemin_processus(pid: u32) -> Option<String> {
     use windows_sys::Win32::Foundation::CloseHandle;
     use windows_sys::Win32::System::Threading::*;
     unsafe {
