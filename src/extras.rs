@@ -1,7 +1,7 @@
 //! Liste des outils ajoutés en lot (trait `Outil`), dans l'ordre du menu de chaque catégorie.
 use crate::minecraft::Pilote;
 use crate::outil::Outil;
-use crate::{bureau, coeur, jeux2, jeux3, creatif, dependances, mcplus, mcplus2, fichiers2, fichiers3, systeme3, quotidien2, micro, creatif2, interface, jeux4, mcplus3, fichiers4, systeme4, reseau3, quotidien3, creatif3, minijeux3, interface2, jeux5, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
+use crate::{bureau, coeur, jeux2, jeux3, creatif, dependances, mcplus, mcplus2, fichiers2, fichiers3, systeme3, quotidien2, micro, creatif2, interface, jeux4, mcplus3, fichiers4, systeme4, reseau3, quotidien3, creatif3, minijeux3, interface2, jeux5, fichiers5, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
 
 pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>> {
     vec![
@@ -25,6 +25,8 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         Box::new(mcplus3::PageStatut::new(mc.clone())),
         Box::new(mcplus3::CalcNether::new()),
         Box::new(jeux5::ModsJoueur::new()),
+        Box::new(fichiers5::Structures::new(mc.clone())),
+        Box::new(fichiers5::CalcMinecraft::new()),
         Box::new(mcplus3::ChatDiscord::new(mc.clone())),
         Box::new(mcplus3::Datapacks::new(mc)),
         // jeux
@@ -75,6 +77,12 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         Box::new(fichiers4::LienTemporaire::new()),
         Box::new(fichiers4::ComparerDossiers::new()),
         Box::new(fichiers4::TexteImage::new()),
+        Box::new(fichiers5::CoffrePhotos::new()),
+        Box::new(fichiers5::ConvDocs::new()),
+        Box::new(fichiers5::RenommerPhotos::new()),
+        Box::new(fichiers5::DoublonsMusique::new()),
+        Box::new(fichiers5::Recents::new()),
+        Box::new(fichiers5::CorbeilleSecurite::new()),
         Box::new(images::Visionneuse::new()),
         Box::new(images::DoublonsImages::new()),
         Box::new(images::PhotosOutils::new()),

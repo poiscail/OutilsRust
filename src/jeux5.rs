@@ -1020,7 +1020,7 @@ impl Outil for ModsJoueur {
             });
         }
         if let Some(j) = retirer {
-            let _ = std::fs::remove_file(d.join(j));
+            let _ = crate::fichiers5::mettre_a_l_abri(&d.join(j), "Profils de mods");
         }
         ui.horizontal(|ui| {
             let r = ui.add(egui::TextEdit::singleline(&mut self.recherche).hint_text("chercher un mod (sodium, journeymap, jei…)").desired_width(280.0));

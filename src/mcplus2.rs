@@ -622,7 +622,7 @@ impl Outil for Regions {
                     en_fond(&self.e, move || {
                         mc.sauvegarder()?; // filet de sécurité
                         for (x, z) in &l {
-                            let _ = std::fs::remove_file(d2.join(format!("r.{x}.{z}.mca")));
+                            let _ = crate::fichiers5::mettre_a_l_abri(&d2.join(format!("r.{x}.{z}.mca")), "Carte des régions");
                         }
                         Ok(format!("✔ {} région(s) supprimée(s) (monde sauvegardé avant).", l.len()))
                     });

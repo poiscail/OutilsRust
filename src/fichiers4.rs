@@ -1007,7 +1007,7 @@ pub struct Infos {
     pub pochette: Option<Vec<u8>>,
 }
 
-fn lire_infos(p: &Path) -> Infos {
+pub(crate) fn lire_infos(p: &Path) -> Infos {
     use lofty::prelude::*;
     let Ok(f) = lofty::read_from_path(p) else { return Infos { titre: nom_fichier(p), ..Default::default() } };
     let duree = f.properties().duration().as_secs();

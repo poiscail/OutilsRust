@@ -731,7 +731,10 @@ fn trop_vieux(jours: u32) -> Vec<crate::fichiers2::Supprime> {
 fn vider_vieux(jours: u32) -> (u32, u64) {
     let (mut n, mut o) = (0, 0);
     for s in trop_vieux(jours) {
-        let r = if s.donnees.is_dir() { std::fs::remove_dir_all(&s.donnees) } else { std::fs::remove_file(&s.donnees) };
+        // gardé encore 30 jours dans la corbeille de sécurité d'Outils, sous son nom d'origine
+        let nom = s.origine.file_name().map(|n| n.to_owned()).unwrap_or_default();
+        let renomme = s.donnees.with_file_name(&nom);
+        let r = std::fs::rename(&s.donnees, &renomme).map_err(|e| e.to_string()).and_then(|_| crate::fichiers5::mettre_a_l_abri_vers(&renomme, &s.origine, "Corbeille automatique"));
         if r.is_ok() {
             let _ = std::fs::remove_file(&s.info);
             n += 1;
