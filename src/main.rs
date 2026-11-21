@@ -36,6 +36,7 @@ mod systeme3;
 mod quotidien2;
 mod micro;
 mod creatif2;
+mod minijeux2;
 mod mixeur;
 mod moniteur;
 mod mods;

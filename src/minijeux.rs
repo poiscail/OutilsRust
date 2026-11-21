@@ -1,4 +1,4 @@
-//! Mini-jeux pour les pauses (150) : Serpent, Casse-briques, Démineur. Records enregistrés.
+//! Mini-jeux pour les pauses (150) : Serpent, Casse-briques, Démineur, et ceux de `minijeux2`. Records enregistrés.
 use crate::outil::{charger, enregistrer, hasard, Cat, Outil};
 use eframe::egui::{self, Color32, Pos2, Rect, RichText, Sense, Vec2};
 use serde::{Deserialize, Serialize};
@@ -232,11 +232,12 @@ pub struct MiniJeux {
     briques: Briques,
     dernier: Instant,
     records: Records,
+    salle: crate::minijeux2::Salle,
 }
 
 impl MiniJeux {
     pub fn new() -> Self {
-        MiniJeux { onglet: 0, serpent: Serpent::new(), dernier_pas: Instant::now(), demineur: Demineur::new(16, 12, 30), briques: Briques::new(), dernier: Instant::now(), records: charger("minijeux") }
+        MiniJeux { onglet: 0, serpent: Serpent::new(), dernier_pas: Instant::now(), demineur: Demineur::new(16, 12, 30), briques: Briques::new(), dernier: Instant::now(), records: charger("minijeux"), salle: crate::minijeux2::Salle::new() }
     }
 }
 
@@ -248,10 +249,13 @@ impl Outil for MiniJeux {
         Cat::Fun
     }
     fn ui(&mut self, ui: &mut egui::Ui) {
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.selectable_value(&mut self.onglet, 0, "🐍 Serpent");
             ui.selectable_value(&mut self.onglet, 1, "🧱 Casse-briques");
             ui.selectable_value(&mut self.onglet, 2, "💣 Démineur");
+            for (k, n) in crate::minijeux2::NOMS.iter().enumerate() {
+                ui.selectable_value(&mut self.onglet, 3 + k as u8, *n);
+            }
         });
         ui.separator();
         let rose = Color32::from_rgb(255, 95, 162);
@@ -338,6 +342,7 @@ impl Outil for MiniJeux {
                     ui.ctx().request_repaint();
                 }
             }
+            n if n >= 3 => self.salle.ui(ui, n as usize - 3),
             _ => {
                 let d = &mut self.demineur;
                 ui.horizontal(|ui| {
