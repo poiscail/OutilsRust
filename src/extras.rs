@@ -1,7 +1,7 @@
 //! Liste des outils ajoutés en lot (trait `Outil`), dans l'ordre du menu de chaque catégorie.
 use crate::minecraft::Pilote;
 use crate::outil::Outil;
-use crate::{bureau, coeur, jeux2, jeux3, creatif, dependances, mcplus, mcplus2, fichiers2, fichiers3, systeme3, quotidien2, micro, creatif2, interface, jeux4, mcplus3, fichiers4, systeme4, reseau3, quotidien3, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
+use crate::{bureau, coeur, jeux2, jeux3, creatif, dependances, mcplus, mcplus2, fichiers2, fichiers3, systeme3, quotidien2, micro, creatif2, interface, jeux4, mcplus3, fichiers4, systeme4, reseau3, quotidien3, creatif3, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
 
 pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>> {
     vec![
@@ -157,6 +157,12 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         Box::new(fichiers4::Musique::new()),
         Box::new(creatif2::CapturesStylees::new()),
         Box::new(creatif2::FondsEcran::new()),
+        Box::new(creatif3::ZoneGif::new()),
+        Box::new(creatif3::Miniatures::new()),
+        Box::new(creatif3::SousTitres::new()),
+        Box::new(creatif3::BoiteSons::new()),
+        Box::new(creatif3::PixelArt::new()),
+        Box::new(creatif3::Metronome::new()),
         Box::new(son::EnregistreurSon::new()),
         Box::new(son::Egaliseur::new()),
         // fun

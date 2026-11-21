@@ -281,6 +281,41 @@ pub(crate) mod win {
         }
     }
 
+    /// Capture d'une zone de l'écran (coordonnées du bureau virtuel), plus légère que `capturer` pour la vidéo.
+    pub fn capturer_zone(x: i32, y: i32, l: i32, h: i32) -> Option<RgbaImage> {
+        if l <= 0 || h <= 0 {
+            return None;
+        }
+        unsafe {
+            let ecran = GetDC(null_mut());
+            let mem = CreateCompatibleDC(ecran);
+            let bm = CreateCompatibleBitmap(ecran, l, h);
+            let vieux = SelectObject(mem, bm);
+            BitBlt(mem, 0, 0, l, h, ecran, x, y, SRCCOPY | CAPTUREBLT);
+            // le curseur aussi, c'est plus parlant dans un GIF
+            let mut ci: CURSORINFO = std::mem::zeroed();
+            ci.cbSize = std::mem::size_of::<CURSORINFO>() as u32;
+            if GetCursorInfo(&mut ci) != 0 && ci.flags & CURSOR_SHOWING != 0 {
+                DrawIconEx(mem, ci.ptScreenPos.x - x, ci.ptScreenPos.y - y, ci.hCursor, 0, 0, 0, null_mut(), DI_NORMAL);
+            }
+            SelectObject(mem, vieux);
+            let mut bi = info(l, h);
+            let mut bgra = vec![0u8; (l * h * 4) as usize];
+            let n = GetDIBits(mem, bm, 0, h as u32, bgra.as_mut_ptr().cast(), &mut bi, DIB_RGB_COLORS);
+            DeleteObject(bm);
+            DeleteDC(mem);
+            ReleaseDC(null_mut(), ecran);
+            if n == 0 {
+                return None;
+            }
+            for p in bgra.chunks_exact_mut(4) {
+                p.swap(0, 2);
+                p[3] = 255;
+            }
+            RgbaImage::from_raw(l as u32, h as u32, bgra)
+        }
+    }
+
     /// Rectangle de la fenêtre au premier plan, en coordonnées de l'image `e`.
     pub fn fenetre_active(e: &Ecran) -> Option<(i32, i32, i32, i32)> {
         unsafe {
