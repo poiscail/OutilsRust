@@ -39,6 +39,7 @@ mod creatif2;
 mod interface;
 mod jeux4;
 mod mcplus3;
+mod fichiers4;
 mod minijeux2;
 mod mixeur;
 mod moniteur;

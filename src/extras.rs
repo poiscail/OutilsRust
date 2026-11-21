@@ -1,7 +1,7 @@
 //! Liste des outils ajoutés en lot (trait `Outil`), dans l'ordre du menu de chaque catégorie.
 use crate::minecraft::Pilote;
 use crate::outil::Outil;
-use crate::{bureau, coeur, jeux2, jeux3, creatif, dependances, mcplus, mcplus2, fichiers2, fichiers3, systeme3, quotidien2, micro, creatif2, interface, jeux4, mcplus3, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
+use crate::{bureau, coeur, jeux2, jeux3, creatif, dependances, mcplus, mcplus2, fichiers2, fichiers3, systeme3, quotidien2, micro, creatif2, interface, jeux4, mcplus3, fichiers4, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
 
 pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>> {
     vec![
@@ -63,6 +63,12 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         Box::new(fichiers3::Installateurs::new()),
         Box::new(fichiers3::Empreinte::new()),
         Box::new(fichiers3::Telechargements::new()),
+        Box::new(fichiers4::RangerPhotos::new()),
+        Box::new(fichiers4::Compresseur::new()),
+        Box::new(fichiers4::EnvoiPc::new()),
+        Box::new(fichiers4::LienTemporaire::new()),
+        Box::new(fichiers4::ComparerDossiers::new()),
+        Box::new(fichiers4::TexteImage::new()),
         Box::new(images::Visionneuse::new()),
         Box::new(images::DoublonsImages::new()),
         Box::new(images::PhotosOutils::new()),
@@ -130,6 +136,7 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         Box::new(creatif::Palettes::new()),
         Box::new(creatif::Icones::new()),
         Box::new(micro::Micro::new()),
+        Box::new(fichiers4::Musique::new()),
         Box::new(creatif2::CapturesStylees::new()),
         Box::new(creatif2::FondsEcran::new()),
         Box::new(son::EnregistreurSon::new()),
