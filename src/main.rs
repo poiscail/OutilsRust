@@ -44,6 +44,7 @@ mod systeme4;
 mod reseau3;
 mod quotidien3;
 mod creatif3;
+mod minijeux3;
 mod minijeux2;
 mod mixeur;
 mod moniteur;
