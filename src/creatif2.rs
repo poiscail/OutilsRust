@@ -153,14 +153,35 @@ pub struct CapturesStylees {
     style: Style,
     rendu: Option<(RgbaImage, egui::TextureHandle)>,
     sale: bool,
-    retardee: Option<(Instant, bool)>,
+    /// capture différée : (en attente, image reçue)
+    attente: Arc<Mutex<(bool, Option<RgbaImage>)>>,
     police: Option<ab_glyph::FontVec>,
     message: String,
 }
 
 impl CapturesStylees {
     pub fn new() -> Self {
-        CapturesStylees { source: None, style: charger("captures_stylees"), rendu: None, sale: false, retardee: None, police: None, message: String::new() }
+        CapturesStylees { source: None, style: charger("captures_stylees"), rendu: None, sale: false, attente: Arc::default(), police: None, message: String::new() }
+    }
+}
+
+impl CapturesStylees {
+    /// La fenêtre est réduite : egui ne se redessine plus, donc l'attente et la capture se font dans un fil.
+    fn differer(&self, ctx: &egui::Context, fenetre: bool) {
+        self.attente.lock().unwrap().0 = true;
+        ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
+        let (a, ctx) = (self.attente.clone(), ctx.clone());
+        std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_secs(3));
+            let img = crate::capture::win::capturer().map(|e| {
+                let (x, y, l, h) = if fenetre { crate::capture::win::fenetre_active(&e).unwrap_or((0, 0, e.w, e.h)) } else { (0, 0, e.w, e.h) };
+                e.rgba(x, y, l, h)
+            });
+            *a.lock().unwrap() = (false, img);
+            ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
+            ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+            ctx.request_repaint();
+        });
     }
 }
 
@@ -177,20 +198,14 @@ impl Outil for CapturesStylees {
         if self.police.is_none() {
             self.police = crate::creatif::police(&["segoeuib.ttf", "arialbd.ttf", "arial.ttf"]);
         }
-        if let Some((t, fenetre)) = self.retardee {
-            let reste = 3.0 - t.elapsed().as_secs_f32();
-            if reste <= 0.0 {
-                self.retardee = None;
-                if let Some(e) = crate::capture::win::capturer() {
-                    let (x, y, l, h) = if fenetre { crate::capture::win::fenetre_active(&e).unwrap_or((0, 0, e.w, e.h)) } else { (0, 0, e.w, e.h) };
-                    self.source = Some(e.rgba(x, y, l, h));
-                    self.sale = true;
-                }
-                ui.ctx().send_viewport_cmd(egui::ViewportCommand::Minimized(false));
-                ui.ctx().send_viewport_cmd(egui::ViewportCommand::Focus);
-            } else {
-                ui.label(RichText::new(format!("📸 Capture dans {:.0} s… mets la fenêtre voulue au premier plan", reste.ceil())).size(18.0));
-                ui.ctx().request_repaint_after(Duration::from_millis(100));
+        {
+            let mut a = self.attente.lock().unwrap();
+            if let Some(img) = a.1.take() {
+                self.source = Some(img);
+                self.sale = true;
+            }
+            if a.0 {
+                ui.label(RichText::new("📸 Capture dans 3 s… mets la fenêtre voulue au premier plan").size(18.0));
                 return;
             }
         }
@@ -202,12 +217,10 @@ impl Outil for CapturesStylees {
         }
         ui.horizontal(|ui| {
             if ui.button("🪟 Capturer une fenêtre (3 s)").clicked() {
-                self.retardee = Some((Instant::now(), true));
-                ui.ctx().send_viewport_cmd(egui::ViewportCommand::Minimized(true));
+                self.differer(ui.ctx(), true);
             }
             if ui.button("🖥 Tout l'écran (3 s)").clicked() {
-                self.retardee = Some((Instant::now(), false));
-                ui.ctx().send_viewport_cmd(egui::ViewportCommand::Minimized(true));
+                self.differer(ui.ctx(), false);
             }
             if ui.button("🖼 Ouvrir une image…").clicked() {
                 if let Some(p) = rfd::FileDialog::new().add_filter("Images", &["png", "jpg", "jpeg", "webp", "bmp"]).pick_file() {
@@ -339,10 +352,10 @@ pub fn generer(m: Motif, pal: usize, graine: u64, l: u32, h: u32) -> RgbaImage {
                 let col = lerp(lerp(bas, accent, 0.25), sombre, 0.35 + t * 0.65);
                 let base = hf * (0.5 + t * 0.12);
                 let amp = hf * (0.16 - t * 0.02);
-                let ph: Vec<(f32, f32, f32)> = (0..4).map(|k| (r.entre(0.0, 6.28), r.entre(1.0, 3.0) * (k + 1) as f32, 1.0 / (k + 1) as f32)).collect();
+                let ph: Vec<(f32, f32, f32)> = (0..4).map(|k| (r.entre(0.0, std::f32::consts::TAU), r.entre(1.0, 3.0) * (k + 1) as f32, 1.0 / (k + 1) as f32)).collect();
                 for x in 0..l {
                     let u = x as f32 / lf;
-                    let y0 = base - amp * ph.iter().map(|(p, f, a)| (u * f * 6.28 + p).sin() * a).sum::<f32>().abs();
+                    let y0 = base - amp * ph.iter().map(|(p, f, a)| (u * f * std::f32::consts::TAU + p).sin() * a).sum::<f32>().abs();
                     for y in (y0.max(0.0) as u32)..h {
                         melanger(img.get_pixel_mut(x, y), col, 1.0);
                     }
@@ -400,7 +413,7 @@ pub fn generer(m: Motif, pal: usize, graine: u64, l: u32, h: u32) -> RgbaImage {
                 for _ in 0..(260.0 * e) as usize {
                     let (cx, cy) = (r.entre(0.0, lf), r.entre(0.0, hf));
                     let (a, b) = (r.entre(9.0, 18.0) * e, r.entre(5.0, 9.0) * e);
-                    let ang = r.entre(0.0, 3.14);
+                    let ang = r.entre(0.0, std::f32::consts::PI);
                     let col = lerp([255, 170, 200], [255, 230, 240], r.suivant());
                     let (ca, sa) = (ang.cos(), ang.sin());
                     for y in ((cy - a) as i32).max(0)..((cy + a) as i32).min(h as i32) {
@@ -420,11 +433,11 @@ pub fn generer(m: Motif, pal: usize, graine: u64, l: u32, h: u32) -> RgbaImage {
             for c in 0..6 {
                 let t = c as f32 / 5.0;
                 let col = lerp(accent, sombre, 0.2 + t * 0.8);
-                let (ph, f, amp) = (r.entre(0.0, 6.28), r.entre(1.0, 2.5), hf * 0.04);
+                let (ph, f, amp) = (r.entre(0.0, std::f32::consts::TAU), r.entre(1.0, 2.5), hf * 0.04);
                 let base = hf * (0.45 + t * 0.1);
                 for x in 0..l {
                     let u = x as f32 / lf;
-                    let y0 = base + amp * (u * f * 6.28 + ph).sin() + amp * 0.4 * (u * f * 15.0 + ph * 2.0).sin();
+                    let y0 = base + amp * (u * f * std::f32::consts::TAU + ph).sin() + amp * 0.4 * (u * f * 15.0 + ph * 2.0).sin();
                     for y in (y0.max(0.0) as u32)..h {
                         melanger(img.get_pixel_mut(x, y), col, 0.55 + t * 0.45);
                     }

@@ -157,10 +157,11 @@ impl SyncUsb {
                         };
                         crate::systeme::notifier("Synchro clé USB", &m);
                         *st.lock().unwrap() = m.clone();
-                        if let Some(x) = p.lock().unwrap().get_mut(i) {
+                        let mut pp = p.lock().unwrap();
+                        if let Some(x) = pp.get_mut(i) {
                             x.derniere = format!("{} — {m}", heure_locale());
-                            enregistrer("synchro_usb", &*p.lock().unwrap_or_else(|e| e.into_inner()));
                         }
+                        enregistrer("synchro_usb", &*pp);
                     }
                 }
                 presents = lec.iter().map(|x| x.1).collect();

@@ -466,11 +466,17 @@ impl MessagesBienvenue {
         let b2 = b.clone();
         std::thread::spawn(move || {
             let mut vues: BTreeSet<String> = mc.dernieres().into_iter().collect();
+            let mut en_ligne = true;
             loop {
                 std::thread::sleep(Duration::from_secs(2));
                 if mc.statut().is_none() {
-                    vues.clear();
+                    en_ligne = false;
                     continue;
+                }
+                if !en_ligne {
+                    // redémarrage : les anciennes lignes ont déjà été traitées
+                    vues = mc.dernieres().into_iter().collect();
+                    en_ligne = true;
                 }
                 let lignes = mc.dernieres();
                 for l in &lignes {
@@ -560,7 +566,14 @@ impl Outil for Regions {
         ui.weak("Chaque case = une région de 512 × 512 blocs ; plus elle est rose, plus elle pèse. Supprimer une région la fait régénérer à neuf (utile pour les zones explorées une fois et jamais revues).");
         let Some(d) = sans_serveur(ui, &self.mc) else { return };
         let monde = d.join(crate::minecraft::nom_monde(&d));
-        let dims = [("Surface", monde.join("region")), ("Nether", monde.join("DIM-1/region")), ("End", monde.join("DIM1/region"))];
+        let nom = crate::minecraft::nom_monde(&d);
+        // Paper range le Nether et l'End dans des dossiers à part (monde_nether, monde_the_end)
+        let ou = |vanilla: PathBuf, paper: PathBuf| if paper.is_dir() { paper } else { vanilla };
+        let dims = [
+            ("Surface", monde.join("region")),
+            ("Nether", ou(monde.join("DIM-1/region"), d.join(format!("{nom}_nether/DIM-1/region")))),
+            ("End", ou(monde.join("DIM1/region"), d.join(format!("{nom}_the_end/DIM1/region")))),
+        ];
         ui.horizontal(|ui| {
             for (k, (n, _)) in dims.iter().enumerate() {
                 if ui.selectable_label(self.dim == k, *n).clicked() {

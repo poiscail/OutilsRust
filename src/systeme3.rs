@@ -1038,7 +1038,7 @@ pub fn lancer_retardes() {
     for r in l {
         std::thread::spawn(move || {
             std::thread::sleep(Duration::from_secs((r.delai as u64).saturating_sub(allume)));
-            let (p, a) = separer_commande(&r.commande);
+            let (p, a) = separer_commande(&crate::optimiseur::exp(&r.commande));
             let mut c = std::process::Command::new(&p);
             c.raw_arg(&a);
             if let Err(e) = c.spawn() {
