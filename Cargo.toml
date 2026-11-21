@@ -13,6 +13,7 @@ aes-gcm = "0.10"
 argon2 = "0.5"
 base64 = "0.22"
 getrandom = "0.2"
+flate2 = "1"
 eframe = "0.31"
 egui_extras = { version = "0.31", features = ["image", "file"] }
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp", "bmp", "gif", "ico", "tiff"] }
