@@ -1163,7 +1163,7 @@ fn executer(o: &Ordre, jeux: &[crate::lanceur::Jeu]) -> String {
         }
         Ordre::Heure => {
             let h = crate::minecraft::horodatage();
-            let t = format!("Il est {} heures {}", h.get(11..13).unwrap_or("").trim_start_matches('0'), h.get(14..16).unwrap_or(""));
+            let t = format!("Il est {} heures {}", h.get(9..11).unwrap_or("").parse::<u32>().unwrap_or(0), h.get(11..13).unwrap_or(""));
             dire(&t, "fr-FR");
             t
         }

@@ -42,6 +42,7 @@ mod jeux5;
 mod fichiers5;
 mod systeme5;
 mod creatif4;
+mod minijeux4;
 mod jeux4;
 mod mcplus3;
 mod fichiers4;

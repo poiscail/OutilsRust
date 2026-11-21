@@ -66,6 +66,12 @@ Plan, liste et graphe : [PLAN.md](PLAN.md).
 | Quotidien +++ | calculatrice et convertisseur (unités, devises), actus RSS, comptes à rebours, emploi du temps et devoirs, radio en ligne |
 | Créatif +++ | lecteur de musique (playlists, infos et pochettes), zone de l'écran en GIF, miniatures YouTube, éditeur de sous-titres, boîte à sons dans le micro (Ctrl+Maj+F1…F9), pixel art, métronome et boîte à rythmes |
 | Fun ++ | échecs contre l'ordi, solitaire, mots mêlés, vitesse de frappe, dango clicker, jeux à deux sur le même PC, jeux en réseau local (4 en ligne, morpion) |
+| Outils lui-même ++ | quoi de neuf après chaque mise à jour, profils Jeu / Travail / Nuit, recherche partout (réglages et fichiers du PC), raccourcis clavier vers n'importe quel outil, sauvegarde des réglages sur clé USB, mode grand écran 📺 à la manette |
+| Jeux ++++ | minuteurs de cooldown avec alerte vocale, optimisation au lancement d'un jeu, journal de jeu, comparateur de configs, jeux gratuits qui expirent bientôt, profils de mods Minecraft |
+| Fichiers ++++ | copier une construction Minecraft d'un monde à l'autre, calculatrice redstone, coffre de photos privées, convertisseur de documents (images ↔ PDF, Office → PDF), renommer les photos par date, doublons de musique, fichiers récents, corbeille de sécurité |
+| Système ++++ | alerte programme gourmand, pilotes à jour, bilan du PC sur 100, test de vitesse programmé, partage de dossier sur le réseau, changer de région pour un jeu (WARP), ping dans l'overlay |
+| Créatif ++++ | traducteur vocal, éditeur vidéo simple, memes vidéo (MP4 / GIF), bannières et logos (Discord, YouTube, Twitch), stickers et émojis Discord, correcteur d'orthographe partout (Ctrl+Alt+Y), commandes vocales |
+| Fun +++ | jeux de cartes (huit américain, bataille), bataille navale (ordi ou réseau), snake à deux (même clavier ou réseau), dames 10×10, sudoku du jour, quiz drapeaux et capitales, course de frappe en réseau |
 
 ## Options (onglet Personnaliser)
 

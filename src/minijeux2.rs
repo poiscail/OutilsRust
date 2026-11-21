@@ -387,7 +387,7 @@ pub fn erreurs_pendu(mot: &str, essais: &[char]) -> usize {
 
 pub type Sudoku = [u8; 81];
 
-fn possible(g: &Sudoku, i: usize, v: u8) -> bool {
+pub(crate) fn possible(g: &Sudoku, i: usize, v: u8) -> bool {
     let (l, c) = (i / 9, i % 9);
     let (bl, bc) = (l / 3 * 3, c / 3 * 3);
     (0..9).all(|k| g[l * 9 + k] != v && g[k * 9 + c] != v && g[(bl + k / 3) * 9 + bc + k % 3] != v)
@@ -412,6 +412,11 @@ pub fn resoudre(g: &mut Sudoku, max: u32, ordre: &[u8; 9]) -> u32 {
 
 /// (grille à trous, solution). `indices` : nombre de cases laissées (≈ 30 difficile, 40 facile).
 pub fn generer_sudoku(indices: usize) -> (Sudoku, Sudoku) {
+    generer_sudoku_avec(indices, &mut h)
+}
+
+/// Même chose avec un tirage donné (grille du jour : même graine → même grille).
+pub fn generer_sudoku_avec(indices: usize, h: &mut impl FnMut(usize) -> usize) -> (Sudoku, Sudoku) {
     let mut ordre = [1, 2, 3, 4, 5, 6, 7, 8, 9];
     for i in (1..9).rev() {
         ordre.swap(i, h(i + 1));

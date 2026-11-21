@@ -29,7 +29,7 @@
 ### Créatif, fun et IA
 - Traducteur vocal, éditeur vidéo simple, memes vidéo, bannières et logos, stickers Discord
 - Jeux de cartes, bataille navale, serpent à deux en réseau, dames, sudoku du jour, quiz drapeaux, course de frappe en réseau
-- Correcteur d'orthographe partout, commandes vocales
+- Correcteur d'orthographe partout (Ctrl+Alt+Y), commandes vocales (« Outils, ouvre la météo »)
 
 ## 0.8.0
 - 57 nouveaux outils : thèmes, dock, mode mini, notifications, échecs, solitaire, lecteur de musique, radio, et bien d'autres

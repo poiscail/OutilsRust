@@ -26,13 +26,13 @@ fn melanger<T>(v: &mut [T]) {
 /// Glyphes (pièces d'échecs, couleurs de cartes) dessinés avec la police de symboles de Windows,
 /// car la police de l'interface ne les a pas tous.
 #[derive(Default)]
-struct Glyphes {
+pub(crate) struct Glyphes {
     police: Option<Option<ab_glyph::FontVec>>,
     cache: HashMap<(char, [u8; 3], u32), Option<egui::TextureHandle>>,
 }
 
 impl Glyphes {
-    fn dessiner(&mut self, ui: &egui::Ui, r: Rect, c: char, couleur: [u8; 3], contour: Option<[u8; 3]>) {
+    pub(crate) fn dessiner(&mut self, ui: &egui::Ui, r: Rect, c: char, couleur: [u8; 3], contour: Option<[u8; 3]>) {
         let taille = r.height().round() as u32;
         let p = self.police.get_or_insert_with(|| crate::creatif::police(&["seguisym.ttf", "seguiemj.ttf", "arialuni.ttf", "DejaVuSans.ttf"]));
         let cle = (c, couleur, taille);
@@ -329,7 +329,7 @@ pub fn coup_ordi(p: &Position, prof: u32) -> Option<Coup> {
     let mut bv = i32::MIN + 1;
     let mut n = 0;
     for m in coups {
-        let v = -negamax(&p.jouer(m), prof.saturating_sub(1), i32::MIN + 1, -bv + 1, &mut n);
+        let v = -negamax(&p.jouer(m), prof.saturating_sub(1), i32::MIN + 1, (-bv).saturating_add(1), &mut n);
         if v > bv || meilleur.is_none() {
             bv = v;
             meilleur = Some(m);
@@ -971,7 +971,7 @@ impl Outil for MotsMeles {
 // 73 · Vitesse de frappe
 // ===================================================================================================
 
-const TEXTES: [&str; 12] = [
+pub(crate) const TEXTES: [&str; 12] = [
     "Le soleil se couchait sur la ville et les lanternes s'allumaient une à une le long de la rivière.",
     "Pour construire une base solide dans Minecraft, il faut d'abord trouver du fer et beaucoup de pierre.",
     "Les cerisiers en fleurs attirent chaque printemps des milliers de visiteurs dans les parcs de Tokyo.",
