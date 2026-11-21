@@ -46,6 +46,7 @@ fn script_toast(titre: &str, texte: &str) -> String {
 /// Notification Windows, si l'option est cochée. Ne bloque pas.
 pub fn notifier(titre: &str, texte: &str) {
     crate::coeur::noter(titre, texte);
+    crate::interface::pousser(titre, texte);
     if NOTIFS.load(Relaxed) {
         envoyer_toast(titre, texte);
     }
@@ -54,6 +55,7 @@ pub fn notifier(titre: &str, texte: &str) {
 /// Notification Windows même si l'option est décochée (rappels demandés explicitement).
 pub fn notifier_toujours(titre: &str, texte: &str) {
     crate::coeur::noter(titre, texte);
+    crate::interface::pousser(titre, texte);
     envoyer_toast(titre, texte);
 }
 

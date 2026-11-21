@@ -1,7 +1,7 @@
 //! Personnalisation : couleurs, transparence, zoom, image de fond, police, effets et options Windows.
 //! Réglages dans %APPDATA%\Outils\theme.json, polices importées dans %APPDATA%\Outils\polices.
 use crate::systeme;
-use eframe::egui::{self, Color32, Pos2, Rect};
+use eframe::egui::{self, Color32, Pos2, Rect, RichText};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering::Relaxed;
@@ -55,8 +55,52 @@ fn prereglages() -> Vec<(&'static str, Reglages)> {
         ("Sombre", d.clone()),
         ("Clair", Reglages { sombre: false, accent: [40, 110, 210], fond: [235, 235, 240], panneau: [248, 248, 248], texte: [30, 30, 30], ..d.clone() }),
         ("Sakura nuit", Reglages { accent: [255, 95, 162], fond: [18, 10, 16], panneau: [30, 16, 26], texte: [245, 220, 232], opacite: 0.78, assombrir: 0.35, ..d.clone() }),
-        ("Néon Tokyo", Reglages { accent: [255, 60, 200], fond: [10, 8, 20], panneau: [20, 14, 34], texte: [235, 225, 255], opacite: 0.72, assombrir: 0.4, ..d }),
+        ("Néon Tokyo", Reglages { accent: [255, 60, 200], fond: [10, 8, 20], panneau: [20, 14, 34], texte: [235, 225, 255], opacite: 0.72, assombrir: 0.4, ..d.clone() }),
+        ("Cyberpunk", Reglages { accent: [250, 230, 40], fond: [8, 10, 18], panneau: [16, 22, 36], texte: [120, 240, 255], opacite: 0.85, assombrir: 0.45, ..d.clone() }),
+        ("Minimal", Reglages { sombre: false, accent: [20, 20, 20], fond: [250, 250, 250], panneau: [255, 255, 255], texte: [20, 20, 20], opacite: 1.0, assombrir: 0.0, ..d.clone() }),
+        ("Forêt", Reglages { accent: [120, 200, 120], fond: [14, 22, 16], panneau: [22, 34, 26], texte: [220, 235, 215], opacite: 0.85, assombrir: 0.35, ..d.clone() }),
+        ("Océan", Reglages { accent: [70, 190, 255], fond: [8, 18, 32], panneau: [14, 30, 50], texte: [215, 235, 250], opacite: 0.85, assombrir: 0.35, ..d.clone() }),
+        ("Coucher de soleil", Reglages { accent: [255, 140, 70], fond: [30, 14, 20], panneau: [46, 22, 30], texte: [255, 228, 210], opacite: 0.82, assombrir: 0.3, ..d.clone() }),
+        ("Café", Reglages { accent: [200, 150, 100], fond: [28, 22, 18], panneau: [40, 32, 26], texte: [235, 222, 205], opacite: 0.9, assombrir: 0.3, ..d.clone() }),
+        ("Lavande", Reglages { sombre: false, accent: [140, 100, 220], fond: [240, 234, 250], panneau: [250, 246, 255], texte: [40, 30, 60], opacite: 0.92, assombrir: 0.1, ..d }),
     ]
+}
+
+/// Thème partageable : couleurs, effets et police (pas les options du programme).
+#[derive(Serialize, Deserialize, Clone, PartialEq, Default)]
+#[serde(default)]
+pub struct ThemePartage {
+    pub nom: String,
+    sombre: bool,
+    accent: [u8; 3],
+    fond: [u8; 3],
+    panneau: [u8; 3],
+    texte: [u8; 3],
+    opacite: f32,
+    assombrir: f32,
+    petales: bool,
+    pluie: bool,
+    lucioles: bool,
+    neige: bool,
+    intensite: f32,
+    police: Option<String>,
+}
+
+impl ThemePartage {
+    fn depuis(nom: &str, r: &Reglages) -> Self {
+        ThemePartage { nom: nom.into(), sombre: r.sombre, accent: r.accent, fond: r.fond, panneau: r.panneau, texte: r.texte, opacite: r.opacite, assombrir: r.assombrir, petales: r.petales, pluie: r.pluie, lucioles: r.lucioles, neige: r.neige, intensite: r.intensite, police: r.police.clone() }
+    }
+    fn appliquer(&self, r: &mut Reglages) {
+        (r.sombre, r.accent, r.fond, r.panneau, r.texte, r.opacite, r.assombrir) = (self.sombre, self.accent, self.fond, self.panneau, self.texte, self.opacite, self.assombrir);
+        (r.petales, r.pluie, r.lucioles, r.neige) = (self.petales, self.pluie, self.lucioles, self.neige);
+        if self.intensite > 0.0 {
+            r.intensite = self.intensite;
+        }
+        // la police n'est reprise que si elle est installée ici
+        if self.police.as_ref().is_none_or(|p| polices_dispo().contains(p)) {
+            r.police = self.police.clone();
+        }
+    }
 }
 
 fn donnees() -> PathBuf {
@@ -173,6 +217,7 @@ pub struct Theme {
     fond_applique: Option<PathBuf>,
     rotation: Arc<Mutex<Rotation>>,
     erreur: Option<String>,
+    nom_theme: String,
 }
 
 impl Theme {
@@ -202,7 +247,7 @@ impl Theme {
                 }
             }
         });
-        let t = Theme { r, a_appliquer: true, a_police: true, texture: None, texture_de: None, dossier_fonds, fond_applique: None, rotation, erreur: None };
+        let t = Theme { r, a_appliquer: true, a_police: true, texture: None, texture_de: None, dossier_fonds, fond_applique: None, rotation, erreur: None, nom_theme: String::new() };
         t.appliquer_options();
         if fonds_nouveaux {
             t.enregistrer();
@@ -218,7 +263,7 @@ impl Theme {
         let mut r: Reglages = std::fs::read_to_string(fichier()).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
         r.fond_windows = false;
         r.rotation = false;
-        Theme { r, a_appliquer: true, a_police: true, texture: None, texture_de: None, dossier_fonds, fond_applique: None, rotation: Arc::default(), erreur: None }
+        Theme { r, a_appliquer: true, a_police: true, texture: None, texture_de: None, dossier_fonds, fond_applique: None, rotation: Arc::default(), erreur: None, nom_theme: String::new() }
     }
 
     pub fn dossier_fonds(&self) -> &Path {
@@ -463,12 +508,60 @@ impl Theme {
         ui.horizontal_wrapped(|ui| {
             ui.label("Thèmes :");
             for (nom, p) in prereglages() {
-                if ui.button(nom).clicked() {
+                let c = Color32::from_rgb(p.accent[0], p.accent[1], p.accent[2]);
+                if ui.button(RichText::new(format!("● {nom}")).color(c)).clicked() {
                     let r = &mut self.r;
                     (r.sombre, r.accent, r.fond, r.panneau, r.texte, r.opacite, r.assombrir) = (p.sombre, p.accent, p.fond, p.panneau, p.texte, p.opacite, p.assombrir);
                 }
             }
         });
+        let mut mes: Vec<ThemePartage> = crate::outil::charger("mes_themes");
+        let avant_mes = mes.clone();
+        ui.horizontal_wrapped(|ui| {
+            ui.label("Mes thèmes :");
+            let mut retirer = None;
+            for (k, t) in mes.iter().enumerate() {
+                let c = Color32::from_rgb(t.accent[0], t.accent[1], t.accent[2]);
+                let b = ui.button(RichText::new(format!("● {}", t.nom)).color(c)).on_hover_text("Clic droit : supprimer");
+                if b.clicked() {
+                    t.appliquer(&mut self.r);
+                }
+                b.context_menu(|ui| {
+                    if ui.button("🗑 Supprimer").clicked() {
+                        retirer = Some(k);
+                        ui.close_menu();
+                    }
+                });
+            }
+            if let Some(k) = retirer {
+                mes.remove(k);
+            }
+            ui.add(egui::TextEdit::singleline(&mut self.nom_theme).hint_text("nom").desired_width(110.0));
+            if ui.button("💾 Garder ce thème").clicked() && !self.nom_theme.trim().is_empty() {
+                let n = self.nom_theme.trim().to_string();
+                mes.retain(|t| t.nom != n);
+                mes.push(ThemePartage::depuis(&n, &self.r));
+                self.nom_theme.clear();
+            }
+            if ui.button("📤 Exporter…").on_hover_text("Fichier .theme à envoyer à un ami").clicked() {
+                let n = if self.nom_theme.trim().is_empty() { "Mon thème".to_string() } else { self.nom_theme.trim().to_string() };
+                if let Some(p) = rfd::FileDialog::new().add_filter("Thème Outils", &["theme"]).set_file_name(format!("{n}.theme")).save_file() {
+                    let _ = std::fs::write(p, serde_json::to_string_pretty(&ThemePartage::depuis(&n, &self.r)).unwrap_or_default());
+                }
+            }
+            if ui.button("📥 Importer…").clicked() {
+                if let Some(p) = rfd::FileDialog::new().add_filter("Thème Outils", &["theme", "json"]).pick_file() {
+                    if let Some(t) = std::fs::read_to_string(&p).ok().and_then(|s| serde_json::from_str::<ThemePartage>(&s).ok()) {
+                        t.appliquer(&mut self.r);
+                        mes.retain(|x| x.nom != t.nom);
+                        mes.push(t);
+                    }
+                }
+            }
+        });
+        if mes != avant_mes {
+            crate::outil::enregistrer("mes_themes", &mes);
+        }
         ui.separator();
         egui::Grid::new("couleurs").num_columns(2).spacing([16.0, 8.0]).show(ui, |ui| {
             ui.label("Mode");

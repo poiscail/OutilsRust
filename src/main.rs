@@ -36,6 +36,7 @@ mod systeme3;
 mod quotidien2;
 mod micro;
 mod creatif2;
+mod interface;
 mod minijeux2;
 mod mixeur;
 mod moniteur;
@@ -142,6 +143,10 @@ struct App {
     palette: Option<(String, usize)>, // Ctrl+K : texte, ligne choisie
     plantages: usize,
     erreur_onglet: Option<(usize, String)>,
+    dock: interface::Dock,
+    notifs_ouvert: bool,
+    visite: Option<usize>,
+    mini: Option<egui::Vec2>, // mode mini : taille d'avant
 }
 
 impl App {
@@ -170,11 +175,17 @@ impl App {
             sante: santedisque::SanteDisque::new(), coffre_f: coffrefichiers::CoffreFichiers::new(), viseur: viseur::Viseur::new(), macros: macros::Macros::new(), tradinstant: tradinstant::TradInstant::new(),
             economiseur: economiseur::Economiseur::new(theme.dossier_fonds().to_path_buf()), theme, maj,
             maj_ignoree: false, disques: (None, vec![]), lance_au_demarrage: std::env::args().any(|a| a == "--demarrage"), onglet: 0, extras, favoris: outil::charger("onglets_favoris"), palette: None, plantages: coeur::nouveaux_plantages(), erreur_onglet: None, recherche: String::new(),
+            dock: interface::Dock::new(), notifs_ouvert: false, visite: interface::visite_a_faire().then_some(0), mini: None,
         }
     }
 
     fn accueil(&mut self, ui: &mut egui::Ui) {
-        ui.heading("Accueil");
+        ui.horizontal(|ui| {
+            ui.heading("Accueil");
+            if ui.small_button("❓ Visite guidée").clicked() {
+                self.visite = Some(0);
+            }
+        });
         ui.add_space(8.0);
         if self.disques.0.is_none_or(|t| t.elapsed() > Duration::from_secs(30)) {
             self.disques = (Some(Instant::now()), systeme::disques());
@@ -321,9 +332,52 @@ impl eframe::App for App {
                 });
             });
         }
+        // dock : favoris à jour, et clic dans le dock → ouvrir l'outil
+        {
+            let mut f = self.dock.favoris.lock().unwrap();
+            if *f != self.favoris {
+                f.clone_from(&self.favoris);
+            }
+        }
+        let choix = self.dock.choix.lock().unwrap().take();
+        if let Some(n) = choix {
+            self.onglet = self.entrees().into_iter().find(|e| e.1 == n).map(|e| e.0).unwrap_or(0);
+            if self.mini.is_some() {
+                self.sortir_mini(ctx);
+            }
+        }
+        self.dock.afficher(ctx);
+        if let Some(mut e) = self.visite {
+            self.visite = interface::visite(ctx, &mut e).then_some(e);
+        }
+        if self.notifs_ouvert {
+            interface::fenetre_notifs(ctx, &mut self.notifs_ouvert);
+        }
+        if self.mini.is_some() {
+            self.ui_mini(ctx);
+            return;
+        }
         egui::SidePanel::left("outils").exact_width(210.0).show(ctx, |ui| {
             ui.add_space(8.0);
-            ui.heading("Outils");
+            ui.horizontal(|ui| {
+                ui.heading("Outils");
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui.small_button("🗗").on_hover_text("Mode mini (petite fenêtre toujours visible)").clicked() {
+                        self.mini = Some(ctx.input(|i| i.viewport().inner_rect.map(|r| r.size())).unwrap_or(egui::vec2(1100.0, 720.0)));
+                        ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(egui::vec2(340.0, 520.0)));
+                        ctx.send_viewport_cmd(egui::ViewportCommand::WindowLevel(egui::WindowLevel::AlwaysOnTop));
+                    }
+                    let dock = self.dock.actif.load(Relaxed);
+                    if ui.selectable_label(dock, "📌").on_hover_text("Dock flottant avec tes favoris").clicked() {
+                        self.dock.basculer(!dock);
+                    }
+                    let n = interface::non_lues();
+                    let cloche = if n > 0 { format!("🔔{n}") } else { "🔔".into() };
+                    if ui.add(egui::Button::new(egui::RichText::new(cloche).color(if n > 0 { egui::Color32::from_rgb(255, 120, 170) } else { ui.visuals().text_color() })).small()).on_hover_text("Notifications").clicked() {
+                        self.notifs_ouvert = !self.notifs_ouvert;
+                    }
+                });
+            });
             ui.separator();
             ui.add(egui::TextEdit::singleline(&mut self.recherche).hint_text("🔍 Chercher un outil").desired_width(f32::INFINITY));
             let tous = self.entrees();
@@ -390,6 +444,7 @@ impl eframe::App for App {
         if let Ok(mut o) = coeur::ONGLET.lock() {
             o.clone_from(&nom_onglet);
         }
+        interface::compter(&nom_onglet, ctx.input(|i| i.viewport().focused.unwrap_or(true)));
         egui::CentralPanel::default().show(ctx, |ui| {
             if self.plantages > 0 {
                 ui.horizontal(|ui| {
@@ -507,6 +562,64 @@ enum Commande {
 }
 
 impl App {
+    fn sortir_mini(&mut self, ctx: &egui::Context) {
+        if let Some(t) = self.mini.take() {
+            ctx.send_viewport_cmd(egui::ViewportCommand::WindowLevel(egui::WindowLevel::Normal));
+            ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(t));
+        }
+    }
+
+    /// Mode mini : favoris et résumés dans une petite fenêtre toujours devant.
+    fn ui_mini(&mut self, ctx: &egui::Context) {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.strong("Outils");
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui.small_button("⤢ Agrandir").clicked() {
+                        self.sortir_mini(ctx);
+                    }
+                    let n = interface::non_lues();
+                    if ui.small_button(if n > 0 { format!("🔔{n}") } else { "🔔".into() }).clicked() {
+                        self.notifs_ouvert = !self.notifs_ouvert;
+                    }
+                });
+            });
+            ui.separator();
+            let tous = self.entrees();
+            let mut ouvrir = None;
+            ui.horizontal_wrapped(|ui| {
+                for (i, n, _) in tous.iter().filter(|e| self.favoris.contains(&e.1)) {
+                    if ui.add(egui::Button::new(egui::RichText::new(interface::icone(n)).size(20.0)).min_size(egui::vec2(40.0, 38.0))).on_hover_text(n.as_str()).clicked() {
+                        ouvrir = Some(*i);
+                    }
+                }
+            });
+            if self.favoris.is_empty() {
+                ui.weak("Ajoute des favoris (clic droit sur un outil du menu) pour les avoir ici.");
+            }
+            ui.separator();
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                let mut lignes: Vec<(usize, String)> = vec![(6, self.minecraft.resume()), (10, self.minuteur.resume()), (20, self.planif.resume())];
+                lignes.retain(|l| !l.1.is_empty());
+                for (k, o) in self.extras.iter().enumerate() {
+                    if let Some(r) = o.resume() {
+                        lignes.push((ONGLETS.len() + k, r));
+                    }
+                }
+                for (i, t) in lignes {
+                    if ui.add(egui::Label::new(t).wrap().sense(egui::Sense::click())).on_hover_text("Ouvrir").clicked() {
+                        ouvrir = Some(i);
+                    }
+                    ui.add_space(2.0);
+                }
+            });
+            if let Some(i) = ouvrir {
+                self.onglet = i;
+                self.sortir_mini(ctx);
+            }
+        });
+    }
+
     /// Ctrl+K : chercher un outil ou une action et la lancer au clavier.
     fn palette_ui(&mut self, ctx: &egui::Context) {
         let ouvrir = ctx.input_mut(|i| i.consume_shortcut(&egui::KeyboardShortcut::new(egui::Modifiers::COMMAND, egui::Key::K)))
