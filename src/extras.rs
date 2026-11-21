@@ -1,7 +1,7 @@
 //! Liste des outils ajoutés en lot (trait `Outil`), dans l'ordre du menu de chaque catégorie.
 use crate::minecraft::Pilote;
 use crate::outil::Outil;
-use crate::{bureau, coeur, jeux2, jeux3, creatif, dependances, mcplus, mcplus2, fichiers2, fichiers3, systeme3, quotidien2, micro, creatif2, interface, jeux4, mcplus3, fichiers4, systeme4, reseau3, quotidien3, creatif3, minijeux3, interface2, jeux5, fichiers5, systeme5, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
+use crate::{bureau, coeur, jeux2, jeux3, creatif, dependances, mcplus, mcplus2, fichiers2, fichiers3, systeme3, quotidien2, micro, creatif2, interface, jeux4, mcplus3, fichiers4, systeme4, reseau3, quotidien3, creatif3, minijeux3, interface2, jeux5, fichiers5, systeme5, creatif4, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
 
 pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>> {
     vec![
@@ -140,6 +140,13 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         Box::new(systeme5::VitesseProgrammee::new()),
         Box::new(systeme5::Partage::new()),
         Box::new(systeme5::Region::new()),
+        Box::new(creatif4::TraducteurVocal::new()),
+        Box::new(creatif4::EditeurVideo::new()),
+        Box::new(creatif4::MemesVideo::new()),
+        Box::new(creatif4::Bannieres::new()),
+        Box::new(creatif4::Stickers::new()),
+        Box::new(creatif4::Correcteur::new()),
+        Box::new(creatif4::CommandesVocales::new()),
         Box::new(reseau2::Telechargeur::new()),
         Box::new(reseau2::BloqueurUi::new()),
         Box::new(reseau2::DnsRapide::new()),

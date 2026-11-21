@@ -18,7 +18,7 @@ fn json(url: &str) -> Result<serde_json::Value, String> {
     agent().get(url).call().map_err(|e| e.to_string())?.into_json().map_err(|e| e.to_string())
 }
 
-fn jeux_installes() -> Vec<Jeu> {
+pub(crate) fn jeux_installes() -> Vec<Jeu> {
     let var = |v: &str| PathBuf::from(std::env::var(v).unwrap_or_default());
     let mut j = scan_steam(steam_racine().as_deref());
     j.extend(scan_epic(&var("ProgramData").join(r"Epic\EpicGamesLauncher\Data\Manifests")));
