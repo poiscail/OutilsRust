@@ -846,9 +846,18 @@ pub fn dans_plage(h: u32, debut: u32, fin: u32) -> bool {
     if debut <= fin { h >= debut && h < fin } else { h >= debut || h < fin }
 }
 
+/// Filtre forcé (Some) ou selon l'horaire (None) ; partagé avec les profils.
+pub static MANUEL: Mutex<Option<bool>> = Mutex::new(None);
+
+/// Utilisé par les profils : active ou coupe le filtre tout de suite.
+pub fn forcer_lumiere(oui: bool) {
+    *MANUEL.lock().unwrap() = Some(oui);
+    let r: ReglageLumiere = charger("lumiere_bleue");
+    appliquer_chaleur(if oui { r.chaleur } else { 0.0 });
+}
+
 pub struct Lumiere {
     r: Arc<Mutex<ReglageLumiere>>,
-    manuel: Arc<Mutex<Option<bool>>>,
     ecrans: Vec<(isize, u32, u32, u32)>,
     portable: Option<u32>,
     charge: bool,
@@ -857,14 +866,13 @@ pub struct Lumiere {
 impl Lumiere {
     pub fn new() -> Self {
         let r: Arc<Mutex<ReglageLumiere>> = Arc::new(Mutex::new(charger("lumiere_bleue")));
-        let manuel: Arc<Mutex<Option<bool>>> = Arc::default();
-        let (r2, m2) = (r.clone(), manuel.clone());
+        let r2 = r.clone();
         std::thread::spawn(move || {
             let mut applique: Option<f32> = None;
             loop {
                 let c = r2.lock().unwrap().clone();
                 let h = crate::minecraft::horodatage().get(11..13).and_then(|x| x.parse().ok()).unwrap_or(12);
-                let voulu = match *m2.lock().unwrap() {
+                let voulu = match *MANUEL.lock().unwrap() {
                     Some(true) => c.chaleur,
                     Some(false) => 0.0,
                     None if c.auto && dans_plage(h, c.debut, c.fin) => c.chaleur,
@@ -880,7 +888,7 @@ impl Lumiere {
                 std::thread::sleep(Duration::from_secs(20));
             }
         });
-        Lumiere { r, manuel, ecrans: vec![], portable: None, charge: false }
+        Lumiere { r, ecrans: vec![], portable: None, charge: false }
     }
 }
 
@@ -931,18 +939,18 @@ impl Outil for Lumiere {
             ui.label("Chaleur");
             ui.add(egui::Slider::new(&mut r.chaleur, 0.1..=1.0).show_value(false));
         });
-        let m = *self.manuel.lock().unwrap();
+        let m = *MANUEL.lock().unwrap();
         ui.horizontal(|ui| {
             if ui.selectable_label(m == Some(true), "Activer maintenant").clicked() {
-                *self.manuel.lock().unwrap() = Some(true);
+                *MANUEL.lock().unwrap() = Some(true);
                 appliquer_chaleur(r.chaleur);
             }
             if ui.selectable_label(m == Some(false), "Désactiver").clicked() {
-                *self.manuel.lock().unwrap() = Some(false);
+                *MANUEL.lock().unwrap() = Some(false);
                 appliquer_chaleur(0.0);
             }
             if ui.selectable_label(m.is_none(), "Selon l'horaire").clicked() {
-                *self.manuel.lock().unwrap() = None;
+                *MANUEL.lock().unwrap() = None;
             }
         });
         ui.horizontal(|ui| {

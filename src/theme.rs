@@ -66,6 +66,16 @@ fn prereglages() -> Vec<(&'static str, Reglages)> {
     ]
 }
 
+/// Thème demandé par un profil (nom d'un thème prêt ou d'un de « mes thèmes »).
+pub static DEMANDE: Mutex<Option<String>> = Mutex::new(None);
+
+/// Noms de tous les thèmes : prêts puis « mes thèmes ».
+pub fn noms_themes() -> Vec<String> {
+    let mut v: Vec<String> = prereglages().into_iter().map(|(n, _)| n.to_string()).collect();
+    v.extend(crate::outil::charger::<Vec<ThemePartage>>("mes_themes").into_iter().map(|t| t.nom));
+    v
+}
+
 /// Thème partageable : couleurs, effets et police (pas les options du programme).
 #[derive(Serialize, Deserialize, Clone, PartialEq, Default)]
 #[serde(default)]
@@ -433,7 +443,24 @@ impl Theme {
     }
 
     /// À appeler au début de chaque image, avant les panneaux : peint le fond dessous.
+    /// Réapplique couleurs et taille (après le mode grand écran).
+    pub fn reappliquer(&mut self) {
+        self.a_appliquer = true;
+    }
+
     pub fn peindre(&mut self, ctx: &egui::Context) {
+        let demande = DEMANDE.lock().unwrap_or_else(|e| e.into_inner()).take();
+        if let Some(n) = demande {
+            if let Some((_, p)) = prereglages().into_iter().find(|(x, _)| *x == n) {
+                let r = &mut self.r;
+                (r.sombre, r.accent, r.fond, r.panneau, r.texte, r.opacite, r.assombrir) = (p.sombre, p.accent, p.fond, p.panneau, p.texte, p.opacite, p.assombrir);
+            } else if let Some(t) = crate::outil::charger::<Vec<ThemePartage>>("mes_themes").into_iter().find(|t| t.nom == n) {
+                t.appliquer(&mut self.r);
+                self.a_police = true;
+            }
+            self.a_appliquer = true;
+            self.enregistrer();
+        }
         if self.a_police {
             self.appliquer_police(ctx);
             self.a_police = false;

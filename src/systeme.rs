@@ -274,6 +274,7 @@ pub fn fin() {
 pub struct Maj {
     pub dispo: Option<(String, String)>, // (version, lien de Outils.exe)
     pub etat: String,
+    pub notes: String, // texte de la release GitHub
 }
 pub type MajPartagee = Arc<Mutex<Maj>>;
 
@@ -297,6 +298,7 @@ pub fn verifier(m: MajPartagee) {
         match lien {
             Some(l) if plus_recente(&tag, env!("CARGO_PKG_VERSION")) => {
                 m.etat = format!("Nouvelle version {tag} disponible.");
+                m.notes = j["body"].as_str().unwrap_or_default().to_string();
                 m.dispo = Some((tag, l));
             }
             _ => m.etat = format!("À jour (v{}).", env!("CARGO_PKG_VERSION")),

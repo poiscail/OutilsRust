@@ -37,6 +37,7 @@ mod quotidien2;
 mod micro;
 mod creatif2;
 mod interface;
+mod interface2;
 mod jeux4;
 mod mcplus3;
 mod fichiers4;
@@ -155,6 +156,9 @@ struct App {
     notifs_ouvert: bool,
     visite: Option<usize>,
     mini: Option<egui::Vec2>, // mode mini : taille d'avant
+    nouveautes: bool,
+    tv: bool,
+    manette: u16,
 }
 
 impl App {
@@ -183,7 +187,7 @@ impl App {
             sante: santedisque::SanteDisque::new(), coffre_f: coffrefichiers::CoffreFichiers::new(), viseur: viseur::Viseur::new(), macros: macros::Macros::new(), tradinstant: tradinstant::TradInstant::new(),
             economiseur: economiseur::Economiseur::new(theme.dossier_fonds().to_path_buf()), theme, maj,
             maj_ignoree: false, disques: (None, vec![]), lance_au_demarrage: std::env::args().any(|a| a == "--demarrage"), onglet: 0, extras, favoris: outil::charger("onglets_favoris"), palette: None, plantages: coeur::nouveaux_plantages(), erreur_onglet: None, recherche: String::new(),
-            dock: interface::Dock::new(), notifs_ouvert: false, visite: interface::visite_a_faire().then_some(0), mini: None,
+            dock: interface::Dock::new(), notifs_ouvert: false, visite: interface::visite_a_faire().then_some(0), mini: None, nouveautes: interface2::nouvelle_version(), tv: false, manette: 0,
         }
     }
 
@@ -285,6 +289,39 @@ impl Drop for App {
 }
 
 impl eframe::App for App {
+    /// Mode grand écran : la manette devient clavier (croix = Tab, A = Entrée, B = Échap, stick droit = défilement).
+    fn raw_input_hook(&mut self, ctx: &egui::Context, raw: &mut egui::RawInput) {
+        use interface2::boutons::*;
+        let Some((b, defil)) = interface2::lire_manette() else { return };
+        let nouveaux = interface2::appuyes(self.manette, b);
+        self.manette = b;
+        let premier_plan = ctx.input(|i| i.viewport().focused.unwrap_or(false));
+        if nouveaux & START != 0 && premier_plan {
+            self.basculer_tv(ctx);
+        }
+        if !self.tv || !premier_plan {
+            return;
+        }
+        let touche = |k: egui::Key, maj: bool| egui::Event::Key { key: k, physical_key: None, pressed: true, repeat: false, modifiers: egui::Modifiers { shift: maj, ..Default::default() } };
+        for (bouton, k, maj) in [(BAS, egui::Key::Tab, false), (HAUT, egui::Key::Tab, true), (GAUCHE, egui::Key::ArrowLeft, false), (DROITE, egui::Key::ArrowRight, false), (A, egui::Key::Enter, false), (B, egui::Key::Escape, false)] {
+            if nouveaux & bouton != 0 {
+                raw.events.push(touche(k, maj));
+            }
+        }
+        if nouveaux & LB != 0 {
+            self.onglet_voisin(-1);
+        }
+        if nouveaux & RB != 0 {
+            self.onglet_voisin(1);
+        }
+        if nouveaux & BACK != 0 {
+            self.onglet = 0;
+        }
+        if defil != 0.0 {
+            raw.events.push(egui::Event::MouseWheel { unit: egui::MouseWheelUnit::Point, delta: egui::vec2(0.0, defil * 18.0), modifiers: Default::default() });
+        }
+    }
+
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
         if std::mem::take(&mut self.lance_au_demarrage) {
             if self.theme.r.zone {
@@ -330,6 +367,13 @@ impl eframe::App for App {
             egui::TopBottomPanel::top("maj").show(ctx, |ui| {
                 ui.horizontal(|ui| {
                     ui.label(format!("🔄 Nouvelle version {version} disponible."));
+                    let notes = self.maj.lock().unwrap().notes.clone();
+                    if !notes.trim().is_empty() {
+                        ui.menu_button("Nouveautés", |ui| {
+                            ui.set_max_width(420.0);
+                            egui::ScrollArea::vertical().max_height(320.0).show(ui, |ui| ui.label(notes));
+                        });
+                    }
                     if ui.button("Installer et relancer").clicked() {
                         systeme::installer(self.maj.clone());
                     }
@@ -346,6 +390,27 @@ impl eframe::App for App {
             if *f != self.favoris {
                 f.clone_from(&self.favoris);
             }
+        }
+        if interface2::NOMS.lock().unwrap().is_empty() {
+            *interface2::NOMS.lock().unwrap() = self.entrees().into_iter().skip(1).map(|e| e.1).collect();
+        }
+        let demande = interface2::OUVRIR.lock().unwrap().take();
+        if let Some(n) = demande {
+            if let Some(e) = self.entrees().into_iter().find(|e| e.1 == n) {
+                self.onglet = e.0;
+            }
+            if self.mini.is_some() {
+                self.sortir_mini(ctx);
+            }
+        }
+        if self.nouveautes {
+            interface2::fenetre_nouveautes(ctx, &mut self.nouveautes);
+        }
+        if self.tv {
+            if (ctx.zoom_factor() - 1.6).abs() > 0.01 {
+                ctx.set_zoom_factor(1.6);
+            }
+            ctx.request_repaint_after(Duration::from_millis(50));
         }
         let choix = self.dock.choix.lock().unwrap().take();
         if let Some(n) = choix {
@@ -370,6 +435,9 @@ impl eframe::App for App {
             ui.horizontal(|ui| {
                 ui.heading("Outils");
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui.small_button("📺").on_hover_text("Mode grand écran, pilotable à la manette (Start pour sortir)").clicked() {
+                        self.basculer_tv(ctx);
+                    }
                     if ui.small_button("🗗").on_hover_text("Mode mini (petite fenêtre toujours visible)").clicked() {
                         self.mini = Some(ctx.input(|i| i.viewport().inner_rect.map(|r| r.size())).unwrap_or(egui::vec2(1100.0, 720.0)));
                         ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(egui::vec2(340.0, 520.0)));
@@ -570,6 +638,22 @@ enum Commande {
 }
 
 impl App {
+    fn basculer_tv(&mut self, ctx: &egui::Context) {
+        self.tv = !self.tv;
+        ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(self.tv));
+        if !self.tv {
+            self.theme.reappliquer();
+        }
+    }
+
+    /// Outil précédent / suivant dans l'ordre du menu (bouton LB / RB).
+    fn onglet_voisin(&mut self, sens: i32) {
+        let v: Vec<usize> = self.entrees().into_iter().map(|e| e.0).collect();
+        if let Some(k) = v.iter().position(|x| *x == self.onglet) {
+            self.onglet = v[((k as i32 + sens).rem_euclid(v.len() as i32)) as usize];
+        }
+    }
+
     fn sortir_mini(&mut self, ctx: &egui::Context) {
         if let Some(t) = self.mini.take() {
             ctx.send_viewport_cmd(egui::ViewportCommand::WindowLevel(egui::WindowLevel::Normal));
