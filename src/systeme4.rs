@@ -1170,7 +1170,7 @@ fn privilege(nom: &str) -> bool {
 }
 
 /// Vide la liste de veille (cache des fichiers). Admin requis.
-fn vider_veille() -> Result<(), String> {
+pub(crate) fn vider_veille() -> Result<(), String> {
     if !privilege("SeProfileSingleProcessPrivilege") {
         return Err("privilège refusé (lance Outils en admin)".into());
     }

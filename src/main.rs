@@ -38,6 +38,7 @@ mod micro;
 mod creatif2;
 mod interface;
 mod interface2;
+mod jeux5;
 mod jeux4;
 mod mcplus3;
 mod fichiers4;

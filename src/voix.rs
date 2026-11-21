@@ -31,7 +31,7 @@ impl Default for Reglages {
     }
 }
 
-fn parler(texte: &str, voix: &str, vitesse: i32) -> Option<Child> {
+pub(crate) fn parler(texte: &str, voix: &str, vitesse: i32) -> Option<Child> {
     let script = format!(
         "Add-Type -AssemblyName System.Speech; $s = New-Object System.Speech.Synthesis.SpeechSynthesizer; $s.Rate = {vitesse}; {} $s.Speak([Console]::In.ReadToEnd())",
         if voix.is_empty() { String::new() } else { format!("$s.SelectVoice('{}');", voix.replace('\'', "''")) }

@@ -63,6 +63,8 @@ pub fn lignes_overlay(r: &ReglagesOverlay, m: &crate::moniteur::Instantane, heur
     if !r.note.trim().is_empty() {
         v.push((r.note.trim().to_string(), [255, 230, 150]));
     }
+    // minuteurs de cooldown, ping…
+    v.extend(crate::jeux5::OVERLAY.lock().unwrap_or_else(|e| e.into_inner()).iter().cloned());
     v
 }
 

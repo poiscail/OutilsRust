@@ -497,7 +497,7 @@ pub fn jeu_du_fichier(n: &str) -> Option<String> {
     Some(c[1].trim().trim_end_matches(" Screenshot").to_string())
 }
 
-fn captures() -> BTreeMap<String, Vec<PathBuf>> {
+pub(crate) fn captures() -> BTreeMap<String, Vec<PathBuf>> {
     let mut m: BTreeMap<String, Vec<PathBuf>> = BTreeMap::new();
     let images = |d: &Path| -> Vec<PathBuf> {
         std::fs::read_dir(d).into_iter().flatten().flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|x| ["jpg", "jpeg", "png", "webp"].contains(&x.to_string_lossy().to_lowercase().as_str()))).collect()
