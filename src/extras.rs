@@ -1,7 +1,7 @@
 //! Liste des outils ajoutés en lot (trait `Outil`), dans l'ordre du menu de chaque catégorie.
 use crate::minecraft::Pilote;
 use crate::outil::Outil;
-use crate::{bureau, coeur, jeux2, jeux3, creatif, dependances, mcplus, mcplus2, fichiers2, fichiers3, systeme3, quotidien2, micro, creatif2, interface, jeux4, mcplus3, fichiers4, systeme4, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
+use crate::{bureau, coeur, jeux2, jeux3, creatif, dependances, mcplus, mcplus2, fichiers2, fichiers3, systeme3, quotidien2, micro, creatif2, interface, jeux4, mcplus3, fichiers4, systeme4, reseau3, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
 
 pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>> {
     vec![
@@ -112,6 +112,11 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         Box::new(systeme3::RappelMaj::new()),
         Box::new(systeme3::DemarrageRetarde::new()),
         // réseau
+        Box::new(reseau3::Appareils::new()),
+        Box::new(reseau3::PointAcces::new()),
+        Box::new(reseau3::PingJeux::new()),
+        Box::new(reseau3::DataApplis::new()),
+        Box::new(reseau3::Fuite::new()),
         Box::new(reseau2::Telechargeur::new()),
         Box::new(reseau2::BloqueurUi::new()),
         Box::new(reseau2::DnsRapide::new()),

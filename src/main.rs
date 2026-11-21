@@ -41,6 +41,7 @@ mod jeux4;
 mod mcplus3;
 mod fichiers4;
 mod systeme4;
+mod reseau3;
 mod minijeux2;
 mod mixeur;
 mod moniteur;
