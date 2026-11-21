@@ -338,7 +338,7 @@ impl Fenetres {
                 ok &= RegisterHotKey(std::ptr::null_mut(), 100 + k as i32, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_NUMPAD0 as u32 + k) != 0;
             }
             ok &= RegisterHotKey(std::ptr::null_mut(), 110, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_DECIMAL as u32) != 0;
-            ok &= RegisterHotKey(std::ptr::null_mut(), 120, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, b'T' as u32) != 0;
+            ok &= RegisterHotKey(std::ptr::null_mut(), 120, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_ADD as u32) != 0;
             ok &= RegisterHotKey(std::ptr::null_mut(), 121, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_MULTIPLY as u32) != 0;
             p.store(!ok, Relaxed);
             let mut msg: MSG = std::mem::zeroed();
@@ -392,7 +392,7 @@ impl Outil for Fenetres {
             }
         });
         ui.label("  0 : tiers gauche · « . » : deux tiers droite · * : ranger toutes les fenêtres en grille");
-        ui.label(RichText::new("  Ctrl+Alt+T : garder la fenêtre toujours au-dessus (ou l'enlever)").strong());
+        ui.label(RichText::new("  Ctrl+Alt+« + » du pavé numérique : garder la fenêtre toujours au-dessus (ou l'enlever)").strong());
         ui.separator();
         ui.horizontal(|ui| {
             if ui.button("▦ Ranger toutes les fenêtres en grille").clicked() {

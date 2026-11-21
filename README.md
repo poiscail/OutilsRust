@@ -54,9 +54,18 @@ Plan, liste et graphe : [PLAN.md](PLAN.md).
 | Jeux ++ | overlay en jeu (FPS, CPU, GPU, Ctrl+Alt+H), statistiques de jeu, batterie de manette, compteur de clics et touches, test d'écran, mode stream (masque les onglets sensibles), scènes OBS automatiques, « ça tourne sur mon PC ? », mods du Workshop, nettoyage des jeux, remappage de touches par jeu |
 | Minecraft ++ | plusieurs serveurs, carte web BlueMap, liste blanche et bannis avec les têtes, statistiques des joueurs, messages de bienvenue, carte des régions (régénération), ouverture des ports en UPnP et test de NAT, sauvegarde du monde avant de changer de version |
 | Fichiers ++ | synchro clé USB au branchement, surveillance de dossiers, renommage d'épisodes de séries, recherche dans le contenu (texte, Word, Excel, PDF…), corbeille automatique, installateurs oubliés, vérification SHA-256, gestionnaire de téléchargements (pause / reprise) |
-| Système ++ | test de stabilité (stress CPU + température), fenêtres en grille (Ctrl+Alt+pavé numérique) et toujours au-dessus (Ctrl+Alt+T), points de restauration, antivirus Defender, couper internet à une appli, qui utilise la webcam / le micro, rappel de redémarrage Windows Update, démarrage retardé |
+| Système ++ | test de stabilité (stress CPU + température), fenêtres en grille (Ctrl+Alt+pavé numérique) et toujours au-dessus (Ctrl+Alt+« + » du pavé numérique), points de restauration, antivirus Defender, couper internet à une appli, qui utilise la webcam / le micro, rappel de redémarrage Windows Update, démarrage retardé |
 | Quotidien ++ | météo (aussi sur l'Accueil), agenda avec rappels, raccourcis de texte (« ;bjr » → texte complet partout), dictée vocale, eau et calories, presse-papiers PC ↔ téléphone |
 | Créatif ++ | micro avec anti-bruit IA et changeur de voix (via VB-CABLE, installé en un clic), captures stylées, générateur de fonds d'écran (un nouveau chaque jour en option) |
+| Outils lui-même + | 12 thèmes prêts, mes thèmes (garder, exporter, importer), dock flottant des favoris, mode mini toujours visible, centre de notifications (cloche), visite guidée, statistiques d'utilisation |
+| Jeux +++ | temps de chargement des jeux, comparateur de prix entre boutiques, actus et patchs de mes jeux Steam, galerie des captures de jeux, amis Steam en ligne, générateur de pseudos |
+| Minecraft +++ | règles du jeu et monde (heure, météo, spawn, difficulté, même serveur arrêté), sauvegarde du monde dans le cloud, redémarrage programmé avec annonces, page de statut web, coordonnées Nether, chat du serveur vers Discord, datapacks |
+| Fichiers +++ | ranger les photos par date et par lieu, compresser des images, envoyer des fichiers à un autre PC, lien de partage temporaire, comparer deux dossiers, texte d'une image (OCR de Windows) |
+| Système +++ | historique des périphériques, désinstalleur complet (avec les restes), alerte de surchauffe, éteindre quand… (téléchargement fini, PC inactif, programme fermé), luminosité et filtre de lumière bleue, polices, mémoire en veille, fiche du PC |
+| Réseau ++ | qui est sur mon Wi-Fi, point d'accès Wi-Fi avec QR code, ping des serveurs de jeux par région, consommation internet par appli, mot de passe fuité |
+| Quotidien +++ | calculatrice et convertisseur (unités, devises), actus RSS, comptes à rebours, emploi du temps et devoirs, radio en ligne |
+| Créatif +++ | lecteur de musique (playlists, infos et pochettes), zone de l'écran en GIF, miniatures YouTube, éditeur de sous-titres, boîte à sons dans le micro (Ctrl+Maj+F1…F9), pixel art, métronome et boîte à rythmes |
+| Fun ++ | échecs contre l'ordi, solitaire, mots mêlés, vitesse de frappe, dango clicker, jeux à deux sur le même PC, jeux en réseau local (4 en ligne, morpion) |
 
 ## Options (onglet Personnaliser)
 

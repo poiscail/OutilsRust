@@ -650,15 +650,17 @@ impl BoiteSons {
         let r: ReglageSons = charger("boite_sons");
         let tx = fil_sons(r.clone());
         let actif = r.raccourcis;
-        // Ctrl+Alt+1…9 (rangée du haut) : jouer le son n, Ctrl+Alt+0 : tout arrêter
+        // Ctrl+Maj+F1…F9 : jouer le son n, Ctrl+Maj+F12 : tout arrêter
+        // (pas Ctrl+Alt+chiffre : sur un clavier AZERTY c'est AltGr, qui sert à taper @ # { [ | \)
         let t2 = tx.clone();
         if actif {
             std::thread::spawn(move || unsafe {
                 use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
                 use windows_sys::Win32::UI::WindowsAndMessaging::*;
-                for k in 0..10u32 {
-                    RegisterHotKey(std::ptr::null_mut(), 300 + k as i32, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, b'0' as u32 + k);
+                for k in 1..10u32 {
+                    RegisterHotKey(std::ptr::null_mut(), 300 + k as i32, MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, VK_F1 as u32 + k - 1);
                 }
+                RegisterHotKey(std::ptr::null_mut(), 300, MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, VK_F12 as u32);
                 let mut m: MSG = std::mem::zeroed();
                 while GetMessageW(&mut m, std::ptr::null_mut(), 0, 0) > 0 {
                     if m.message == WM_HOTKEY {
@@ -681,7 +683,7 @@ impl Outil for BoiteSons {
     }
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.heading("Boîte à sons");
-        ui.weak("Des sons à envoyer dans le micro (Discord, jeu) d'un clic ou avec Ctrl+Alt+1…9 de n'importe où. Ctrl+Alt+0 arrête tout.");
+        ui.weak("Des sons à envoyer dans le micro (Discord, jeu) d'un clic ou avec Ctrl+Maj+F1…F9 de n'importe où. Ctrl+Maj+F12 arrête tout.");
         if !self.cable {
             use rodio::cpal::traits::{DeviceTrait, HostTrait};
             self.cable = rodio::cpal::default_host().output_devices().ok().is_some_and(|mut d| d.any(|x| x.name().is_ok_and(|n| n.to_lowercase().contains("cable input"))));
@@ -693,7 +695,7 @@ impl Outil for BoiteSons {
         ui.horizontal(|ui| {
             ui.checkbox(&mut self.r.dans_micro, "Dans le micro (CABLE)");
             ui.checkbox(&mut self.r.ecouter, "Dans mon casque");
-            ui.checkbox(&mut self.r.raccourcis, "Raccourcis Ctrl+Alt+1…9 (au prochain lancement)");
+            ui.checkbox(&mut self.r.raccourcis, "Raccourcis Ctrl+Maj+F1…F9 (au prochain lancement)");
         });
         let mut retirer = None;
         ui.horizontal_wrapped(|ui| {
@@ -706,7 +708,7 @@ impl Outil for BoiteSons {
                         }
                         ui.horizontal(|ui| {
                             if k < 9 {
-                                ui.weak(format!("Ctrl+Alt+{}", k + 1));
+                                ui.weak(format!("Ctrl+Maj+F{}", k + 1));
                             }
                             ui.add(egui::Slider::new(&mut s.volume, 0.0..=1.5).show_value(false));
                             if ui.small_button("🗑").clicked() {
