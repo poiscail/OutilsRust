@@ -322,7 +322,12 @@ impl Outil for Sorties {
             ui.weak("Vérification automatique toutes les 6 h, notification pour chaque nouveauté.");
         });
         ui.separator();
-        ui.strong("🎁 Gratuits en ce moment (Epic, Steam, GOG)");
+        ui.horizontal(|ui| {
+            ui.strong("🎁 Gratuits en ce moment (Epic, Steam, GOG)");
+            if x.gratuits.len() > 1 && ui.button("🎁 Tout récupérer").on_hover_text("Ouvre chaque jeu dans son lanceur, l'un après l'autre").clicked() {
+                crate::recuperer::recuperer_tous(x.gratuits.iter().map(|g| g.url.clone()).collect());
+            }
+        });
         if x.gratuits.is_empty() {
             ui.weak("Rien pour l'instant (ou pas encore vérifié).");
         }
@@ -330,6 +335,9 @@ impl Outil for Sorties {
             ui.horizontal_wrapped(|ui| {
                 if ui.link(RichText::new(&g.titre).strong()).clicked() {
                     let _ = std::process::Command::new("explorer").arg(&g.url).spawn();
+                }
+                if ui.button("🎁 Récupérer").on_hover_text("Ouvre le jeu dans Steam ou Epic Games : clique « Obtenir »").clicked() {
+                    crate::recuperer::recuperer(&g.url);
                 }
                 ui.weak(&g.plateformes);
                 if !g.valeur.is_empty() && g.valeur != "N/A" {

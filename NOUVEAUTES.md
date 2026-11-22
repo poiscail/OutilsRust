@@ -1,5 +1,8 @@
 # Nouveautés d'Outils
 
+## 0.13.0
+- 🎁 Jeux gratuits : bouton « Récupérer » qui ouvre le jeu directement dans Steam ou Epic Games (il ne reste qu'à cliquer « Obtenir »), et « Tout récupérer » pour les prendre tous d'un coup
+
 ## 0.12.0
 - 🎮 Le téléphone devient manette, pavé tactile et clavier du PC, et montre l'écran du PC (appli Android 0.4)
 - 📷 La caméra et le micro du téléphone pour le PC (le son arrive dans le câble virtuel)

@@ -793,9 +793,14 @@ impl Outil for Expirent {
     }
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.heading("Jeux gratuits qui expirent");
-        ui.weak("Les jeux offerts (Epic, Steam, GOG, Prime Gaming, Itch…) triés par date de fin. Coche ceux que tu as récupérés : Outils te prévient 24 h avant la fin des autres.");
+        ui.weak("Les jeux offerts (Epic, Steam, GOG, Prime Gaming, Itch…) triés par date de fin. « 🎁 Récupérer » ouvre le jeu directement dans Steam ou Epic : il ne reste qu'à cliquer « Obtenir ». Outils te prévient 24 h avant la fin des autres.");
         let mut d = self.d.lock().unwrap();
         let avant = d.recuperes.clone();
+        let a_prendre: Vec<(u64, String)> = d.offres.iter().filter(|o| o.fin > maintenant() && !d.recuperes.contains(&o.id)).map(|o| (o.id, o.url.clone())).collect();
+        if !a_prendre.is_empty() && ui.button(RichText::new(format!("🎁 Tout récupérer ({})", a_prendre.len())).size(17.0).strong()).on_hover_text("Ouvre chaque jeu dans son lanceur, l'un après l'autre (6 s d'écart)").clicked() {
+            crate::recuperer::recuperer_tous(a_prendre.iter().map(|x| x.1.clone()).collect());
+            d.recuperes.extend(a_prendre.iter().map(|x| x.0));
+        }
         ui.horizontal(|ui| {
             ui.checkbox(&mut self.tout, "Afficher aussi ceux sans date de fin");
             if d.offres.is_empty() {
@@ -823,9 +828,15 @@ impl Outil for Expirent {
                     }
                     ui.vertical(|ui| {
                         let titre = RichText::new(&o.titre).strong();
-                        if ui.link(if r { titre.strikethrough() } else { titre }).clicked() {
-                            let _ = std::process::Command::new("explorer").arg(&o.url).spawn();
-                        }
+                        ui.horizontal(|ui| {
+                            if ui.link(if r { titre.strikethrough() } else { titre }).clicked() {
+                                let _ = std::process::Command::new("explorer").arg(&o.url).spawn();
+                            }
+                            if !r && ui.button("🎁 Récupérer").on_hover_text("Ouvre le jeu dans Steam ou Epic Games : clique « Obtenir »").clicked() {
+                                crate::recuperer::recuperer(&o.url);
+                                d.recuperes.push(o.id);
+                            }
+                        });
                         ui.horizontal(|ui| {
                             if o.fin > 0 {
                                 let reste = o.fin - t;
