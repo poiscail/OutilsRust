@@ -1136,6 +1136,7 @@ pub struct Batterie {
     pub temperature: f32,
     pub tension: f32,
     pub courant_ma: i32,
+    pub charge_mah: i32,
     pub technologie: String,
 }
 
@@ -1160,6 +1161,7 @@ pub fn batterie() -> Option<Batterie> {
             let technologie = jni_::chaine(env, &t)?;
             let bm = jni_::service(env, act, "batterymanager")?;
             let courant = env.call_method(&bm, "getIntProperty", "(I)I", &[JValue::Int(2)])?.i()?;
+            let compteur = env.call_method(&bm, "getIntProperty", "(I)I", &[JValue::Int(1)])?.i()?;
             Ok(Batterie {
                 niveau: if echelle > 0 { niveau * 100 / echelle } else { niveau },
                 en_charge: statut == 2 || statut == 5,
@@ -1182,12 +1184,13 @@ pub fn batterie() -> Option<Batterie> {
                 tension: tension as f32 / 1000.0,
                 // certains téléphones donnent des µA, d'autres des mA
                 courant_ma: if courant.abs() > 20_000 { courant / 1000 } else { courant },
+                charge_mah: if compteur > 0 { compteur / 1000 } else { 0 },
                 technologie,
             })
         });
     }
     #[allow(unreachable_code)]
-    Some(Batterie { niveau: 76, en_charge: true, pleine: false, branchement: "secteur", sante: "bonne", temperature: 31.5, tension: 4.12, courant_ma: 1450, technologie: "Li-ion".into() })
+    Some(Batterie { niveau: 76, en_charge: true, pleine: false, branchement: "secteur", sante: "bonne", temperature: 31.5, tension: 4.12, courant_ma: 1450, charge_mah: 3100, technologie: "Li-ion".into() })
 }
 
 /// Temps passé sur chaque appli (premier plan) entre deux dates : (nom, minutes), trié.

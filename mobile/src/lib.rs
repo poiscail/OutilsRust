@@ -30,6 +30,8 @@ mod quotidien3;
 
 mod android;
 mod appli;
+mod batterie_tel;
+mod photos_tel;
 mod capteurs_tel;
 mod commun;
 mod creatif;
@@ -100,6 +102,10 @@ pub fn catalogue() -> Vec<Fiche> {
         f(Box::new(reseau_tel::Mobile::new()), "PC et réseau", Aucun, "Signal 4G/5G, données par appli et forfait, Wi-Fi ou 4G, économies de données, coupures."),
         // Téléphone
         f(Box::new(fichiers_tel::FichiersTel::new()), "Téléphone", Aucun, "Espace, doublons, rangement, renommage, fichiers et applis louches. Rien n'est effacé sans passer par la corbeille d'Outils."),
+        f(Box::new(batterie_tel::BatterieOutil::new()), "Téléphone", Aucun, "État de la batterie, autonomie, alerte de charge à 80 % et de surchauffe."),
+        f(Box::new(photos_tel::Nettoyeur::new()), "Téléphone", Aucun, "Photos floues, rafales et vieilles captures d'écran, à trier en un geste."),
+        f(Box::new(photos_tel::Coffre::new()), "Téléphone", Aucun, "Photos cachées et chiffrées, protégées par un code."),
+        f(Box::new(photos_tel::Compresseur::new()), "Téléphone", Aucun, "Réduire une vidéo pour WhatsApp ou Discord."),
         f(Box::new(capteurs_tel::Lampe::new()), "Téléphone", Aucun, "Lampe, stroboscope et SOS."),
         f(Box::new(capteurs_tel::ScannerQr::new()), "Téléphone", Aucun, "Lit les QR codes ; celui d'Outils sur PC associe le téléphone."),
         f(Box::new(capteurs_tel::Boussole::new()), "Téléphone", Aucun, "Boussole et niveau à bulle."),
