@@ -22,7 +22,18 @@ Adaptations au tactile :
 
 ## Compiler l'APK
 
-Il faut le SDK Android (platforms;android-34, build-tools;34.0.0), le NDK (r28) et `cargo-apk` :
+L'APK est assemblé par `construire.sh` (bibliothèque Rust, service Java de veille, fournisseur de
+fichiers pour les mises à jour, icône, manifeste `android/AndroidManifest.xml`) :
+
+```bash
+ANDROID_HOME=… ANDROID_NDK_ROOT=… CLE=outils.jks MOT_DE_PASSE=… ./construire.sh   # → target/apk/Outils.apk
+```
+
+Pour que l'appli trouve ses mises à jour, publie l'APK sur GitHub sous le nom `Outils-<version>.apk`.
+`patches/egui-winit` : egui-winit avec la touche Retour d'Android transformée en Échap (une ligne).
+
+Ancienne méthode, avec `cargo-apk` (sans service ni icône) : SDK Android (platforms;android-34,
+build-tools;34.0.0), NDK (r28) et `cargo-apk` :
 
 ```bash
 rustup target add aarch64-linux-android

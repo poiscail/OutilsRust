@@ -1,5 +1,15 @@
 # Nouveautés d'Outils
 
+## 0.12.0
+- 🎮 Le téléphone devient manette, pavé tactile et clavier du PC, et montre l'écran du PC (appli Android 0.4)
+- 📷 La caméra et le micro du téléphone pour le PC (le son arrive dans le câble virtuel)
+- 🌍 Traduire un texte avec l'appareil photo du téléphone (lecture par le PC)
+- 🔔 Faire sonner le téléphone et lui envoyer des fichiers depuis Outils › Téléphone
+- 🌍 Accès depuis l'extérieur : piloter le PC et recevoir ses notifications hors de la maison (relais chiffré)
+- 🎚 Profils de performance par jeu : priorité, alimentation et volume réglés tout seuls
+- 📉 FPS avant / après une mise à jour du pilote ou de Windows
+- 🧹 Nettoyage des jeux plus complet : caches Intel et NVIDIA, journaux et plantages des jeux Unreal, Minecraft, Riot, Steam
+
 ## 0.11.0
 - 📱 Appli Outils pour Android : associe ton téléphone (Téléphone › Démarrer › « Associer un téléphone ») et pilote le PC depuis le canapé
 - Le téléphone voit l'état du PC (CPU, GPU, FPS), lance tes jeux, cherche et récupère n'importe quel fichier du PC, envoie ses photos, partage le presse-papiers et gère le serveur Minecraft

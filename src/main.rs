@@ -45,6 +45,7 @@ mod creatif4;
 mod minijeux4;
 mod recherche;
 mod pont;
+mod jeux6;
 mod jeux4;
 mod mcplus3;
 mod fichiers4;

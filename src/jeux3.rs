@@ -640,7 +640,24 @@ fn caches_jeux() -> Vec<Cache> {
         ("Cache de shaders AMD (DXC)".into(), local.join(r"AMD\DxcCache")),
         ("Rapports de plantage des jeux".into(), local.join("CrashDumps")),
         ("Cache web d'Epic Games".into(), local.join(r"EpicGamesLauncher\Saved\webcache_4430")),
+        ("Cache web d'Epic Games (ancien)".into(), local.join(r"EpicGamesLauncher\Saved\webcache")),
+        ("Cache de shaders Intel".into(), local.join(r"Intel\ShaderCache")),
+        ("Cache de shaders NVIDIA (système)".into(), PathBuf::from(std::env::var("ProgramData").unwrap_or_default()).join(r"NVIDIA Corporation\NV_Cache")),
+        ("Cache web de Steam".into(), local.join(r"Steam\htmlcache")),
+        ("Journaux du client Riot".into(), local.join(r"Riot Games\Riot Client\Logs")),
+        ("Journaux de Minecraft".into(), PathBuf::from(std::env::var("APPDATA").unwrap_or_default()).join(r".minecraft\logs")),
+        ("Rapports de plantage de Minecraft".into(), PathBuf::from(std::env::var("APPDATA").unwrap_or_default()).join(r".minecraft\crash-reports")),
     ];
+    // jeux Unreal Engine (Fortnite, Valorant, Rocket League…) : plantages et journaux dans %LOCALAPPDATA%\<jeu>\Saved
+    for e in std::fs::read_dir(&local).into_iter().flatten().flatten() {
+        let n = e.file_name().to_string_lossy().into_owned();
+        for (sous, quoi) in [("Saved\\Crashes", "Plantages"), ("Saved\\Logs", "Journaux")] {
+            let p = e.path().join(sous);
+            if p.is_dir() {
+                v.push((format!("{quoi} · {n}"), p));
+            }
+        }
+    }
     for b in bibliotheques_steam() {
         for e in std::fs::read_dir(b.join("steamapps/shadercache")).into_iter().flatten().flatten() {
             let id = e.file_name().to_string_lossy().into_owned();

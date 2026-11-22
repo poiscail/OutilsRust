@@ -74,6 +74,7 @@ Plan, liste et graphe : [PLAN.md](PLAN.md).
 | Fun +++ | jeux de cartes (huit américain, bataille), bataille navale (ordi ou réseau), snake à deux (même clavier ou réseau), dames 10×10, sudoku du jour, quiz drapeaux et capitales, course de frappe en réseau |
 | Recherche de fichiers | tout le PC en quelques millisecondes (Ctrl+Alt+F) : index des noms en mémoire, lecture de la table NTFS + journal USN en administrateur, sinon parcours parallèle + surveillance des dossiers ; filtres ext:, type:, taille:, date:, dossier:, !, jokers, recherche floue |
 | Appli Android | `mobile/` : jeux et outils du quotidien partagés avec le PC, plus Mon PC (télécommande, état, jeux, fichiers du PC, envoi de photos, presse-papiers, Minecraft, notifications, synchro agenda/devoirs), Wi-Fi (signal, appareils, débit, ping), fichiers du téléphone (espace, doublons, rangement, renommage, fichiers et applis louches, corbeille), lampe, boussole, sonomètre, podomètre, scanner QR, labyrinthe, face à face, badges |
+| PC ↔ téléphone ++ | manette, pavé tactile et clavier, écran du PC, webcam et micro, traduction par l'appareil photo, sonnerie et fichiers vers le téléphone, accès à distance chiffré (ntfy.sh) ; profils de performance par jeu, FPS avant / après mise à jour |
 
 ## Options (onglet Personnaliser)
 
