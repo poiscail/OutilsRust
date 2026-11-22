@@ -32,6 +32,7 @@ mod android;
 mod appli;
 mod batterie_tel;
 mod photos_tel;
+mod partage_tel;
 mod son;
 mod capteurs_tel;
 mod commun;
@@ -113,6 +114,7 @@ pub fn catalogue() -> Vec<Fiche> {
         f(Box::new(photos_tel::Nettoyeur::new()), "Téléphone", Aucun, "Photos floues, rafales et vieilles captures d'écran, à trier en un geste."),
         f(Box::new(photos_tel::Coffre::new()), "Téléphone", Aucun, "Photos cachées et chiffrées, protégées par un code."),
         f(Box::new(photos_tel::Compresseur::new()), "Téléphone", Aucun, "Réduire une vidéo pour WhatsApp ou Discord."),
+        f(Box::new(partage_tel::PartageRecu::new()), "Téléphone", Aucun, "Ce que tu partages vers Outils depuis une autre appli : envoyer au PC, coffre, compresser, ranger."),
         f(Box::new(capteurs_tel::Lampe::new()), "Téléphone", Aucun, "Lampe, stroboscope et SOS."),
         f(Box::new(capteurs_tel::ScannerQr::new()), "Téléphone", Aucun, "Lit les QR codes ; celui d'Outils sur PC associe le téléphone."),
         f(Box::new(capteurs_tel::Boussole::new()), "Téléphone", Aucun, "Boussole et niveau à bulle."),
@@ -198,6 +200,8 @@ impl Injection {
 pub struct App {
     fiches: Vec<Fiche>,
     ouvert: Option<usize>,
+    partage_vu: usize,
+    partage_verifie: Instant,
     reglages: Reglages,
     recherche: String,
     clavier: bool,
@@ -237,7 +241,7 @@ impl App {
                 let _ = appli::verifier();
             });
         }
-        let a = App { fiches: catalogue(), ouvert, reglages, recherche: String::new(), clavier: false, majuscules: false, injection: Injection::default(), toast: None, joueur2: false, parametres: false, e: Default::default(), theme_verifie: Instant::now(), sombre: true };
+        let a = App { fiches: catalogue(), ouvert, partage_vu: 0, partage_verifie: Instant::now(), reglages, recherche: String::new(), clavier: false, majuscules: false, injection: Injection::default(), toast: None, joueur2: false, parametres: false, e: Default::default(), theme_verifie: Instant::now(), sombre: true };
         a.style(&cc.egui_ctx);
         a
     }
@@ -632,6 +636,22 @@ impl eframe::App for App {
         }
         for f in self.fiches.iter_mut() {
             f.outil.tic(ctx);
+        }
+        // un outil passe la main à un autre, ou quelque chose vient d'être partagé vers Outils
+        let mut a_ouvrir = outil::OUVRIR.lock().ok().and_then(|mut o| o.take());
+        if self.partage_verifie.elapsed() > Duration::from_millis(1500) {
+            self.partage_verifie = Instant::now();
+            let n = partage_tel::en_attente();
+            if n > 0 && n != self.partage_vu {
+                a_ouvrir = Some("📥 Reçu par partage".into());
+            }
+            self.partage_vu = n;
+        }
+        if let Some(nom) = a_ouvrir {
+            if let Some(k) = self.fiches.iter().position(|f| f.outil.nom() == nom) {
+                self.parametres = false;
+                self.ouvrir(k);
+            }
         }
         if let Some((t, m)) = systeme::NOTIFICATIONS.lock().ok().and_then(|mut n| n.pop()) {
             self.toast = Some((format!("{t} — {m}"), Instant::now()));

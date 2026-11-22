@@ -595,7 +595,7 @@ pub(crate) mod win {
     /// Fil des raccourcis : Ctrl+Alt+lettre. `action(id)` est appelé dans ce fil.
     pub fn fil_raccourcis(actif: Arc<AtomicBool>, id_fil: Arc<AtomicU32>, pris: Arc<Mutex<Vec<&'static str>>>, mut action: impl FnMut(i32) + Send + 'static) {
         use windows_sys::Win32::System::Threading::GetCurrentThreadId;
-        use windows_sys::Win32::UI::Input::KeyboardAndMouse::{RegisterHotKey, UnregisterHotKey, MOD_ALT, MOD_CONTROL, MOD_NOREPEAT};
+        use windows_sys::Win32::UI::Input::KeyboardAndMouse::{UnregisterHotKey, MOD_ALT, MOD_CONTROL, MOD_NOREPEAT};
         std::thread::spawn(move || unsafe {
             id_fil.store(GetCurrentThreadId(), Relaxed);
             let mut msg: MSG = std::mem::zeroed();
@@ -605,7 +605,7 @@ pub(crate) mod win {
                 p.clear();
                 for (id, vk, nom) in RACCOURCIS {
                     UnregisterHotKey(null_mut(), id);
-                    if actif.load(Relaxed) && RegisterHotKey(null_mut(), id, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, vk as u32) == 0 {
+                    if actif.load(Relaxed) && crate::outil::raccourci(null_mut(), id, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, vk as u32) == 0 {
                         p.push(nom);
                     }
                 }

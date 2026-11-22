@@ -1449,6 +1449,9 @@ pub fn demarrer(forcer: bool) {
                     let mut dernier = Instant::now();
                     loop {
                         std::thread::sleep(Duration::from_millis(800));
+                        if crate::outil::DISCRET.load(Relaxed) {
+                            continue; // un jeu tourne : les changements attendent la fin de la partie
+                        }
                         if !m2.en_cours.load(Relaxed) {
                             if complet.swap(false, Relaxed) {
                                 sales.lock().unwrap().clear();
@@ -1482,7 +1485,7 @@ pub fn raccourci() {
     std::thread::spawn(|| unsafe {
         use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
         use windows_sys::Win32::UI::WindowsAndMessaging::*;
-        if RegisterHotKey(std::ptr::null_mut(), 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, b'F' as u32) == 0 {
+        if crate::outil::raccourci(std::ptr::null_mut(), 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, b'F' as u32) == 0 {
             return;
         }
         let mut msg: MSG = std::mem::zeroed();

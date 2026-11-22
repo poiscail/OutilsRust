@@ -27,6 +27,9 @@ pub trait Outil {
     }
 }
 
+/// Outil à ouvrir (par son nom) : un outil peut passer la main à un autre.
+pub static OUVRIR: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+
 /// Dossier privé de l'appli (donné par Android au démarrage).
 pub static DOSSIER: OnceLock<PathBuf> = OnceLock::new();
 

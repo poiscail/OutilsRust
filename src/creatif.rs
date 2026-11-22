@@ -114,11 +114,13 @@ pub struct Reglages {
     pub luminosite: i32,
     pub contraste: f32,
     pub saturation: f32,
+    /// Netteté (0 = rien) : rattrape une photo un peu floue.
+    pub nettete: f32,
 }
 
 impl Default for Reglages {
     fn default() -> Self {
-        Reglages { luminosite: 0, contraste: 0.0, saturation: 1.0 }
+        Reglages { luminosite: 0, contraste: 0.0, saturation: 1.0, nettete: 0.0 }
     }
 }
 
@@ -129,6 +131,9 @@ pub fn appliquer_reglages(img: &RgbaImage, r: Reglages) -> RgbaImage {
     }
     if r.contraste != 0.0 {
         d = d.adjust_contrast(r.contraste);
+    }
+    if r.nettete > 0.05 {
+        d = d.unsharpen(0.6 + r.nettete, 1);
     }
     let mut o = d.to_rgba8();
     if (r.saturation - 1.0).abs() > 0.01 {
@@ -240,6 +245,7 @@ impl Outil for Editeur {
         ui.horizontal_wrapped(|ui| {
             ui.add(egui::Slider::new(&mut self.r.luminosite, -100..=100).text("luminosité"));
             ui.add(egui::Slider::new(&mut self.r.contraste, -60.0..=60.0).text("contraste"));
+            ui.add(egui::Slider::new(&mut self.r.nettete, 0.0..=3.0).text("netteté (photo floue)"));
             ui.add(egui::Slider::new(&mut self.r.saturation, 0.0..=2.0).text("couleurs"));
             if ui.small_button("Réinitialiser").clicked() {
                 self.r = Reglages::default();

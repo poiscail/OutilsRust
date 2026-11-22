@@ -99,3 +99,26 @@ pub fn a_recharger(nom: &str) -> bool {
     v.retain(|x| x != nom);
     v.len() != avant
 }
+
+/// Mode sourdine : un jeu tourne et Outils n'est pas au premier plan → les tâches de fond lourdes attendent.
+pub static DISCRET: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Raccourcis clavier qu'une autre appli a déjà pris (modificateurs, touche).
+pub static RACCOURCIS_PRIS: std::sync::Mutex<Vec<(u32, u32)>> = std::sync::Mutex::new(Vec::new());
+
+/// RegisterHotKey qui note les raccourcis refusés (pour « Santé d'Outils »).
+///
+/// # Safety
+/// Mêmes conditions que RegisterHotKey.
+#[cfg(windows)]
+pub unsafe fn raccourci(h: windows_sys::Win32::Foundation::HWND, id: i32, mods: u32, vk: u32) -> i32 {
+    let ok = windows_sys::Win32::UI::Input::KeyboardAndMouse::RegisterHotKey(h, id, mods, vk);
+    let cle = (mods & 0x0F, vk);
+    if let Ok(mut v) = RACCOURCIS_PRIS.lock() {
+        v.retain(|x| *x != cle);
+        if ok == 0 && windows_sys::Win32::Foundation::GetLastError() == 1409 {
+            v.push(cle); // ERROR_HOTKEY_ALREADY_REGISTERED
+        }
+    }
+    ok
+}

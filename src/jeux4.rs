@@ -103,7 +103,7 @@ impl Chargements {
         std::thread::spawn(move || unsafe {
             use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
             use windows_sys::Win32::UI::WindowsAndMessaging::*;
-            if RegisterHotKey(std::ptr::null_mut(), 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, b'J' as u32) == 0 {
+            if crate::outil::raccourci(std::ptr::null_mut(), 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, b'J' as u32) == 0 {
                 return;
             }
             let mut msg: MSG = std::mem::zeroed();

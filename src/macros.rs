@@ -273,7 +273,7 @@ mod win {
                     UnregisterHotKey(null_mut(), f as i32);
                 }
                 for f in touches.lock().unwrap().iter().filter(|f| (1..=11).contains(*f)) {
-                    RegisterHotKey(null_mut(), *f as i32, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_F1 as u32 + *f as u32 - 1);
+                    crate::outil::raccourci(null_mut(), *f as i32, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_F1 as u32 + *f as u32 - 1);
                 }
             };
             regler();

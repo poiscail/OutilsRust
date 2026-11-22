@@ -335,11 +335,11 @@ impl Fenetres {
             use windows_sys::Win32::UI::WindowsAndMessaging::*;
             let mut ok = true;
             for k in 0..=9u32 {
-                ok &= RegisterHotKey(std::ptr::null_mut(), 100 + k as i32, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_NUMPAD0 as u32 + k) != 0;
+                ok &= crate::outil::raccourci(std::ptr::null_mut(), 100 + k as i32, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_NUMPAD0 as u32 + k) != 0;
             }
-            ok &= RegisterHotKey(std::ptr::null_mut(), 110, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_DECIMAL as u32) != 0;
-            ok &= RegisterHotKey(std::ptr::null_mut(), 120, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_ADD as u32) != 0;
-            ok &= RegisterHotKey(std::ptr::null_mut(), 121, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_MULTIPLY as u32) != 0;
+            ok &= crate::outil::raccourci(std::ptr::null_mut(), 110, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_DECIMAL as u32) != 0;
+            ok &= crate::outil::raccourci(std::ptr::null_mut(), 120, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_ADD as u32) != 0;
+            ok &= crate::outil::raccourci(std::ptr::null_mut(), 121, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_MULTIPLY as u32) != 0;
             p.store(!ok, Relaxed);
             let mut msg: MSG = std::mem::zeroed();
             while GetMessageW(&mut msg, std::ptr::null_mut(), 0, 0) > 0 {

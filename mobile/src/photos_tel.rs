@@ -314,6 +314,11 @@ pub fn ouvrir(cle: &[u8; 32], b: &[u8]) -> Option<Vec<u8>> {
     Aes256Gcm::new_from_slice(cle).ok()?.decrypt(Nonce::from_slice(&b[..12]), &b[12..]).ok()
 }
 
+/// Fichiers à ranger dans le coffre dès qu'il est ouvert (envoyés par « Reçu par partage »).
+pub static A_RANGER: Mutex<Vec<PathBuf>> = Mutex::new(Vec::new());
+/// Vidéos à présélectionner dans le compresseur.
+pub static A_COMPRESSER: Mutex<Vec<PathBuf>> = Mutex::new(Vec::new());
+
 pub struct Coffre {
     cle: Option<[u8; 32]>,
     elements: Vec<Element>,
@@ -400,6 +405,15 @@ impl Outil for Coffre {
         self.dernier = Instant::now();
         if !acces_fichiers_ui(ui) {
             return;
+        }
+        let attente = A_RANGER.lock().map(|v| v.len()).unwrap_or(0);
+        if attente > 0 {
+            if self.cle.is_some() {
+                let l = std::mem::take(&mut *A_RANGER.lock().unwrap());
+                self.ranger(l);
+            } else {
+                ui.label(RichText::new(format!("📥 {attente} fichier(s) partagé(s) attendent : ouvre le coffre pour les y mettre.")).strong());
+            }
         }
         if self.cle.is_none() {
             let entete = Coffre::entete();
@@ -806,6 +820,11 @@ impl Outil for Compresseur {
             ui.selectable_value(&mut self.cible, Cible::Bonne, "Bonne qualité");
         });
         ui.weak("Choisis une vidéo. La nouvelle version est enregistrée à côté de l'originale (« … compressée.mp4 »). Fonction expérimentale : dis-moi si ta vidéo ne passe pas.");
+        let a_faire = std::mem::take(&mut *A_COMPRESSER.lock().unwrap());
+        if let Some(p) = a_faire.first().and_then(|p| p.parent()) {
+            self.nav.dossier = p.to_path_buf();
+            self.nav.choisis = a_faire.clone();
+        }
         self.nav.ui(ui);
         let videos: Vec<PathBuf> = self.nav.choisis.iter().filter(|p| famille(&p.to_string_lossy()) == "Vidéos").cloned().collect();
         if !videos.is_empty() && gros_bouton(ui, &format!("🎞 Compresser {} vidéo(s)", videos.len())) {

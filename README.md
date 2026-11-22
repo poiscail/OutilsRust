@@ -75,6 +75,9 @@ Plan, liste et graphe : [PLAN.md](PLAN.md).
 | Recherche de fichiers | tout le PC en quelques millisecondes (Ctrl+Alt+F) : index des noms en mémoire, lecture de la table NTFS + journal USN en administrateur, sinon parcours parallèle + surveillance des dossiers ; filtres ext:, type:, taille:, date:, dossier:, !, jokers, recherche floue |
 | Appli Android | `mobile/` : jeux et outils du quotidien partagés avec le PC, plus Mon PC (télécommande, état, jeux, fichiers du PC, envoi de photos, presse-papiers, Minecraft, notifications, synchro agenda/devoirs), Wi-Fi (signal, appareils, débit, ping), fichiers du téléphone (espace, doublons, rangement, renommage, fichiers et applis louches, corbeille), lampe, boussole, sonomètre, podomètre, scanner QR, labyrinthe, face à face, badges |
 | PC ↔ téléphone ++ | manette, pavé tactile et clavier, écran du PC, webcam et micro, traduction par l'appareil photo, sonnerie et fichiers vers le téléphone, accès à distance chiffré (ntfy.sh) ; profils de performance par jeu, FPS avant / après mise à jour |
+| Outils 0.14 | chargement à la demande, mode sourdine en jeu, ressources et santé d'Outils, accueil personnalisable, recherche par intention, sous-catégories, aide « ? », menus en anglais |
+| Jeux, PC, réseau 0.14 | problèmes en jeu (cause probable), lanceur GOG / Riot / Ubisoft / EA / Battle.net / Xbox avec jaquettes, alertes de plus bas prix Steam, maintenance hebdomadaire, sauvegarde automatique versionnée, programmes indésirables, nouveau PC, comparateur de performances, bloqueur de pubs DNS pour la maison |
+| Téléphone 0.5 | tuiles des réglages rapides (lampe, lecture/pause et muet du PC), « Partager › Outils », manette personnalisable avec profils par jeu |
 
 ## Options (onglet Personnaliser)
 

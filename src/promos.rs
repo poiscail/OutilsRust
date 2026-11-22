@@ -32,6 +32,10 @@ pub struct Donnees {
     pub prevenus: BTreeMap<u32, u64>,  // dernier prix pour lequel on a prévenu
     pub derniere_maj: u64,             // secondes UTC
     pub pays: String,
+    /// plus bas prix jamais vu (centimes), pour repérer les vraies baisses
+    pub plus_bas: BTreeMap<u32, u64>,
+    /// ne prévenir que pour une remise d'au moins … % (0 = toutes)
+    pub remise_min: u32,
 }
 
 fn fichier() -> PathBuf {
@@ -135,8 +139,19 @@ fn verifier(d: &Arc<Mutex<Donnees>>, etat: &Arc<Mutex<String>>) -> Vec<String> {
         if let Some(p) = a.get(&url).call().ok().and_then(|r| r.into_json::<serde_json::Value>().ok()).and_then(|j| lire_prix(*id, &j)) {
             let mut x = d.lock().unwrap();
             let (cible, deja) = (x.cibles.get(id).copied(), x.prevenus.get(id).copied());
-            if a_prevenir(&p, cible, deja) {
-                alertes.push(format!("{} : {} (-{} %)", p.nom, p.texte, p.remise));
+            let vendu = !p.gratuit && !p.indispo && p.final_ > 0;
+            let ancien_bas = x.plus_bas.get(id).copied();
+            let record = vendu && ancien_bas.is_some_and(|b| p.final_ < b);
+            if vendu {
+                let b = x.plus_bas.entry(*id).or_insert(p.final_);
+                *b = (*b).min(p.final_);
+            }
+            let assez = p.remise >= x.remise_min || cible.is_some_and(|c| p.final_ <= c) || record;
+            if a_prevenir(&p, cible, deja) && assez {
+                alertes.push(format!("{} : {} (-{} %){}", p.nom, p.texte, p.remise, if record { " · 📉 plus bas prix jamais vu" } else { "" }));
+                x.prevenus.insert(*id, p.final_);
+            } else if record && deja.is_none_or(|d| p.final_ < d) {
+                alertes.push(format!("{} : baisse de prix, {} (📉 plus bas jamais vu)", p.nom, p.texte));
                 x.prevenus.insert(*id, p.final_);
             } else if p.remise == 0 && cible.is_none_or(|c| p.final_ > c) {
                 x.prevenus.remove(id); // fin de promo : on repréviendra à la prochaine
@@ -251,6 +266,11 @@ impl Promos {
             }
             ui.checkbox(&mut self.seulement_promos, "En promo seulement");
         });
+        ui.horizontal(|ui| {
+            ui.label("Me prévenir à partir de");
+            ui.add(egui::Slider::new(&mut d.remise_min, 0..=90).suffix(" % de remise"));
+            ui.weak("(et toujours pour un prix plus bas que jamais, ou sous ton prix voulu). Les alertes arrivent aussi sur le téléphone associé.");
+        });
         let e = self.etat.lock().unwrap().clone();
         if !e.is_empty() {
             ui.label(e);
@@ -260,10 +280,11 @@ impl Promos {
         liste.sort_by(|a, b| b.1.remise.cmp(&a.1.remise).then(a.1.nom.cmp(&b.1.nom)));
         let mut retirer = None;
         egui::ScrollArea::vertical().id_salt("promos").show(ui, |ui| {
-            egui::Grid::new("grille_promos").num_columns(5).striped(true).spacing([14.0, 6.0]).show(ui, |ui| {
+            egui::Grid::new("grille_promos").num_columns(6).striped(true).spacing([14.0, 6.0]).show(ui, |ui| {
                 ui.strong("Jeu");
                 ui.strong("Prix");
                 ui.strong("Remise");
+                ui.strong("Plus bas vu");
                 ui.strong("Me prévenir sous");
                 ui.label("");
                 ui.end_row();
@@ -280,6 +301,17 @@ impl Promos {
                     } else {
                         ui.label(&p.texte);
                         ui.label("");
+                    }
+                    match d.plus_bas.get(id) {
+                        Some(b) if *b >= p.final_ && p.final_ > 0 && !p.gratuit => {
+                            ui.colored_label(Color32::from_rgb(120, 220, 120), format!("{:.2} € 📉", *b as f64 / 100.0)).on_hover_text("C'est le plus bas prix vu par Outils");
+                        }
+                        Some(b) => {
+                            ui.weak(format!("{:.2} €", *b as f64 / 100.0));
+                        }
+                        None => {
+                            ui.label("");
+                        }
                     }
                     let s = self.saisie_cible.entry(*id).or_insert_with(|| d.cibles.get(id).map(|c| format!("{:.2}", *c as f64 / 100.0)).unwrap_or_default());
                     if ui.add(egui::TextEdit::singleline(s).hint_text("€").desired_width(60.0)).changed() {
@@ -317,6 +349,7 @@ impl Promos {
             x.pays = d.pays;
             x.manuels = d.manuels;
             x.cibles = d.cibles;
+            x.remise_min = d.remise_min;
             if retirer.is_some() {
                 x.prix = d.prix;
             }

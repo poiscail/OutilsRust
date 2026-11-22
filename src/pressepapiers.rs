@@ -444,7 +444,7 @@ pub(crate) mod win {
         if touches & 0x40000 != 0 {
             mods |= MOD_ALT;
         }
-        if unsafe { RegisterHotKey(null_mut(), 1, mods, touches & 0xFFFF) } == 0 {
+        if unsafe { crate::outil::raccourci(null_mut(), 1, mods, touches & 0xFFFF) } == 0 {
             return Err("raccourci déjà pris par une autre appli (ancienne version ouverte ?)".into());
         }
         let mut msg: MSG = unsafe { std::mem::zeroed() };

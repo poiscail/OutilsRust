@@ -961,7 +961,7 @@ impl Correcteur {
         std::thread::spawn(move || unsafe {
             use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
             use windows_sys::Win32::UI::WindowsAndMessaging::*;
-            if RegisterHotKey(std::ptr::null_mut(), 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, b'Y' as u32) == 0 {
+            if crate::outil::raccourci(std::ptr::null_mut(), 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, b'Y' as u32) == 0 {
                 enregistrer("correcteur_pris", &Some(true));
                 return;
             }

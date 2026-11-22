@@ -209,7 +209,7 @@ pub(crate) mod win {
 
     pub fn raccourci(actif: Arc<AtomicBool>, pris: Arc<AtomicBool>, mut action: impl FnMut() + Send + 'static) {
         std::thread::spawn(move || unsafe {
-            let ok = RegisterHotKey(null_mut(), 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, b'T' as u32) != 0;
+            let ok = crate::outil::raccourci(null_mut(), 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, b'T' as u32) != 0;
             pris.store(!ok, Relaxed);
             if !ok {
                 return;

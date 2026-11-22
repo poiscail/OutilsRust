@@ -365,7 +365,7 @@ impl Transparence {
             use windows_sys::Win32::UI::WindowsAndMessaging::*;
             let mut ok = true;
             for (id, vk) in [(1, VK_PRIOR), (2, VK_NEXT), (3, VK_HOME)] {
-                ok &= RegisterHotKey(std::ptr::null_mut(), id, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, vk as u32) != 0;
+                ok &= crate::outil::raccourci(std::ptr::null_mut(), id, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, vk as u32) != 0;
             }
             p.store(!ok, Relaxed);
             let mut msg: MSG = std::mem::zeroed();
@@ -520,7 +520,7 @@ impl Bureaux {
             use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
             use windows_sys::Win32::UI::WindowsAndMessaging::*;
             for k in 1..=9 {
-                RegisterHotKey(std::ptr::null_mut(), k, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_NUMPAD0 as u32 + k as u32);
+                crate::outil::raccourci(std::ptr::null_mut(), k, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_NUMPAD0 as u32 + k as u32);
             }
             let mut msg: MSG = std::mem::zeroed();
             while GetMessageW(&mut msg, std::ptr::null_mut(), 0, 0) > 0 {

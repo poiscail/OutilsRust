@@ -13,6 +13,9 @@ mod convertisseur;
 mod disque;
 mod economiseur;
 mod extras;
+mod fiches;
+mod menu;
+mod moi;
 mod fichiers2;
 mod outil;
 mod pdf;
@@ -22,6 +25,14 @@ mod images;
 mod jeux2;
 mod jeux3;
 mod lanceur;
+mod lanceurs;
+mod jeux7;
+mod dns_maison;
+mod maintenance;
+mod sauvegarde_auto;
+mod indesirables;
+mod nouveau_pc;
+mod banc;
 mod listes;
 mod ludique;
 mod macros;
@@ -168,11 +179,18 @@ struct App {
     nouveautes: bool,
     tv: bool,
     manette: u16,
+    accueil_cfg: moi::Accueil,
+    edition_accueil: bool,
+    nouveaux: menu::Nouveaux,
+    aide: bool,
+    precedent: String,
+    premiere_image: bool,
 }
 
 impl App {
     fn new(cc: &eframe::CreationContext) -> Self {
         egui_extras::install_image_loaders(&cc.egui_ctx); // jaquettes des jeux
+        menu::charger_langue();
         systeme::nettoyer_ancienne();
         let racine = racine();
         let theme = theme::Theme::new(); // règle aussi notifications, zone et raccourci
@@ -198,89 +216,156 @@ impl App {
             economiseur: economiseur::Economiseur::new(theme.dossier_fonds().to_path_buf()), theme, maj,
             maj_ignoree: false, disques: (None, vec![]), lance_au_demarrage: std::env::args().any(|a| a == "--demarrage"), onglet: 0, extras, favoris: outil::charger("onglets_favoris"), palette: None, plantages: coeur::nouveaux_plantages(), erreur_onglet: None, recherche: String::new(),
             dock: interface::Dock::new(), notifs_ouvert: false, visite: interface::visite_a_faire().then_some(0), mini: None, nouveautes: interface2::nouvelle_version(), tv: false, manette: 0,
+            accueil_cfg: moi::Accueil::charger(), edition_accueil: false, nouveaux: menu::Nouveaux::default(), aide: false, precedent: String::new(), premiere_image: true,
         }
     }
 
     fn accueil(&mut self, ui: &mut egui::Ui) {
+        use menu::t;
         ui.horizontal(|ui| {
-            ui.heading("Accueil");
-            if ui.small_button("❓ Visite guidée").clicked() {
+            ui.heading(t("Accueil"));
+            if ui.small_button(t("❓ Visite guidée")).clicked() {
                 self.visite = Some(0);
             }
+            if ui.selectable_label(self.edition_accueil, t("✏ Personnaliser l'accueil")).clicked() {
+                self.edition_accueil = !self.edition_accueil;
+            }
         });
-        ui.add_space(8.0);
-        if self.disques.0.is_none_or(|t| t.elapsed() > Duration::from_secs(30)) {
-            self.disques = (Some(Instant::now()), systeme::disques());
-        }
-        ui.strong("Disques");
-        for (d, libre, total) in &self.disques.1 {
-            let pris = 1.0 - *libre as f32 / (*total).max(1) as f32;
-            ui.horizontal(|ui| {
-                ui.label(d);
-                ui.add(egui::ProgressBar::new(pris).desired_width(260.0).text(format!("{} libres sur {}", go(*libre), go(*total))));
+        if self.edition_accueil {
+            egui::Frame::group(ui.style()).show(ui, |ui| {
+                self.accueil_cfg.editeur(ui);
+                ui.weak(if menu::en() { "Tick the sections to show, reorder them, and hide a summary line with its ✖." } else { "Coche les sections à afficher, change leur ordre, et masque une ligne de résumé avec son ✖." });
+                if ui.button(t("Terminé")).clicked() {
+                    self.edition_accueil = false;
+                }
             });
         }
         ui.add_space(8.0);
-        ui.separator();
-        let coffre = match self.coffre.faibles() {
-            None => "Verrouillé".to_string(),
-            Some(0) => "Ouvert · aucun mot de passe faible".to_string(),
-            Some(n) => format!("Ouvert · {n} mot(s) de passe faible(s)"),
-        };
-        let lignes = [
-            (1, self.tri.resume()),
-            (6, self.minecraft.resume()),
-            (3, coffre),
-            (10, self.minuteur.resume()),
-            (13, self.sauvegardes.resume()),
-            (15, self.notes.resume()),
-            (18, self.capture.resume()),
-            (19, self.mixeur.resume()),
-            (20, self.planif.resume()),
-            (21, self.telephone.resume()),
-            (22, self.dnd.resume()),
-            (24, self.promos.resume()),
-            (27, self.sante.resume()),
-        ];
-        egui::Grid::new("accueil").num_columns(2).spacing([16.0, 10.0]).show(ui, |ui| {
-            for (i, texte) in lignes {
-                if ui.button(ONGLETS[i]).clicked() {
-                    self.onglet = i;
-                }
-                ui.label(texte);
-                ui.end_row();
-            }
-            for (k, o) in self.extras.iter().enumerate() {
-                if let Some(r) = o.resume() {
-                    if ui.button(o.nom()).clicked() {
-                        self.onglet = ONGLETS.len() + k;
-                    }
-                    ui.label(r);
-                    ui.end_row();
-                }
-            }
-            ui.label("🔄 Mise à jour");
-            ui.horizontal(|ui| {
-                ui.label(self.maj.lock().unwrap().etat.clone());
-                if ui.small_button("Vérifier").clicked() {
-                    systeme::verifier(self.maj.clone());
-                }
-            });
-            ui.end_row();
-        });
-        ui.add_space(8.0);
-        ui.separator();
-        ui.strong("Tous les outils");
         let tous = self.entrees();
-        for c in Cat::TOUTES {
-            ui.label(c.nom());
-            ui.horizontal_wrapped(|ui| {
-                for (i, n, _) in tous.iter().filter(|e| e.2 == Some(c)) {
-                    if ui.add(egui::Button::new(n.as_str()).min_size(egui::vec2(170.0, 30.0))).clicked() {
-                        self.onglet = *i;
+        let ordre: Vec<String> = self.accueil_cfg.ordre.iter().filter(|o| !self.accueil_cfg.cachees.contains(o)).cloned().collect();
+        for section in ordre {
+            match section.as_str() {
+                "favoris" => {
+                    if self.favoris.is_empty() {
+                        continue;
+                    }
+                    ui.strong(t("Favoris"));
+                    ui.horizontal_wrapped(|ui| {
+                        for (i, n, _) in tous.iter().filter(|e| self.favoris.contains(&e.1)) {
+                            if ui.add(egui::Button::new(menu::affiche(n)).min_size(egui::vec2(170.0, 34.0))).clicked() {
+                                self.onglet = *i;
+                            }
+                        }
+                    });
+                }
+                "recents" => {
+                    let r = menu::recents();
+                    if r.is_empty() {
+                        continue;
+                    }
+                    ui.strong(t("🕘 Récents"));
+                    ui.horizontal_wrapped(|ui| {
+                        for n in r.iter().take(6) {
+                            if let Some(e) = tous.iter().find(|e| e.1 == *n) {
+                                if ui.button(menu::affiche(n)).clicked() {
+                                    self.onglet = e.0;
+                                }
+                            }
+                        }
+                    });
+                }
+                "disques" => {
+                    if self.disques.0.is_none_or(|t| t.elapsed() > Duration::from_secs(30)) {
+                        self.disques = (Some(Instant::now()), systeme::disques());
+                    }
+                    ui.strong(t("Disques"));
+                    for (d, libre, total) in &self.disques.1 {
+                        let pris = 1.0 - *libre as f32 / (*total).max(1) as f32;
+                        ui.horizontal(|ui| {
+                            ui.label(d);
+                            ui.add(egui::ProgressBar::new(pris).desired_width(260.0).text(format!("{} libres sur {}", go(*libre), go(*total))));
+                        });
                     }
                 }
-            });
+                "resumes" => {
+                    let coffre = match self.coffre.faibles() {
+                        None => "Verrouillé".to_string(),
+                        Some(0) => "Ouvert · aucun mot de passe faible".to_string(),
+                        Some(n) => format!("Ouvert · {n} mot(s) de passe faible(s)"),
+                    };
+                    let mut lignes: Vec<(usize, String, String)> = [
+                        (1, self.tri.resume()),
+                        (6, self.minecraft.resume()),
+                        (3, coffre),
+                        (10, self.minuteur.resume()),
+                        (13, self.sauvegardes.resume()),
+                        (15, self.notes.resume()),
+                        (18, self.capture.resume()),
+                        (19, self.mixeur.resume()),
+                        (20, self.planif.resume()),
+                        (21, self.telephone.resume()),
+                        (22, self.dnd.resume()),
+                        (24, self.promos.resume()),
+                        (27, self.sante.resume()),
+                    ]
+                    .into_iter()
+                    .map(|(i, r)| (i, ONGLETS[i].to_string(), r))
+                    .collect();
+                    for (k, o) in self.extras.iter().enumerate() {
+                        if let Some(r) = o.resume() {
+                            lignes.push((ONGLETS.len() + k, o.nom().to_string(), r));
+                        }
+                    }
+                    lignes.retain(|l| !self.accueil_cfg.resumes_caches.contains(&l.1));
+                    let mut cacher = None;
+                    let edition = self.edition_accueil;
+                    egui::Grid::new("accueil").num_columns(3).spacing([16.0, 10.0]).show(ui, |ui| {
+                        for (i, nom, texte) in lignes {
+                            if ui.button(menu::affiche(&nom)).clicked() {
+                                self.onglet = i;
+                            }
+                            ui.label(texte);
+                            if edition && ui.small_button("✖").on_hover_text("Masquer cette ligne").clicked() {
+                                cacher = Some(nom);
+                            }
+                            ui.end_row();
+                        }
+                        ui.label(t("🔄 Mise à jour"));
+                        ui.horizontal(|ui| {
+                            ui.label(self.maj.lock().unwrap().etat.clone());
+                            if ui.small_button(t("Vérifier")).clicked() {
+                                systeme::verifier(self.maj.clone());
+                            }
+                        });
+                        ui.end_row();
+                    });
+                    if let Some(n) = cacher {
+                        self.accueil_cfg.resumes_caches.push(n);
+                        self.accueil_cfg.enregistrer();
+                    }
+                }
+                "tous" => {
+                    ui.strong(t("Tous les outils"));
+                    for c in Cat::TOUTES {
+                        ui.label(menu::cat(c));
+                        ui.horizontal_wrapped(|ui| {
+                            for (i, n, _) in tous.iter().filter(|e| e.2 == Some(c)) {
+                                let r = ui.add(egui::Button::new(menu::affiche(n)).min_size(egui::vec2(170.0, 30.0)));
+                                let r = match menu::description(n) {
+                                    Some(d) => r.on_hover_text(d),
+                                    None => r,
+                                };
+                                if r.clicked() {
+                                    self.onglet = *i;
+                                }
+                            }
+                        });
+                    }
+                }
+                _ => {}
+            }
+            ui.add_space(8.0);
+            ui.separator();
         }
     }
 
@@ -371,7 +456,16 @@ impl eframe::App for App {
         if self.presse.tic(ctx) {
             self.onglet = PRESSE;
         }
-        ctx.request_repaint_after(Duration::from_millis(500));
+        if std::mem::take(&mut self.premiere_image) {
+            if let Some(d) = moi::DEMARRE.get() {
+                moi::PREMIERE_IMAGE.store(d.elapsed().as_millis() as usize, Relaxed);
+            }
+        }
+        // mode sourdine : un jeu tourne et Outils est derrière → priorité basse et moins d'images
+        let premier_plan = ctx.input(|i| i.viewport().focused.unwrap_or(true));
+        let discret = moi::sourdine_active() && !premier_plan && outil::JEU_ACTIF.lock().map(|j| j.is_some()).unwrap_or(false);
+        moi::appliquer_discret(discret);
+        ctx.request_repaint_after(Duration::from_millis(if discret { 2000 } else if premier_plan { 500 } else { 1000 }));
         let dispo = self.maj.lock().unwrap().dispo.clone();
         if let (Some((version, _)), false) = (dispo, self.maj_ignoree) {
             egui::TopBottomPanel::top("maj").show(ctx, |ui| {
@@ -465,21 +559,42 @@ impl eframe::App for App {
                 });
             });
             ui.separator();
-            ui.add(egui::TextEdit::singleline(&mut self.recherche).hint_text("🔍 Chercher un outil").desired_width(f32::INFINITY));
+            ui.add(egui::TextEdit::singleline(&mut self.recherche).hint_text(menu::t("🔍 Chercher un outil")).desired_width(f32::INFINITY))
+                .on_hover_text(if menu::en() { "Type a tool name or what you want: \"slow pc\", \"wifi\", \"blurry photo\"…" } else { "Tape un nom d'outil ou ce que tu veux : « pc lent », « wifi », « photo floue »…" });
             let tous = self.entrees();
             let actuelle = tous.iter().find(|e| e.0 == self.onglet).and_then(|e| e.2);
+            let noms: Vec<String> = tous.iter().skip(1).map(|e| e.1.clone()).collect();
+            let nouveaux = self.nouveaux.liste(&noms);
             egui::ScrollArea::vertical().id_salt("menu").max_height(ui.available_height() - 24.0).show(ui, |ui| {
-                if ui.selectable_label(self.onglet == 0, ONGLETS[0]).clicked() {
+                if ui.selectable_label(self.onglet == 0, menu::t(ONGLETS[0])).clicked() {
                     self.onglet = 0;
                 }
                 let mut basculer_favori: Option<String> = None;
+                let q = self.recherche.trim().to_string();
+                if !q.is_empty() {
+                    let trouves = menu::chercher(&tous, &q);
+                    if trouves.is_empty() {
+                        ui.weak(menu::t("Aucun outil ne correspond."));
+                    }
+                    for (i, n, _) in trouves {
+                        let r = ui.selectable_label(self.onglet == *i, menu::affiche(n));
+                        let r = match menu::description(n) {
+                            Some(d) => r.on_hover_text(d),
+                            None => r,
+                        };
+                        if r.clicked() {
+                            self.onglet = *i;
+                        }
+                    }
+                    return;
+                }
                 for (i, n, _) in tous.iter().filter(|e| self.favoris.contains(&e.1)) {
-                    let r = ui.selectable_label(self.onglet == *i, format!("⭐ {n}"));
+                    let r = ui.selectable_label(self.onglet == *i, format!("⭐ {}", menu::affiche(n)));
                     if r.clicked() {
                         self.onglet = *i;
                     }
                     r.context_menu(|ui| {
-                        if ui.button("Retirer des favoris").clicked() {
+                        if ui.button(menu::t("Retirer des favoris")).clicked() {
                             basculer_favori = Some(n.clone());
                             ui.close_menu();
                         }
@@ -488,30 +603,55 @@ impl eframe::App for App {
                 if !self.favoris.is_empty() {
                     ui.separator();
                 }
-                let q = self.recherche.trim().to_lowercase();
-                if !q.is_empty() {
-                    for (i, n, _) in tous.iter().filter(|e| e.0 != 0 && e.1.to_lowercase().contains(&q)) {
-                        if ui.selectable_label(self.onglet == *i, n.as_str()).clicked() {
-                            self.onglet = *i;
-                        }
-                    }
-                    return;
+                if !nouveaux.is_empty() {
+                    let id = ui.make_persistent_id("nouveaux");
+                    egui::collapsing_header::CollapsingState::load_with_default_open(ui.ctx(), id, true)
+                        .show_header(ui, |ui| ui.strong(format!("{} ({})", menu::t("🆕 Nouveaux"), nouveaux.len())))
+                        .body(|ui| {
+                            for n in &nouveaux {
+                                if let Some(e) = tous.iter().find(|e| e.1 == *n) {
+                                    if ui.selectable_label(self.onglet == e.0, menu::affiche(n)).clicked() {
+                                        self.onglet = e.0;
+                                    }
+                                }
+                            }
+                            if ui.small_button(menu::t("Tout marquer comme vu")).clicked() {
+                                self.nouveaux.tout_vu(&noms);
+                            }
+                        });
                 }
                 for c in Cat::TOUTES {
                     let id = ui.make_persistent_id(("cat", c));
                     let etat = egui::collapsing_header::CollapsingState::load_with_default_open(ui.ctx(), id, actuelle == Some(c));
-                    etat.show_header(ui, |ui| ui.strong(c.nom())).body(|ui| {
-                        for (i, n, _) in tous.iter().filter(|e| e.2 == Some(c)) {
-                            let r = ui.selectable_label(self.onglet == *i, n.as_str()).on_hover_text("Clic droit : favori");
-                            if r.clicked() {
-                                self.onglet = *i;
+                    etat.show_header(ui, |ui| ui.strong(menu::cat(c))).body(|ui| {
+                        let mut groupes: Vec<(&str, Vec<&(usize, String, Option<Cat>)>)> = vec![];
+                        for e in tous.iter().filter(|e| e.2 == Some(c)) {
+                            let g = menu::sous_cat(&e.1, c);
+                            match groupes.iter_mut().find(|x| x.0 == g) {
+                                Some(x) => x.1.push(e),
+                                None => groupes.push((g, vec![e])),
                             }
-                            r.context_menu(|ui| {
-                                if ui.button(if self.favoris.contains(n) { "Retirer des favoris" } else { "⭐ Ajouter aux favoris" }).clicked() {
-                                    basculer_favori = Some(n.clone());
-                                    ui.close_menu();
+                        }
+                        let plusieurs = groupes.len() > 1;
+                        for (g, l) in groupes {
+                            if plusieurs {
+                                ui.add_space(2.0);
+                                ui.label(egui::RichText::new(g).small().weak());
+                            }
+                            for (i, n, _) in l {
+                                let neuf = nouveaux.contains(n);
+                                let texte = if neuf { format!("{} 🆕", menu::affiche(n)) } else { menu::affiche(n) };
+                                let r = ui.selectable_label(self.onglet == *i, texte).on_hover_text(menu::description(n).unwrap_or(menu::t("Clic droit : favori")));
+                                if r.clicked() {
+                                    self.onglet = *i;
                                 }
-                            });
+                                r.context_menu(|ui| {
+                                    if ui.button(if self.favoris.contains(n) { menu::t("Retirer des favoris") } else { menu::t("⭐ Ajouter aux favoris") }).clicked() {
+                                        basculer_favori = Some(n.clone());
+                                        ui.close_menu();
+                                    }
+                                });
+                            }
                         }
                     });
                 }
@@ -524,13 +664,28 @@ impl eframe::App for App {
                     outil::enregistrer("onglets_favoris", &self.favoris);
                 }
             });
-            ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| ui.weak(concat!("v", env!("CARGO_PKG_VERSION"))));
+            ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
+                ui.horizontal(|ui| {
+                    ui.weak(concat!("v", env!("CARGO_PKG_VERSION")));
+                    let en = menu::en();
+                    if ui.small_button(if en { "🌐 EN" } else { "🌐 FR" }).on_hover_text(if en { "Passer en français" } else { "Switch menus to English" }).clicked() {
+                        menu::changer_langue(!en);
+                    }
+                });
+            });
+
         });
         let nom_onglet = self.entrees().into_iter().find(|e| e.0 == self.onglet).map(|e| e.1).unwrap_or_default();
         if let Ok(mut o) = coeur::ONGLET.lock() {
             o.clone_from(&nom_onglet);
         }
         interface::compter(&nom_onglet, ctx.input(|i| i.viewport().focused.unwrap_or(true)));
+        if self.precedent != nom_onglet {
+            self.precedent.clone_from(&nom_onglet);
+            menu::ouvert(&nom_onglet);
+            self.nouveaux.vu(&nom_onglet);
+            self.aide = false;
+        }
         egui::CentralPanel::default().show(ctx, |ui| {
             if self.plantages > 0 {
                 ui.horizontal(|ui| {
@@ -562,6 +717,31 @@ impl eframe::App for App {
                 ui.heading("🎥 Masqué pendant le stream");
                 ui.weak("Le mode stream est actif (Jeux › Mode stream) : cet onglet contient des informations personnelles.");
                 return;
+            }
+            if self.onglet != 0 {
+                if let Some(d) = menu::description(&nom_onglet) {
+                    let r = ui.horizontal(|ui| {
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| ui.selectable_label(self.aide, "❓").on_hover_text(menu::t("Aide de cet outil")).clicked()).inner
+                    });
+                    if r.inner {
+                        self.aide = !self.aide;
+                    }
+                    if self.aide {
+                        egui::Frame::group(ui.style()).fill(ui.visuals().faint_bg_color).show(ui, |ui| {
+                            ui.set_width(ui.available_width());
+                            ui.strong(format!("{} — {}", menu::affiche(&nom_onglet), menu::t("À quoi il sert")));
+                            ui.label(d);
+                            if let Some(f) = menu::fiche(&nom_onglet) {
+                                if !f.mots.is_empty() {
+                                    ui.weak(format!("{} {}", menu::t("Tu le trouves aussi en cherchant :"), f.mots.split(' ').collect::<Vec<_>>().join(", ")));
+                                }
+                            }
+                            if menu::en() {
+                                ui.weak(menu::t("Le contenu des outils reste en français pour l'instant."));
+                            }
+                        });
+                    }
+                }
             }
             let onglet = self.onglet;
             let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| match onglet {
@@ -619,6 +799,7 @@ impl eframe::App for App {
 }
 
 fn main() -> eframe::Result {
+    let _ = moi::DEMARRE.set(Instant::now());
     coeur::activer_portable();
     coeur::installer_crochet();
     // lancé par Windows comme économiseur d'écran (Outils.scr) : /s plein écran, /p aperçu (ignoré)
@@ -741,7 +922,7 @@ impl App {
             ("⛏ Démarrer le serveur Minecraft".to_string(), Commande::ServeurDemarrer),
             ("⛏ Arrêter le serveur Minecraft".to_string(), Commande::ServeurArreter),
         ]);
-        let mut v: Vec<(usize, &(String, Commande))> = lignes.iter().filter_map(|l| coeur::correspond(&l.0, &q).map(|s| (s, l))).collect();
+        let mut v: Vec<(usize, &(String, Commande))> = lignes.iter().filter_map(|l| coeur::correspond(&l.0, &q).or_else(|| menu::score(&l.0, &q).map(|s| 100_000 - s as usize)).map(|s| (s, l))).collect();
         v.sort_by_key(|x| x.0);
         let v: Vec<&(String, Commande)> = v.into_iter().map(|x| x.1).take(12).collect();
         let mut choisie: Option<Commande> = None;

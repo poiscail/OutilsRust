@@ -68,9 +68,9 @@ impl Voix {
         let (r2, l2, a2) = (r.clone(), lecture.clone(), actif.clone());
         // Ctrl+Alt+L : lit le texte sélectionné (ou arrête la lecture en cours)
         std::thread::spawn(move || unsafe {
-            use windows_sys::Win32::UI::Input::KeyboardAndMouse::{RegisterHotKey, MOD_ALT, MOD_CONTROL, MOD_NOREPEAT};
+            use windows_sys::Win32::UI::Input::KeyboardAndMouse::{MOD_ALT, MOD_CONTROL, MOD_NOREPEAT};
             use windows_sys::Win32::UI::WindowsAndMessaging::{GetMessageW, MSG, WM_HOTKEY};
-            if RegisterHotKey(std::ptr::null_mut(), 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, b'L' as u32) == 0 {
+            if crate::outil::raccourci(std::ptr::null_mut(), 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, b'L' as u32) == 0 {
                 return;
             }
             let mut msg: MSG = std::mem::zeroed();

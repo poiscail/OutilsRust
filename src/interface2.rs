@@ -570,7 +570,7 @@ fn fil_raccourcis() {
                 actifs = charger("raccourcis_outils");
                 for (k, r) in actifs.iter().enumerate() {
                     let m = MOD_NOREPEAT | if r.ctrl { MOD_CONTROL } else { 0 } | if r.alt { MOD_ALT } else { 0 } | if r.maj { MOD_SHIFT } else { 0 } | if r.win { MOD_WIN } else { 0 };
-                    RegisterHotKey(std::ptr::null_mut(), 900 + k as i32, m, r.vk);
+                    crate::outil::raccourci(std::ptr::null_mut(), 900 + k as i32, m, r.vk);
                 }
             }
             let mut msg: MSG = std::mem::zeroed();

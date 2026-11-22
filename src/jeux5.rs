@@ -114,7 +114,7 @@ impl Minuteurs {
                     for (k, m) in v.iter().enumerate() {
                         if let Some(r) = &m.raccourci {
                             let md = MOD_NOREPEAT | if r.ctrl { MOD_CONTROL } else { 0 } | if r.alt { MOD_ALT } else { 0 } | if r.maj { MOD_SHIFT } else { 0 };
-                            RegisterHotKey(std::ptr::null_mut(), 1200 + k as i32, md, r.vk);
+                            crate::outil::raccourci(std::ptr::null_mut(), 1200 + k as i32, md, r.vk);
                         }
                     }
                 }

@@ -12,7 +12,7 @@ use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering::Relaxed};
 use std::sync::{Arc, Mutex, OnceLock};
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM};
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
-use windows_sys::Win32::UI::Input::KeyboardAndMouse::{RegisterHotKey, UnregisterHotKey, MOD_ALT, MOD_CONTROL, MOD_NOREPEAT};
+use windows_sys::Win32::UI::Input::KeyboardAndMouse::{UnregisterHotKey, MOD_ALT, MOD_CONTROL, MOD_NOREPEAT};
 use windows_sys::Win32::UI::Shell::*;
 use windows_sys::Win32::UI::WindowsAndMessaging::*;
 
@@ -187,7 +187,7 @@ unsafe fn synchroniser(h: HWND) {
     }
     let r = RACCOURCI.load(Relaxed);
     if r != RACC_MIS.load(Relaxed) {
-        let ok = if r { RegisterHotKey(h, 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, 'O' as u32) } else { UnregisterHotKey(h, 1) };
+        let ok = if r { crate::outil::raccourci(h, 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, 'O' as u32) } else { UnregisterHotKey(h, 1) };
         if ok != 0 {
             RACC_MIS.store(r, Relaxed);
         }

@@ -52,7 +52,7 @@ pub fn lire_tableau(sortie: &str) -> Vec<Paquet> {
     v
 }
 
-fn winget(args: &[&str]) -> Result<String, String> {
+pub(crate) fn winget(args: &[&str]) -> Result<String, String> {
     // chcp 65001 : sortie en UTF-8 (accents)
     let commande = format!("chcp 65001>nul & winget {}", args.join(" "));
     let o = Command::new("cmd.exe").args(["/C", &commande]).creation_flags(CREATE_NO_WINDOW).output()

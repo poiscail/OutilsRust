@@ -75,7 +75,7 @@ impl ZoneGif {
             crate::systeme::notifier("GIF", "Enregistrement en cours : Ctrl+Alt+G pour arrêter.");
             use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
             use windows_sys::Win32::UI::WindowsAndMessaging::*;
-            let raccourci = unsafe { RegisterHotKey(std::ptr::null_mut(), 77, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, b'G' as u32) != 0 };
+            let raccourci = unsafe { crate::outil::raccourci(std::ptr::null_mut(), 77, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, b'G' as u32) != 0 };
             let pas = Duration::from_secs_f64(1.0 / fps as f64);
             let t0 = Instant::now();
             let mut images: Vec<RgbaImage> = vec![];
@@ -658,9 +658,9 @@ impl BoiteSons {
                 use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
                 use windows_sys::Win32::UI::WindowsAndMessaging::*;
                 for k in 1..10u32 {
-                    RegisterHotKey(std::ptr::null_mut(), 300 + k as i32, MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, VK_F1 as u32 + k - 1);
+                    crate::outil::raccourci(std::ptr::null_mut(), 300 + k as i32, MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, VK_F1 as u32 + k - 1);
                 }
-                RegisterHotKey(std::ptr::null_mut(), 300, MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, VK_F12 as u32);
+                crate::outil::raccourci(std::ptr::null_mut(), 300, MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, VK_F12 as u32);
                 let mut m: MSG = std::mem::zeroed();
                 while GetMessageW(&mut m, std::ptr::null_mut(), 0, 0) > 0 {
                     if m.message == WM_HOTKEY {

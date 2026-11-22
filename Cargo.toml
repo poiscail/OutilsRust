@@ -1,6 +1,6 @@
 [package]
 name = "outils"
-version = "0.13.0"
+version = "0.14.0"
 edition = "2021"
 
 [[bin]]
@@ -48,7 +48,16 @@ opt-level = 3
 [profile.release.package.memchr]
 opt-level = 3
 
+# image : décodage des photos et jaquettes, à pleine vitesse aussi
+[profile.release.package.zune-jpeg]
+opt-level = 3
+[profile.release.package.png]
+opt-level = 3
+[profile.release.package.image]
+opt-level = 3
+
 [profile.release]
-opt-level = "s"
+opt-level = "z"
 lto = true
 strip = true
+codegen-units = 1

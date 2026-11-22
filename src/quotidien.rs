@@ -222,7 +222,7 @@ pub fn duree(s: u64) -> String {
     if s >= 3600 { format!("{} h {:02}", s / 3600, s / 60 % 60) } else { format!("{} min", s / 60) }
 }
 
-fn inactif_depuis() -> u64 {
+pub(crate) fn inactif_depuis() -> u64 {
     use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetLastInputInfo, LASTINPUTINFO};
     let mut l = LASTINPUTINFO { cbSize: std::mem::size_of::<LASTINPUTINFO>() as u32, dwTime: 0 };
     unsafe {

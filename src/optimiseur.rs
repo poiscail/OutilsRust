@@ -751,7 +751,7 @@ pub fn nettoyage_rapide() -> String {
     if erreurs.is_empty() { format!("Nettoyage : {faits} tâche(s) faites.") } else { format!("Nettoyage : {faits} faite(s), erreurs : {}", erreurs.join(" ; ")) }
 }
 
-fn point_restauration() -> R {
+pub(crate) fn point_restauration() -> R {
     reg_d(r"HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore", "SystemRestorePointCreationFrequency", 0)?;
     ps("Enable-ComputerRestore -Drive \"$env:SystemDrive\\\"\nCheckpoint-Computer -Description 'Avant Optimiseur Windows' -RestorePointType MODIFY_SETTINGS").map(drop)
 }

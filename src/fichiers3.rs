@@ -50,7 +50,7 @@ fn taille(o: u64) -> String {
 // ---------------------------------------------------------------------------------------------------
 
 /// (lettre « E:\ », numéro de série, nom) des lecteurs autres que C:.
-fn lecteurs() -> Vec<(String, u32, String)> {
+pub(crate) fn lecteurs() -> Vec<(String, u32, String)> {
     use windows_sys::Win32::Storage::FileSystem::{GetLogicalDrives, GetVolumeInformationW};
     let m = unsafe { GetLogicalDrives() };
     (0..26u8)

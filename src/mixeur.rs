@@ -269,11 +269,11 @@ fn fil(rx: Receiver<Ordre>, etat: Arc<Mutex<Etat>>, rapide: Arc<Mutex<Instant>>)
 
 /// Raccourci Ctrl+Alt+A dans son propre fil.
 fn fil_raccourci(tx: Sender<()>) -> bool {
-    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{RegisterHotKey, MOD_ALT, MOD_CONTROL, MOD_NOREPEAT};
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{MOD_ALT, MOD_CONTROL, MOD_NOREPEAT};
     use windows_sys::Win32::UI::WindowsAndMessaging::{GetMessageW, MSG, WM_HOTKEY};
     let (ok_tx, ok_rx) = channel();
     std::thread::spawn(move || unsafe {
-        let ok = RegisterHotKey(std::ptr::null_mut(), 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, b'A' as u32) != 0;
+        let ok = crate::outil::raccourci(std::ptr::null_mut(), 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, b'A' as u32) != 0;
         let _ = ok_tx.send(ok);
         if !ok {
             return;

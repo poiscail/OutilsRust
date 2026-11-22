@@ -130,7 +130,7 @@ mod win {
     use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, SIZE, WPARAM};
     use windows_sys::Win32::Graphics::Gdi::*;
     use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
-    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{RegisterHotKey, MOD_ALT, MOD_CONTROL, MOD_NOREPEAT};
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{MOD_ALT, MOD_CONTROL, MOD_NOREPEAT};
     use windows_sys::Win32::UI::WindowsAndMessaging::*;
 
     pub const WM_MAJ: u32 = WM_APP + 11;
@@ -186,7 +186,7 @@ mod win {
                 return;
             }
             fenetre.store(h as isize, Relaxed);
-            pris.store(RegisterHotKey(h, 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, b'X' as u32) == 0, Relaxed);
+            pris.store(crate::outil::raccourci(h, 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, b'X' as u32) == 0, Relaxed);
             afficher(h, &r.lock().unwrap().clone());
             // certains jeux repassent devant : on réaffirme « au premier plan » régulièrement
             SetTimer(h, 1, 2000, None);

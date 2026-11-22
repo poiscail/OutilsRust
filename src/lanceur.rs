@@ -27,6 +27,8 @@ pub struct Jeu {
     pub id: String,
     pub nom: String,
     pub cmd: String,
+    /// arguments du programme (Riot, Xbox…)
+    pub args: String,
     pub dir: String,
     pub cover: Option<PathBuf>,
     pub steam: bool, // a besoin de Steam (FiveM)
@@ -185,6 +187,7 @@ pub fn scan_steam(racine: Option<&Path>) -> Vec<Jeu> {
             jeux.push(Jeu {
                 id: format!("steam:{appid}"),
                 cmd: format!("steam://rungameid/{appid}"),
+                args: String::new(),
                 dir: apps.join("common").join(&d).display().to_string(),
                 cover: trouver_jaquette(racine, &appid),
                 nom,
@@ -210,6 +213,7 @@ pub fn scan_epic(manifestes: &Path) -> Vec<Jeu> {
             jeux.push(Jeu {
                 id: format!("epic:{app}"),
                 cmd: format!("com.epicgames.launcher://apps/{ns}%3A{ci}%3A{app}?action=launch&silent=true"),
+                args: String::new(),
                 nom, dir, cover: None, steam: false,
             });
         }
@@ -223,6 +227,7 @@ pub fn jeu_manuel(chemin: &str) -> Jeu {
         id: format!("man:{chemin}"),
         nom: p.file_stem().unwrap_or_default().to_string_lossy().into_owned(),
         cmd: chemin.into(),
+        args: String::new(),
         dir: p.parent().map(|d| d.display().to_string()).unwrap_or_default(),
         cover: None,
         steam: false,
@@ -310,10 +315,15 @@ pub fn assurer_steam(pret: impl Fn() -> bool, lancer: impl FnOnce(), delai: Dura
 }
 
 pub(crate) fn ouvrir(cible: &str, dossier: Option<&str>) -> bool {
-    let d = dossier.map(w);
+    ouvrir_avec(cible, "", dossier)
+}
+
+pub(crate) fn ouvrir_avec(cible: &str, args: &str, dossier: Option<&str>) -> bool {
+    let d = dossier.filter(|d| !d.is_empty()).map(w);
+    let a = (!args.is_empty()).then(|| w(args));
     let r = unsafe {
         windows_sys::Win32::UI::Shell::ShellExecuteW(std::ptr::null_mut(), w("open").as_ptr(), w(cible).as_ptr(),
-            std::ptr::null(), d.as_ref().map_or(std::ptr::null(), |d| d.as_ptr()), 1)
+            a.as_ref().map_or(std::ptr::null(), |a| a.as_ptr()), d.as_ref().map_or(std::ptr::null(), |d| d.as_ptr()), 1)
     };
     r as isize > 32
 }
@@ -363,8 +373,8 @@ fn partie(etat: &Partage, g: &Jeu) {
         }
     }
     statut(etat, &g.id, Some("Lancement…"));
-    let manuel = g.id.starts_with("man:") || g.id == "fivem";
-    if !ouvrir(&g.cmd, manuel.then_some(g.dir.as_str())) {
+    let manuel = ["man:", "gog:", "ea:", "bnet:"].iter().any(|p| g.id.starts_with(p)) || g.id == "fivem";
+    if !ouvrir_avec(&g.cmd, &g.args, manuel.then_some(g.dir.as_str())) {
         return flash("Lancement impossible");
     }
     surveiller(&g.dir, ATTENTE, PAS, || statut(etat, &g.id, None), |s| {
@@ -426,7 +436,20 @@ impl Lanceur {
         let mut jeux = scan_steam(steam_racine().as_deref());
         jeux.extend(scan_epic(&var("ProgramData").join(r"Epic\EpicGamesLauncher\Data\Manifests")));
         jeux.extend(scan_fivem(&var("LOCALAPPDATA").join(r"FiveM\FiveM.exe")));
+        jeux.extend(crate::lanceurs::autres());
         jeux.extend(self.etat.lock().unwrap().save.manual.iter().map(|p| jeu_manuel(p)));
+        // un même jeu vu par deux magasins (ex. Steam et le lanceur de l'éditeur) : on garde le premier
+        let mut vus = HashSet::new();
+        jeux.retain(|g| vus.insert(g.nom.to_lowercase()));
+        // jaquettes : celles déjà en cache, et on cherche les autres en fond
+        let mut manquantes = vec![];
+        for g in jeux.iter_mut().filter(|g| g.cover.is_none()) {
+            g.cover = crate::lanceurs::jaquette_en_cache(&g.nom);
+            if g.cover.is_none() {
+                manquantes.push(g.nom.clone());
+            }
+        }
+        crate::lanceurs::chercher_jaquettes(manquantes);
         self.jeux = jeux;
     }
 
@@ -487,6 +510,9 @@ impl Lanceur {
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui) {
+        if crate::lanceurs::NOUVEAUX.swap(false, std::sync::atomic::Ordering::Relaxed) {
+            self.actualiser();
+        }
         let ctx = ui.ctx().clone();
         // mode plein écran / canapé
         if ctx.input(|i| i.key_pressed(egui::Key::F11)) {
@@ -557,6 +583,14 @@ fn carte(ui: &mut egui::Ui, g: &Jeu, e: &Etat, actions: &mut Vec<Action>) {
             (temps, GRIS)
         };
         p.text(rect.left_bottom() + vec2(8.0, -8.0), egui::Align2::LEFT_BOTTOM, texte, FontId::proportional(12.0), couleur);
+        let m = crate::lanceurs::magasin(&g.id);
+        if !m.is_empty() {
+            let pos = img.right_top() + vec2(-4.0, 4.0);
+            let gal = ui.fonts(|f| f.layout_no_wrap(m.to_string(), FontId::proportional(10.5), Color32::WHITE));
+            let fond = Rect::from_min_size(pos - vec2(gal.size().x + 8.0, 0.0), gal.size() + vec2(8.0, 2.0));
+            p.rect_filled(fond, 3.0, Color32::from_black_alpha(170));
+            p.galley(fond.min + vec2(4.0, 1.0), gal, Color32::WHITE);
+        }
     }
     let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
     if resp.clicked() {
@@ -629,7 +663,7 @@ mod tests {
 
     #[test]
     fn tri_des_jeux() {
-        let j = |id: &str, nom: &str| Jeu { id: id.into(), nom: nom.into(), cmd: String::new(), dir: String::new(), cover: None, steam: false };
+        let j = |id: &str, nom: &str| Jeu { id: id.into(), nom: nom.into(), cmd: String::new(), args: String::new(), dir: String::new(), cover: None, steam: false };
         let gs = [j("a", "Zed"), j("b", "Alpha"), j("c", "Beta")];
         let mut s = Sauvegarde::default();
         s.time = [("a".into(), 5.0), ("b".into(), 90.0)].into();

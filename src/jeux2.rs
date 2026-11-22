@@ -157,9 +157,9 @@ impl Overlay {
         // Ctrl+Alt+H : afficher / cacher
         let r3 = r.clone();
         std::thread::spawn(move || unsafe {
-            use windows_sys::Win32::UI::Input::KeyboardAndMouse::{RegisterHotKey, MOD_ALT, MOD_CONTROL, MOD_NOREPEAT};
+            use windows_sys::Win32::UI::Input::KeyboardAndMouse::{MOD_ALT, MOD_CONTROL, MOD_NOREPEAT};
             use windows_sys::Win32::UI::WindowsAndMessaging::{GetMessageW, MSG, WM_HOTKEY};
-            if RegisterHotKey(std::ptr::null_mut(), 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, b'H' as u32) == 0 {
+            if crate::outil::raccourci(std::ptr::null_mut(), 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, b'H' as u32) == 0 {
                 return;
             }
             let mut msg: MSG = std::mem::zeroed();

@@ -6,6 +6,7 @@ use crate::jeux_tel::appuis;
 use crate::monpc::{encoder, Pc};
 use crate::outil::{charger, Cat, Outil};
 use eframe::egui::{self, Align2, Color32, FontId, Pos2, RichText, Stroke, Vec2};
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::net::UdpSocket;
 use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
@@ -92,23 +93,204 @@ fn place(k: usize) -> (f32, f32, f32) {
     }
 }
 
+/// Une disposition de manette : touche envoyée et place de chaque bouton, jeu associé, vibration.
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[serde(default)]
+pub struct ProfilManette {
+    pub nom: String,
+    /// bout du nom du jeu (sur le PC) pour lequel ce profil se choisit tout seul ; vide = aucun
+    pub jeu: String,
+    pub touches: Vec<String>,
+    pub places: Vec<(f32, f32, f32)>,
+    /// 0 = pas de vibration, 1 = légère, 2 = forte
+    pub vibration: u8,
+}
+
+impl Default for ProfilManette {
+    fn default() -> Self {
+        profil_de_base("Jeux PC (ZQSD, Espace…)", 1)
+    }
+}
+
+fn profil_de_base(nom: &str, colonne: usize) -> ProfilManette {
+    ProfilManette {
+        nom: nom.into(),
+        jeu: String::new(),
+        touches: BOUTONS.iter().map(|b| if colonne == 1 { b.1 } else { b.2 }.to_string()).collect(),
+        places: (0..BOUTONS.len()).map(place).collect(),
+        vibration: 1,
+    }
+}
+
+/// Profils enregistrés (les deux de base s'ils n'existent pas encore), toujours complets.
+pub fn profils_manette() -> Vec<ProfilManette> {
+    let mut v: Vec<ProfilManette> = charger("manette_profils");
+    if v.is_empty() {
+        v = vec![profil_de_base("Jeux PC (ZQSD, Espace…)", 1), profil_de_base("Flèches, Entrée", 2)];
+    }
+    for p in &mut v {
+        let base = profil_de_base("", 1);
+        p.touches.resize(BOUTONS.len(), String::new());
+        p.places.resize(BOUTONS.len(), (0.5, 0.5, 0.07));
+        for k in 0..BOUTONS.len() {
+            if p.touches[k].is_empty() {
+                p.touches[k].clone_from(&base.touches[k]);
+            }
+        }
+    }
+    v
+}
+
+/// Le profil dont le jeu correspond au jeu lancé sur le PC.
+pub fn profil_pour(profils: &[ProfilManette], jeu: &str) -> Option<usize> {
+    let j = jeu.to_lowercase();
+    profils.iter().position(|p| !p.jeu.trim().is_empty() && j.contains(&p.jeu.trim().to_lowercase()))
+}
+
+/// Touches qu'on peut donner à un bouton (noms compris par Outils sur PC).
+pub const TOUCHES: &[&str] = &[
+    "espace", "entree", "echap", "tab", "maj", "ctrl", "alt", "retour", "haut", "bas", "gauche", "droite", "w", "a", "s", "d", "q", "e", "r", "f", "z", "x", "c", "v",
+    "t", "g", "b", "y", "h", "n", "u", "j", "m", "i", "k", "o", "l", "p", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "f1", "f2", "f3", "f4", "f5", "f6",
+    "f7", "f8", "f9", "f10", "f11", "f12",
+];
+
+/// Nom lisible d'une touche (« w » est la touche Z d'un clavier AZERTY : même position).
+pub fn libelle_touche(t: &str) -> String {
+    match t {
+        "w" => "Z".into(),
+        "a" => "Q".into(),
+        "q" => "A".into(),
+        "z" => "W".into(),
+        "m" => ",".into(),
+        x if x.len() == 1 => x.to_uppercase(),
+        x => x.to_string(),
+    }
+}
+
 pub struct Manette {
     envoi: Option<Envoi>,
     doigts: HashMap<u64, Pos2>,
     appuyes: HashSet<usize>,
-    preset: usize,
+    profils: Vec<ProfilManette>,
+    profil: usize,
     volant: bool,
     capteurs: Option<Capteurs>,
     rappel: Instant,
+    edition: bool,
+    choisi: Option<usize>,
+    jeu_pc: Arc<Mutex<Option<String>>>,
+    fil_jeu: Arc<AtomicBool>,
+    vu: Instant,
+    auto: Option<String>,
 }
 
 impl Manette {
     pub fn new() -> Self {
-        Manette { envoi: None, doigts: HashMap::new(), appuyes: HashSet::new(), preset: 0, volant: false, capteurs: None, rappel: Instant::now() }
+        let profils = profils_manette();
+        let profil = charger::<usize>("manette_profil").min(profils.len() - 1);
+        Manette {
+            envoi: None, doigts: HashMap::new(), appuyes: HashSet::new(), profils, profil, volant: false, capteurs: None, rappel: Instant::now(), edition: false, choisi: None,
+            jeu_pc: Arc::default(), fil_jeu: Arc::default(), vu: Instant::now(), auto: None,
+        }
     }
 
-    fn touche(&self, k: usize) -> &'static str {
-        if self.preset == 0 { BOUTONS[k].1 } else { BOUTONS[k].2 }
+    fn p(&self) -> &ProfilManette {
+        &self.profils[self.profil.min(self.profils.len() - 1)]
+    }
+
+    fn touche(&self, k: usize) -> String {
+        self.p().touches.get(k).cloned().unwrap_or_default()
+    }
+
+    fn sauver(&self) {
+        crate::outil::enregistrer("manette_profils", &self.profils);
+        crate::outil::enregistrer("manette_profil", &self.profil);
+    }
+
+    fn relacher(&mut self) {
+        if let Some(e) = &self.envoi {
+            let l: Vec<String> = self.appuyes.iter().map(|k| format!("k {} up", self.touche(*k))).collect();
+            e.envoyer(&l);
+        }
+        self.appuyes.clear();
+    }
+
+    /// Demande au PC, tant que la manette est affichée, quel jeu tourne (profil automatique).
+    fn suivre_jeu(&self, p: Pc) {
+        if self.fil_jeu.swap(true, Relaxed) {
+            return;
+        }
+        let (j, f) = (self.jeu_pc.clone(), self.fil_jeu.clone());
+        std::thread::spawn(move || {
+            while f.load(Relaxed) {
+                if let Ok(v) = p.get_json("/api/etat") {
+                    *j.lock().unwrap() = v["jeu"].as_str().map(|s| s.to_string());
+                }
+                for _ in 0..20 {
+                    if !f.load(Relaxed) {
+                        break;
+                    }
+                    std::thread::sleep(Duration::from_millis(500));
+                }
+            }
+        });
+    }
+
+    fn editeur(&mut self, ui: &mut egui::Ui) {
+        let pr = self.profil;
+        ui.horizontal_wrapped(|ui| {
+            ui.label("Nom :");
+            ui.add(egui::TextEdit::singleline(&mut self.profils[pr].nom).desired_width(170.0));
+        });
+        ui.horizontal_wrapped(|ui| {
+            ui.label("Jeu associé :");
+            ui.add(egui::TextEdit::singleline(&mut self.profils[pr].jeu).hint_text("ex. minecraft, fortnite").desired_width(150.0));
+            if let Some(j) = self.jeu_pc.lock().unwrap().clone() {
+                if ui.small_button(format!("= {j}")).clicked() {
+                    self.profils[pr].jeu = j;
+                }
+            }
+        });
+        ui.horizontal_wrapped(|ui| {
+            ui.label("Vibration :");
+            for (v, t) in [(0u8, "aucune"), (1, "légère"), (2, "forte")] {
+                ui.selectable_value(&mut self.profils[pr].vibration, v, t);
+            }
+        });
+        match self.choisi {
+            Some(k) => {
+                ui.label(RichText::new(format!("Bouton {} : glisse-le pour le déplacer", BOUTONS[k].0)).strong());
+                ui.horizontal_wrapped(|ui| {
+                    ui.label("Taille");
+                    ui.add(egui::Slider::new(&mut self.profils[pr].places[k].2, 0.04..=0.16).show_value(false));
+                    egui::ComboBox::from_id_salt("touche_manette").selected_text(format!("Touche : {}", libelle_touche(&self.profils[pr].touches[k]))).show_ui(ui, |ui| {
+                        for t in TOUCHES {
+                            ui.selectable_value(&mut self.profils[pr].touches[k], t.to_string(), libelle_touche(t));
+                        }
+                    });
+                });
+            }
+            None => {
+                ui.weak("Touche un bouton pour changer sa touche ou sa taille, glisse-le pour le déplacer.");
+            }
+        }
+        ui.horizontal_wrapped(|ui| {
+            if ui.button("✔ Terminé").clicked() {
+                self.edition = false;
+                self.choisi = None;
+                self.sauver();
+            }
+            if ui.button("↺ Places d'origine").clicked() {
+                self.profils[pr].places = (0..BOUTONS.len()).map(place).collect();
+            }
+            if self.profils.len() > 1 && ui.button("🗑 Supprimer ce profil").clicked() {
+                self.profils.remove(pr);
+                self.profil = 0;
+                self.edition = false;
+                self.choisi = None;
+                self.sauver();
+            }
+        });
     }
 }
 
@@ -120,17 +302,17 @@ impl Outil for Manette {
         Cat::Jeux
     }
     fn tic(&mut self, _: &egui::Context) {
-        // l'outil n'est plus à l'écran : on relâche tout
-        if !self.appuyes.is_empty() && self.rappel.elapsed() > Duration::from_secs(1) {
-            if let Some(e) = &self.envoi {
-                let l: Vec<String> = self.appuyes.iter().map(|k| format!("k {} up", self.touche(*k))).collect();
-                e.envoyer(&l);
+        // l'outil n'est plus à l'écran : on relâche tout et on arrête de demander le jeu au PC
+        if self.vu.elapsed() > Duration::from_secs(1) {
+            if !self.appuyes.is_empty() {
+                self.relacher();
             }
-            self.appuyes.clear();
             self.capteurs = None;
+            self.fil_jeu.store(false, Relaxed);
         }
     }
     fn ui(&mut self, ui: &mut egui::Ui) {
+        self.vu = Instant::now();
         let Some(p) = pc() else {
             sans_pc(ui);
             return;
@@ -138,58 +320,124 @@ impl Outil for Manette {
         if self.envoi.as_ref().is_none_or(|e| e.ip != p.ip) {
             self.envoi = Envoi::new(&p);
         }
-        ui.horizontal_wrapped(|ui| {
-            ui.selectable_value(&mut self.preset, 0, "Jeux PC (ZQSD, Espace…)");
-            ui.selectable_value(&mut self.preset, 1, "Flèches, Entrée");
-            ui.checkbox(&mut self.volant, "🚗 Volant (incliner)");
-        });
-        ui.weak("Tourne le téléphone à l'horizontale. Les touches arrivent sur le PC comme un vrai clavier.");
-        let h = (ui.ctx().screen_rect().height() * 0.62).max(260.0);
-        let (zone, _) = ui.allocate_exact_size(Vec2::new(ui.available_width(), h), egui::Sense::click_and_drag());
-        appuis(ui, &mut self.doigts);
-        let mut maintenant: HashSet<usize> = HashSet::new();
-        let rayon = |k: usize| place(k).2 * zone.width().min(zone.height() * 1.6);
-        let centre = |k: usize| zone.min + Vec2::new(place(k).0 * zone.width(), place(k).1 * zone.height());
-        for d in self.doigts.values() {
-            for k in 0..BOUTONS.len() {
-                if centre(k).distance(*d) < rayon(k) * 1.25 {
-                    maintenant.insert(k);
+        self.suivre_jeu(p.clone());
+        // profil automatique quand le jeu change sur le PC
+        let jeu = self.jeu_pc.lock().unwrap().clone();
+        if jeu != self.auto {
+            self.auto.clone_from(&jeu);
+            if let Some(k) = jeu.as_deref().and_then(|j| profil_pour(&self.profils, j)) {
+                if k != self.profil && !self.edition {
+                    self.relacher();
+                    self.profil = k;
                 }
             }
         }
-        if self.volant {
-            let c = self.capteurs.get_or_insert_with(|| Capteurs::demarrer(true, false, false));
-            let a = c.m.lock().unwrap().acc;
-            let pente = if zone.width() > zone.height() { a[1] } else { -a[0] };
-            if pente > 2.0 {
-                maintenant.insert(3);
-            } else if pente < -2.0 {
-                maintenant.insert(2);
+        let avant = self.profil;
+        ui.horizontal_wrapped(|ui| {
+            egui::ComboBox::from_id_salt("profil_manette").selected_text(self.p().nom.clone()).show_ui(ui, |ui| {
+                for (k, pr) in self.profils.iter().enumerate() {
+                    let t = if pr.jeu.trim().is_empty() { pr.nom.clone() } else { format!("{} · 🎮 {}", pr.nom, pr.jeu) };
+                    ui.selectable_value(&mut self.profil, k, t);
+                }
+            });
+            if !self.edition && ui.button("✏ Modifier").clicked() {
+                self.edition = true;
             }
+            if !self.edition && ui.button("➕ Nouveau").clicked() {
+                let mut n = self.p().clone();
+                n.nom = format!("Profil {}", self.profils.len() + 1);
+                n.jeu = jeu.clone().unwrap_or_default();
+                self.profils.push(n);
+                self.profil = self.profils.len() - 1;
+                self.edition = true;
+            }
+            ui.checkbox(&mut self.volant, "🚗 Volant (incliner)");
+        });
+        if self.profil != avant {
+            self.relacher();
+            self.sauver();
+        }
+        if let Some(j) = &jeu {
+            ui.weak(format!("Sur le PC : 🎮 {j}"));
+        }
+        if self.edition {
+            self.editeur(ui);
         } else {
-            self.capteurs = None;
+            ui.weak("Tourne le téléphone à l'horizontale. Les touches arrivent sur le PC comme un vrai clavier.");
         }
-        let mut cmds = vec![];
-        for k in maintenant.difference(&self.appuyes) {
-            cmds.push(format!("k {} down", self.touche(*k)));
-            android::vibrer(12);
-        }
-        for k in self.appuyes.difference(&maintenant) {
-            cmds.push(format!("k {} up", self.touche(*k)));
-        }
-        // rappel régulier des touches tenues (le PC les relâche sinon au bout de 3 s)
-        if self.rappel.elapsed() > Duration::from_millis(800) {
-            self.rappel = Instant::now();
-            cmds.extend(maintenant.iter().map(|k| format!("k {} down", self.touche(*k))));
-        }
-        if let Some(e) = &self.envoi {
-            e.envoyer(&cmds);
-        }
-        self.appuyes = maintenant;
+        let h = (ui.ctx().screen_rect().height() * 0.62).max(260.0);
+        let (zone, rep) = ui.allocate_exact_size(Vec2::new(ui.available_width(), h), egui::Sense::click_and_drag());
+        let places = self.p().places.clone();
+        let rayon = |k: usize| places[k].2 * zone.width().min(zone.height() * 1.6);
+        let centre = |k: usize| zone.min + Vec2::new(places[k].0 * zone.width(), places[k].1 * zone.height());
         let pt = ui.painter_at(zone);
         pt.rect_filled(zone, 18.0, Color32::from_rgb(28, 24, 40));
+        if self.edition {
+            // déplacer / choisir un bouton
+            if let Some(pos) = rep.interact_pointer_pos() {
+                if rep.drag_started() || rep.clicked() {
+                    self.choisi = (0..BOUTONS.len()).filter(|k| centre(*k).distance(pos) < rayon(*k) * 1.3).min_by(|a, b| centre(*a).distance(pos).total_cmp(&centre(*b).distance(pos)));
+                }
+                if rep.dragged() {
+                    if let Some(k) = self.choisi {
+                        let pr = self.profil;
+                        let x = ((pos.x - zone.min.x) / zone.width()).clamp(0.03, 0.97);
+                        let y = ((pos.y - zone.min.y) / zone.height()).clamp(0.05, 0.95);
+                        self.profils[pr].places[k].0 = x;
+                        self.profils[pr].places[k].1 = y;
+                    }
+                }
+            }
+            self.doigts.clear();
+        } else {
+            appuis(ui, &mut self.doigts);
+            let mut maintenant: HashSet<usize> = HashSet::new();
+            for d in self.doigts.values() {
+                for k in 0..BOUTONS.len() {
+                    if centre(k).distance(*d) < rayon(k) * 1.25 {
+                        maintenant.insert(k);
+                    }
+                }
+            }
+            if self.volant {
+                let c = self.capteurs.get_or_insert_with(|| Capteurs::demarrer(true, false, false));
+                let a = c.m.lock().unwrap().acc;
+                let pente = if zone.width() > zone.height() { a[1] } else { -a[0] };
+                if pente > 2.0 {
+                    maintenant.insert(3);
+                } else if pente < -2.0 {
+                    maintenant.insert(2);
+                }
+            } else {
+                self.capteurs = None;
+            }
+            let mut cmds = vec![];
+            let vib = match self.p().vibration {
+                0 => 0,
+                1 => 12,
+                _ => 35,
+            };
+            for k in maintenant.difference(&self.appuyes) {
+                cmds.push(format!("k {} down", self.touche(*k)));
+                if vib > 0 {
+                    android::vibrer(vib);
+                }
+            }
+            for k in self.appuyes.difference(&maintenant) {
+                cmds.push(format!("k {} up", self.touche(*k)));
+            }
+            // rappel régulier des touches tenues (le PC les relâche sinon au bout de 3 s)
+            if self.rappel.elapsed() > Duration::from_millis(800) {
+                self.rappel = Instant::now();
+                cmds.extend(maintenant.iter().map(|k| format!("k {} down", self.touche(*k))));
+            }
+            if let Some(e) = &self.envoi {
+                e.envoyer(&cmds);
+            }
+            self.appuyes = maintenant;
+        }
         for (k, (nom, ..)) in BOUTONS.iter().enumerate() {
-            let on = self.appuyes.contains(&k);
+            let on = self.appuyes.contains(&k) || self.choisi == Some(k) && self.edition;
             let c = match *nom {
                 "A" => Color32::from_rgb(90, 200, 120),
                 "B" => Color32::from_rgb(230, 80, 90),
@@ -198,11 +446,15 @@ impl Outil for Manette {
                 _ => Color32::from_gray(90),
             };
             pt.circle_filled(centre(k), rayon(k), if on { c } else { c.gamma_multiply(0.45) });
-            pt.circle_stroke(centre(k), rayon(k), Stroke::new(2.0_f32, Color32::from_white_alpha(60)));
+            pt.circle_stroke(centre(k), rayon(k), Stroke::new(if self.edition && self.choisi == Some(k) { 4.0_f32 } else { 2.0 }, Color32::from_white_alpha(if self.edition { 160 } else { 60 })));
             pt.text(centre(k), Align2::CENTER_CENTER, nom, FontId::proportional(rayon(k) * 0.7), Color32::WHITE);
+            if self.edition {
+                pt.text(centre(k) + Vec2::new(0.0, rayon(k) * 0.62), Align2::CENTER_CENTER, libelle_touche(&self.touche(k)), FontId::proportional((rayon(k) * 0.32).max(10.0)), Color32::from_white_alpha(200));
+            }
         }
         ui.ctx().request_repaint();
-        ui.weak(format!("A = {} · B = {} · X = {} · Y = {} · L = {} · R = {}", self.touche(4), self.touche(5), self.touche(6), self.touche(7), self.touche(8), self.touche(9)));
+        let t = |k: usize| libelle_touche(&self.touche(k));
+        ui.weak(format!("A = {} · B = {} · X = {} · Y = {} · L = {} · R = {}", t(4), t(5), t(6), t(7), t(8), t(9)));
     }
 }
 
@@ -619,6 +871,20 @@ impl Outil for TraductionPhoto {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn profils_de_manette() {
+        let base = profil_de_base("x", 1);
+        assert_eq!(base.touches.len(), BOUTONS.len());
+        assert_eq!(base.touches[4], "espace");
+        let mut v = vec![base.clone(), profil_de_base("y", 2)];
+        v[1].jeu = "Minecraft".into();
+        assert_eq!(profil_pour(&v, "Minecraft Launcher"), Some(1));
+        assert_eq!(profil_pour(&v, "Fortnite"), None);
+        assert_eq!(libelle_touche("w"), "Z");
+        assert_eq!(libelle_touche("espace"), "espace");
+        assert!(TOUCHES.iter().all(|t| !t.is_empty()));
+    }
 
     #[test]
     fn rotation() {

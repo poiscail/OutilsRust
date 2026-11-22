@@ -1,5 +1,32 @@
 # Nouveautés d'Outils
 
+## 0.14.0
+### Outils lui-même
+- ⚡ Démarrage plus rapide : plus de la moitié des outils ne se chargent qu'à leur première ouverture, et l'exe est plus léger
+- 🎮 Mode sourdine : pendant un jeu, Outils passe en priorité basse et se fait discret (Système › Ressources d'Outils, avec ce qu'il consomme)
+- 🏠 Accueil personnalisable : choisis et range les sections (favoris, récents, disques, résumés, tous les outils)
+- 🔍 Recherche intelligente : tape ce que tu veux (« pc lent », « wifi », « photo floue », « disque plein ») et Outils trouve les bons outils
+- 🗂 Menu rangé en sous-catégories, outils récents, et badge 🆕 sur les nouveaux outils
+- ❓ Aide intégrée : un bouton « ? » en haut de chaque outil explique à quoi il sert
+- 🩹 Santé d'Outils : réglages abîmés, raccourcis pris par une autre appli, ports occupés, place sur le disque — avec réparation
+- 🌐 Menus en anglais (bouton FR / EN en bas du menu)
+- 🖌 Éditeur d'images : réglage de netteté pour rattraper une photo floue
+### Jeux
+- 🩺 Problèmes en jeu : chutes de FPS, surchauffe et mémoire pleine repérées pendant la partie, avec la cause probable et un bilan à la fin
+- 🎮 Lanceur : jeux GOG, Riot (Valorant, LoL), Ubisoft, EA, Battle.net et Xbox / Game Pass en plus de Steam et Epic, avec leurs jaquettes
+- 🏷 Promos Steam : alerte quand un jeu de ta liste de souhaits atteint son plus bas prix, et remise minimale réglable (alertes aussi sur le téléphone)
+### PC et réseau
+- 🧽 Maintenance automatique chaque semaine la nuit : point de restauration, nettoyage, mises à jour, santé et optimisation des disques
+- 🗄 Sauvegarde automatique de dossiers vers une clé ou un disque, dès qu'il est branché, avec les anciennes versions gardées
+- 🦠 Programmes indésirables : pubs, faux nettoyeurs, mineurs cachés, extensions de navigateur trop curieuses, démarrages suspects
+- 🚚 Nouveau PC : emporte programmes, réglages, sauvegardes de jeux et temps de jeu, et remet tout en place sur le nouveau
+- 🏁 Comparateur de performances : processeur, mémoire, disque, carte graphique, et la pièce à changer en premier
+- 🏠 Bloqueur de pubs pour toute la maison : le PC devient le DNS de la box, pubs bloquées sur la TV, les téléphones et les consoles
+### Téléphone (appli 0.5)
+- 🔦 Tuiles des réglages rapides : lampe, pause/lecture et son coupé du PC depuis le volet du haut
+- 📥 « Partager › Outils » depuis n'importe quelle appli : envoyer au PC, mettre au coffre, compresser ou ranger
+- 🎮 Manette : dispositions modifiables (place, taille et touche de chaque bouton), profils par jeu choisis tout seuls, vibration réglable
+
 ## 0.13.0
 - 🎁 Jeux gratuits : bouton « Récupérer » qui ouvre le jeu directement dans Steam ou Epic Games (il ne reste qu'à cliquer « Obtenir »), et « Tout récupérer » pour les prendre tous d'un coup
 
