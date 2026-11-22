@@ -185,6 +185,7 @@ impl App {
         let planif = planif::Planif::new(planif::Executeur { mc: minecraft.pilote(), jeux: sauvegardes.poignee() });
         let telephone = telephone::Telephone::new(minecraft.pilote());
         let moniteur = moniteur::Moniteur::new(&racine);
+        let _ = telephone::MESURES.set(moniteur.lecteur());
         let extras = extras::tous(minecraft.pilote(), moniteur.lecteur());
         App {
             tri: tri::Tri::new(&racine), lanceur: lanceur::Lanceur::new(), coffre: coffre::CoffreUi::new(), traducteur: traducteur::Traducteur::new(),

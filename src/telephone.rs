@@ -155,6 +155,201 @@ fn json_echappe(s: &str) -> String {
 
 const PAGE: &str = include_str!("telephone.html");
 
+// ---------------------------------------------------------------------------------------------------
+// Appli Outils pour Android : API JSON, appairage par code, détection sur le Wi-Fi, notifications
+// ---------------------------------------------------------------------------------------------------
+
+/// Mesures du moniteur (CPU, GPU, FPS…), données par la fenêtre principale.
+pub static MESURES: std::sync::OnceLock<crate::moniteur::Lecteur> = std::sync::OnceLock::new();
+/// Code d'appairage à 6 chiffres et sa date de fin.
+static CODE: Mutex<Option<(String, std::time::Instant)>> = Mutex::new(None);
+/// Notifications du PC à transmettre au téléphone : (numéro, titre, texte).
+static NOTIFS: Mutex<std::collections::VecDeque<(u64, String, String)>> = Mutex::new(std::collections::VecDeque::new());
+static NUMERO: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+/// Port UDP où le PC répond aux téléphones qui le cherchent.
+pub const PORT_DECOUVERTE: u16 = 8643;
+/// Fichiers de réglages qu'on peut synchroniser avec le téléphone.
+pub const SYNCHRO: [&str; 4] = ["agenda", "ecole", "rebours", "sante"];
+
+/// Toute notification du PC part aussi vers le téléphone appairé.
+pub fn pousser_notif(titre: &str, texte: &str) {
+    let n = NUMERO.fetch_add(1, Relaxed) + 1;
+    let mut q = NOTIFS.lock().unwrap();
+    q.push_back((n, titre.to_string(), texte.to_string()));
+    while q.len() > 50 {
+        q.pop_front();
+    }
+}
+
+pub fn notifs_depuis(depuis: u64) -> (u64, Vec<(u64, String, String)>) {
+    let q = NOTIFS.lock().unwrap();
+    (NUMERO.load(Relaxed), q.iter().filter(|x| x.0 > depuis).cloned().collect())
+}
+
+pub fn nouveau_code() -> String {
+    let mut b = [0u8; 4];
+    let _ = getrandom::getrandom(&mut b);
+    let c = format!("{:06}", u32::from_le_bytes(b) % 1_000_000);
+    *CODE.lock().unwrap() = Some((c.clone(), std::time::Instant::now() + Duration::from_secs(600)));
+    c
+}
+
+fn code_valide(c: &str) -> bool {
+    let mut g = CODE.lock().unwrap();
+    match &*g {
+        Some((code, fin)) if std::time::Instant::now() < *fin && code == c.trim() => {
+            *g = None; // une seule fois
+            true
+        }
+        _ => false,
+    }
+}
+
+/// Adresses MAC des cartes réseau du PC (pour le réveiller depuis le téléphone).
+fn macs() -> Vec<String> {
+    use std::os::windows::process::CommandExt;
+    static CACHE: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
+    CACHE.get_or_init(|| {
+        let o = std::process::Command::new("getmac").args(["/fo", "csv", "/nh"]).creation_flags(0x0800_0000).output();
+        let t = o.map(|o| String::from_utf8_lossy(&o.stdout).into_owned()).unwrap_or_default();
+        t.lines().filter_map(|l| l.split(',').next()).map(|m| m.trim_matches('"').replace('-', ":")).filter(|m| m.len() == 17).collect()
+    }).clone()
+}
+
+fn nom_pc() -> String {
+    std::env::var("COMPUTERNAME").unwrap_or_else(|_| "PC".into())
+}
+
+/// Répond aux téléphones qui cherchent un PC avec Outils sur le Wi-Fi.
+fn decouverte(port: u16, marche: Arc<AtomicBool>) {
+    std::thread::spawn(move || {
+        let Ok(s) = UdpSocket::bind(("0.0.0.0", PORT_DECOUVERTE)) else { return };
+        let _ = s.set_read_timeout(Some(Duration::from_secs(1)));
+        let mut b = [0u8; 64];
+        while marche.load(Relaxed) {
+            if let Ok((n, de)) = s.recv_from(&mut b) {
+                if &b[..n] == b"OUTILS?" {
+                    let r = serde_json::json!({ "outils": 1, "port": port, "nom": nom_pc(), "version": env!("CARGO_PKG_VERSION") });
+                    let _ = s.send_to(r.to_string().as_bytes(), de);
+                }
+            }
+        }
+    });
+}
+
+fn json(s: &mut TcpStream, v: serde_json::Value) {
+    repondre(s, "200 OK", "application/json; charset=utf-8", v.to_string().as_bytes(), "");
+}
+
+fn fichier_synchro(nom: &str) -> Option<PathBuf> {
+    SYNCHRO.contains(&nom).then(|| crate::outil::chemin(nom))
+}
+
+fn date_fichier(p: &Path) -> u64 {
+    p.metadata().and_then(|m| m.modified()).ok().and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok()).map_or(0, |d| d.as_secs())
+}
+
+/// Requêtes de l'appli Android (déjà authentifiées). Renvoie faux si le chemin n'est pas de l'API.
+fn api(s: &mut TcpStream, req: &Requete, lecteur: &mut BufReader<TcpStream>, c: &Contexte) -> bool {
+    match (req.methode.as_str(), req.chemin.as_str()) {
+        ("GET", "/api/etat") => {
+            let (m, jeu) = MESURES.get().map(|l| l(true)).unwrap_or((crate::moniteur::Instantane { fps: -1.0, cpu: -1.0, cpu_t: -1.0, gpu: -1.0, gpu_t: -1.0, ram: -1.0 }, None));
+            let (mc, joueurs) = match c.mc.statut() {
+                None => ("arrêté", vec![]),
+                Some((false, _)) => ("démarrage", vec![]),
+                Some((true, j)) => ("en ligne", j),
+            };
+            json(s, serde_json::json!({
+                "nom": nom_pc(), "version": env!("CARGO_PKG_VERSION"),
+                "cpu": m.cpu, "cpu_t": m.cpu_t, "gpu": m.gpu, "gpu_t": m.gpu_t, "ram": m.ram, "fps": m.fps, "jeu": jeu,
+                "mc": mc, "joueurs": joueurs, "macs": macs(),
+            }));
+        }
+        ("GET", "/api/jeux") => {
+            let v: Vec<serde_json::Value> = crate::jeux4::jeux_installes().iter().map(|j| serde_json::json!({ "id": j.id, "nom": j.nom })).collect();
+            json(s, serde_json::Value::Array(v));
+        }
+        ("POST", "/api/lancer") => {
+            let id = req.param("id").unwrap_or("");
+            match crate::jeux4::jeux_installes().into_iter().find(|j| j.id == id) {
+                Some(j) => {
+                    use std::os::windows::process::CommandExt;
+                    let _ = std::process::Command::new("cmd").args(["/c", "start", "", &j.cmd]).current_dir(if j.dir.is_empty() { "." } else { &j.dir }).creation_flags(0x0800_0000).spawn();
+                    noter(c, format!("📱 Lancement de {}", j.nom));
+                    repondre(s, "200 OK", "text/plain; charset=utf-8", format!("Lancement de {}", j.nom).as_bytes(), "");
+                }
+                None => repondre(s, "404 Not Found", "text/plain; charset=utf-8", "jeu introuvable".as_bytes(), ""),
+            }
+        }
+        ("GET", "/api/chercher") => {
+            let m = crate::recherche::moteur();
+            if !m.demarre.load(Relaxed) {
+                crate::recherche::demarrer(false);
+            }
+            let q = crate::recherche::analyser(req.param("q").unwrap_or(""), std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs() as u32));
+            let ix = m.index.read().unwrap();
+            let r = crate::recherche::chercher(&ix, &q, 60, false, &|p: &str| std::fs::metadata(p).ok().map(|m| (m.len(), 0)));
+            let v: Vec<serde_json::Value> = r.liste.iter().map(|&i| {
+                let chemin = ix.chemin(i);
+                let dossier = ix.drap[i as usize] & crate::recherche::DOSSIER != 0;
+                let t = ix.taille[i as usize];
+                let t = if t == crate::recherche::INCONNU && !dossier { std::fs::metadata(&chemin).map_or(0, |m| m.len()) } else if dossier { 0 } else { t };
+                serde_json::json!({ "chemin": chemin, "nom": ix.nom(i), "taille": t, "date": ix.date[i as usize], "dossier": dossier })
+            }).collect();
+            json(s, serde_json::json!({ "total": r.total, "liste": v, "indexes": ix.vivants }));
+        }
+        ("GET", "/api/fichier") => {
+            let p = PathBuf::from(req.param("chemin").unwrap_or(""));
+            match std::fs::File::open(&p).ok().filter(|_| p.is_file()) {
+                Some(mut fi) => {
+                    let n = fi.metadata().map(|m| m.len()).unwrap_or(0);
+                    let nom = p.file_name().unwrap_or_default().to_string_lossy().replace('"', "");
+                    let _ = write!(s, "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {n}\r\nContent-Disposition: attachment; filename=\"{nom}\"\r\nConnection: close\r\n\r\n");
+                    let _ = std::io::copy(&mut fi, s);
+                    noter(c, format!("📤 {nom} envoyé au téléphone"));
+                }
+                None => repondre(s, "404 Not Found", "text/plain; charset=utf-8", "fichier introuvable".as_bytes(), ""),
+            }
+        }
+        ("GET", "/api/notifs") => {
+            let (dernier, l) = notifs_depuis(req.param("depuis").and_then(|x| x.parse().ok()).unwrap_or(0));
+            let v: Vec<serde_json::Value> = l.into_iter().map(|(n, t, m)| serde_json::json!({ "n": n, "titre": t, "texte": m })).collect();
+            json(s, serde_json::json!({ "dernier": dernier, "liste": v }));
+        }
+        ("GET", "/api/synchro") => {
+            let Some(f) = fichier_synchro(req.param("nom").unwrap_or("")) else {
+                repondre(s, "400 Bad Request", "text/plain", b"nom inconnu", "");
+                return true;
+            };
+            let contenu = std::fs::read_to_string(&f).ok().and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok()).unwrap_or(serde_json::Value::Null);
+            json(s, serde_json::json!({ "t": date_fichier(&f), "contenu": contenu }));
+        }
+        ("POST", "/api/synchro") => {
+            let Some(f) = fichier_synchro(req.param("nom").unwrap_or("")) else {
+                repondre(s, "400 Bad Request", "text/plain", b"nom inconnu", "");
+                return true;
+            };
+            let mut b = vec![];
+            let _ = lecteur.take(req.longueur.min(8 << 20)).read_to_end(&mut b);
+            if serde_json::from_slice::<serde_json::Value>(&b).is_err() {
+                repondre(s, "400 Bad Request", "text/plain", b"json invalide", "");
+                return true;
+            }
+            let _ = std::fs::create_dir_all(f.parent().unwrap());
+            match std::fs::write(&f, &b) {
+                Ok(()) => {
+                    crate::outil::recharger_synchro(req.param("nom").unwrap_or(""));
+                    noter(c, format!("🔄 {} reçu du téléphone", req.param("nom").unwrap_or("")));
+                    json(s, serde_json::json!({ "t": date_fichier(&f) }));
+                }
+                Err(e) => repondre(s, "500 Internal Server Error", "text/plain; charset=utf-8", e.to_string().as_bytes(), ""),
+            }
+        }
+        _ => return false,
+    }
+    true
+}
+
 struct Contexte {
     r: Arc<Mutex<Reglages>>,
     mc: Pilote,
@@ -173,9 +368,23 @@ fn servir(mut s: TcpStream, c: &Contexte) {
     let mut lecteur = BufReader::new(clone);
     let Some(req) = lire_requete(&mut lecteur) else { return };
     let reg = c.r.lock().unwrap().clone();
+    // appairage de l'appli Android : le code à 6 chiffres affiché sur le PC donne la clé
+    if req.chemin == "/api/appairer" {
+        if req.param("code").is_some_and(code_valide) {
+            noter(c, format!("📱 Téléphone associé ({})", req.param("appareil").unwrap_or("Android")));
+            json(&mut s, serde_json::json!({ "cle": reg.cle, "nom": nom_pc() }));
+        } else {
+            std::thread::sleep(Duration::from_millis(800)); // pas d'essais à la chaîne
+            repondre(&mut s, "403 Forbidden", "text/plain; charset=utf-8", "Code faux ou expiré : regarde le code affiché dans Outils sur le PC.".as_bytes(), "");
+        }
+        return;
+    }
     let ok = req.param("k").or(req.cookie_cle.as_deref()) == Some(reg.cle.as_str());
     if !ok {
         repondre(&mut s, "403 Forbidden", "text/plain; charset=utf-8", "Clé absente ou expirée : rescanne le QR code dans Outils.".as_bytes(), "");
+        return;
+    }
+    if req.chemin.starts_with("/api/") && api(&mut s, &req, &mut lecteur, c) {
         return;
     }
     let cookie = format!("Set-Cookie: k={}; Path=/; Max-Age=31536000; SameSite=Strict\r\n", reg.cle);
@@ -283,6 +492,15 @@ fn servir(mut s: TcpStream, c: &Contexte) {
                     Ok("Mise en veille")
                 }
                 "mc_demarrer" => c.mc.demarrer().map(|_| "Serveur Minecraft : démarrage"),
+                "mc_sauvegarder" => {
+                    c.mc.commande("save-all");
+                    Ok("Serveur Minecraft : sauvegarde")
+                }
+                "mc_dire" => {
+                    let t: String = req.param("texte").unwrap_or("").chars().filter(|c| !c.is_control()).take(200).collect();
+                    c.mc.commande(&format!("say [Téléphone] {t}"));
+                    Ok("Message envoyé dans le chat")
+                }
                 "mc_arreter" => {
                     let mc = c.mc.clone();
                     std::thread::spawn(move || mc.arreter());
@@ -346,6 +564,7 @@ impl Telephone {
         self.marche.store(true, Relaxed);
         let ctx = Arc::new(Contexte { r: self.r.clone(), mc: self.mc.clone(), journal: self.journal.clone() });
         let marche = self.marche.clone();
+        decouverte(port, marche.clone());
         std::thread::spawn(move || {
             while marche.load(Relaxed) {
                 match ecoute.accept() {
@@ -394,6 +613,27 @@ impl Telephone {
         });
         if let Some(e) = self.erreur.lock().unwrap().clone() {
             ui.colored_label(Color32::LIGHT_RED, e);
+        }
+        if marche {
+            egui::Frame::group(ui.style()).show(ui, |ui| {
+                ui.horizontal_wrapped(|ui| {
+                    ui.strong("📱 Appli Outils pour Android :");
+                    let code = CODE.lock().unwrap().clone().filter(|(_, fin)| std::time::Instant::now() < *fin);
+                    match code {
+                        Some((c, fin)) => {
+                            ui.label("dans l'appli, « Mon PC » › « Associer », puis tape le code");
+                            ui.label(egui::RichText::new(format!("{} {}", &c[..3], &c[3..])).size(26.0).strong().monospace());
+                            ui.weak(format!("(encore {} min)", (fin - std::time::Instant::now()).as_secs() / 60 + 1));
+                        }
+                        None => {
+                            if ui.button("Associer un téléphone").clicked() {
+                                nouveau_code();
+                            }
+                            ui.weak("ou scanne le QR code ci-dessous depuis l'appli.");
+                        }
+                    }
+                });
+            });
         }
         ui.columns(2, |c| {
             let ui = &mut c[0];

@@ -600,6 +600,10 @@ impl Outil for ComptesRebours {
         }
     }
     fn ui(&mut self, ui: &mut egui::Ui) {
+        // données reçues de l'autre appareil (PC ↔ téléphone)
+        if crate::outil::a_recharger("rebours") {
+            self.l = charger("rebours");
+        }
         ui.heading("Comptes à rebours");
         let (auj, _) = maintenant();
         let mut v: Vec<(i64, usize)> = self.l.iter().enumerate().filter_map(|(k, r)| Some((jours_entre(&auj, &r.date)?, k))).collect();
@@ -759,6 +763,10 @@ impl Outil for Ecole {
         }
     }
     fn ui(&mut self, ui: &mut egui::Ui) {
+        // données reçues de l'autre appareil (PC ↔ téléphone)
+        if crate::outil::a_recharger("ecole") {
+            self.s = charger("ecole");
+        }
         ui.heading("Emploi du temps et devoirs");
         let avant = self.s.clone();
         ui.horizontal(|ui| {

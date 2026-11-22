@@ -28,7 +28,14 @@ mod quotidien2;
 #[path = "../../src/quotidien3.rs"]
 mod quotidien3;
 
+mod android;
+mod capteurs_tel;
+mod commun;
 mod creatif;
+mod fichiers_tel;
+mod jeux_tel;
+mod monpc;
+mod wifi_tel;
 mod minecraft;
 mod outil;
 mod systeme;
@@ -78,13 +85,26 @@ pub struct Fiche {
     pub aide: &'static str,
 }
 
-pub const RUBRIQUES: [(&str, &str); 3] = [("🎮", "Jeux"), ("♟", "Réflexion"), ("📆", "Au quotidien")];
+pub const RUBRIQUES: [(&str, &str); 5] = [("🖥", "PC et réseau"), ("📱", "Téléphone"), ("🎮", "Jeux"), ("♟", "Réflexion"), ("📆", "Au quotidien")];
 
 pub fn catalogue() -> Vec<Fiche> {
     let f = |o: Box<dyn Outil>, rubrique, pave, aide| Fiche { outil: o, rubrique, pave, aide };
     use Pave::*;
     vec![
+        // PC et réseau
+        f(Box::new(monpc::MonPc::new()), "PC et réseau", Aucun, "Télécommande, état, jeux, fichiers, presse-papiers et Minecraft de ton PC (Outils ouvert sur le PC, même Wi-Fi)."),
+        f(Box::new(wifi_tel::Wifi::new()), "PC et réseau", Aucun, "Signal, appareils connectés, débit et ping."),
+        // Téléphone
+        f(Box::new(fichiers_tel::FichiersTel::new()), "Téléphone", Aucun, "Espace, doublons, rangement, renommage, fichiers et applis louches. Rien n'est effacé sans passer par la corbeille d'Outils."),
+        f(Box::new(capteurs_tel::Lampe::new()), "Téléphone", Aucun, "Lampe, stroboscope et SOS."),
+        f(Box::new(capteurs_tel::ScannerQr::new()), "Téléphone", Aucun, "Lit les QR codes ; celui d'Outils sur PC associe le téléphone."),
+        f(Box::new(capteurs_tel::Boussole::new()), "Téléphone", Aucun, "Boussole et niveau à bulle."),
+        f(Box::new(capteurs_tel::Sonometre::new()), "Téléphone", Aucun, "Niveau de bruit autour de toi."),
+        f(Box::new(capteurs_tel::Sport::new()), "Téléphone", Aucun, "Podomètre, chrono à tours et fractionné."),
         // Jeux
+        f(Box::new(jeux_tel::Labyrinthe::new()), "Jeux", Aucun, "Incline le téléphone pour guider la bille."),
+        f(Box::new(jeux_tel::FaceAFace::new()), "Jeux", Aucun, "À deux sur le même écran : réflexes et air hockey."),
+        f(Box::new(jeux_tel::Badges::new()), "Jeux", Aucun, "Les succès gagnés dans tous les jeux."),
         f(Box::new(minijeux::MiniJeux::new()), "Jeux", Manette, "12 jeux : serpent, casse-briques, démineur, blocs qui tombent… Utilise la manette en bas."),
         f(Box::new(minijeux4::Cartes::new()), "Jeux", Aucun, "Huit américain et bataille contre le téléphone."),
         f(Box::new(minijeux3::Solitaire::new()), "Jeux", Aucun, "Touche une carte puis l'endroit où la poser."),
@@ -173,6 +193,9 @@ impl App {
         }
         // essai sur PC : OUTILS_OUVRIR=numéro ouvre directement un outil
         let ouvert = std::env::var("OUTILS_OUVRIR").ok().and_then(|x| x.parse().ok());
+        if android::version_android() >= 33 && !android::a_permission("android.permission.POST_NOTIFICATIONS") {
+            android::demander(&["android.permission.POST_NOTIFICATIONS"]);
+        }
         let a = App { fiches: catalogue(), ouvert, reglages, recherche: String::new(), clavier: false, majuscules: false, injection: Injection::default(), toast: None, joueur2: false };
         a.style(&cc.egui_ctx);
         a

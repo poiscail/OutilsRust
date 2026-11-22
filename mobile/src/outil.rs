@@ -55,3 +55,20 @@ pub fn hasard(n: u64) -> u64 {
     let _ = getrandom::getrandom(&mut b);
     if n == 0 { 0 } else { u64::from_le_bytes(b) % n }
 }
+
+/// Fichiers de réglages remplacés par une synchronisation (PC ↔ téléphone) : l'outil les relit.
+static A_RECHARGER: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
+
+pub fn recharger_synchro(nom: &str) {
+    if let Ok(mut v) = A_RECHARGER.lock() {
+        v.push(nom.to_string());
+    }
+}
+
+/// Vrai (une fois) si le fichier `nom` vient d'être remplacé.
+pub fn a_recharger(nom: &str) -> bool {
+    let Ok(mut v) = A_RECHARGER.lock() else { return false };
+    let avant = v.len();
+    v.retain(|x| x != nom);
+    v.len() != avant
+}

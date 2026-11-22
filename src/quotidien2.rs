@@ -565,6 +565,10 @@ impl Outil for Agenda {
         (!v.is_empty()).then(|| format!("Aujourd'hui : {}", v.iter().map(|e| format!("{} {}", texte_heure(e.heure), e.titre)).collect::<Vec<_>>().join(" · ")))
     }
     fn ui(&mut self, ui: &mut egui::Ui) {
+        // données reçues de l'autre appareil (PC ↔ téléphone)
+        if crate::outil::a_recharger("agenda") {
+            *self.ev.lock().unwrap() = charger("agenda");
+        }
         ui.heading("Agenda");
         let (auj, _) = maintenant();
         let (a, m) = self.mois;
@@ -825,6 +829,10 @@ impl Outil for EauCalories {
         Some(format!("💧 {} / {} verres · 🍽 {k} / {} kcal", j.eau, s.objectif_eau, s.objectif_kcal))
     }
     fn ui(&mut self, ui: &mut egui::Ui) {
+        // données reçues de l'autre appareil (PC ↔ téléphone)
+        if crate::outil::a_recharger("sante") {
+            *self.s.lock().unwrap() = charger("sante");
+        }
         ui.heading("Eau et calories");
         let (d, _) = maintenant();
         let avant = self.s.lock().unwrap().clone();

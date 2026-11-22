@@ -5,6 +5,12 @@ Les jeux et les outils du quotidien d'Outils, sur Android. **Le code est partag�
 Ce qui n'existe que sur Windows y est entouré de `#[cfg(windows)]`, et de petits modules (`outil`,
 `creatif`, `systeme`, `telephone`, `minecraft`, `shims/rfd`) remplacent ceux du PC.
 
+Outils propres au téléphone : Mon PC (pont avec Outils sur PC : appairage par code à 6 chiffres
+ou QR, API `/api/*` de `src/telephone.rs`), Wi-Fi, fichiers du téléphone, lampe, boussole et niveau,
+sonomètre, sport, scanner QR, labyrinthe à bille, face à face, badges. L'accès à Android passe par
+`src/android.rs` (JNI pour le presse-papiers, les notifications, les permissions, la lampe, le Wi-Fi
+et les applis ; NDK pour les capteurs, le micro et l'appareil photo).
+
 Adaptations au tactile :
 - grandes tuiles, favoris (appui long) et récents ;
 - manette tactile et pavé de chiffres qui envoient de vraies touches aux jeux ;

@@ -1,5 +1,11 @@
 # Nouveautés d'Outils
 
+## 0.11.0
+- 📱 Appli Outils pour Android : associe ton téléphone (Téléphone › Démarrer › « Associer un téléphone ») et pilote le PC depuis le canapé
+- Le téléphone voit l'état du PC (CPU, GPU, FPS), lance tes jeux, cherche et récupère n'importe quel fichier du PC, envoie ses photos, partage le presse-papiers et gère le serveur Minecraft
+- Les notifications du PC (téléchargement fini, rappels…) arrivent aussi sur le téléphone
+- Agenda, devoirs, comptes à rebours et suivi de l'eau se synchronisent entre le PC et le téléphone
+
 ## 0.10.0
 - 🔎 Recherche de fichiers instantanée sur tout le PC (Ctrl+Alt+F de n'importe où) : résultats pendant que tu tapes, en quelques millisecondes
 - Mode ⚡ ultra-rapide en administrateur : lecture directe de la table des fichiers NTFS (quelques secondes pour tout indexer) et suivi en temps réel par le journal du disque
