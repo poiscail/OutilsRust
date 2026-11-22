@@ -1,5 +1,12 @@
 # Nouveautés d'Outils
 
+## 0.10.0
+- 🔎 Recherche de fichiers instantanée sur tout le PC (Ctrl+Alt+F de n'importe où) : résultats pendant que tu tapes, en quelques millisecondes
+- Mode ⚡ ultra-rapide en administrateur : lecture directe de la table des fichiers NTFS (quelques secondes pour tout indexer) et suivi en temps réel par le journal du disque
+- Filtres : ext:, type:image/video/doc…, taille:>1go, date:semaine, dossier:, !exclure, jokers *.mp4, recherche floue si tu fais une faute
+- Les fichiers de ton Bureau et de tes Documents passent devant, ceux de Windows derrière ; ceux que tu ouvres souvent remontent
+- Correction de l'IA des échecs
+
 ## 0.9.0
 ### Outils lui-même
 - Fenêtre « Quoi de neuf » après chaque mise à jour, et le détail des nouveautés avant d'installer

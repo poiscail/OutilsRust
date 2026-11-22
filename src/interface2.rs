@@ -599,7 +599,7 @@ impl RaccourcisOutils {
 
 }
 
-const EXISTANTS: [(&str, &str); 15] = [
+const EXISTANTS: [(&str, &str); 16] = [
     ("Ctrl+Alt+O", "Afficher Outils"),
     ("Ctrl+Alt+K", "Palette de commandes"),
     ("Ctrl+Alt+S / W / P", "Capture zone / fenêtre / écran"),
@@ -611,6 +611,7 @@ const EXISTANTS: [(&str, &str); 15] = [
     ("Ctrl+Alt+A", "Sortie audio suivante"),
     ("Ctrl+Alt+J", "Fin du chargement d'un jeu"),
     ("Ctrl+Alt+Y", "Corriger l'orthographe du texte sélectionné"),
+    ("Ctrl+Alt+F", "Recherche de fichiers sur tout le PC"),
     ("Ctrl+Alt+F1…F11", "Macros"),
     ("Ctrl+Alt+pavé numérique", "Ranger les fenêtres"),
     ("Ctrl+Maj+F1…F9", "Boîte à sons"),

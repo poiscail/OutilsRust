@@ -1,6 +1,6 @@
 [package]
 name = "outils"
-version = "0.9.0"
+version = "0.10.0"
 edition = "2021"
 
 [[bin]]
@@ -23,6 +23,7 @@ kamadak-exif = "0.6"
 lopdf = "0.36"
 qrcode = { version = "0.14", default-features = false }
 regex = "1"
+memchr = "2"
 rodio = { version = "0.20", default-features = false, features = ["symphonia-mp3", "symphonia-flac", "symphonia-vorbis", "symphonia-wav", "symphonia-aac", "symphonia-isomp4"] }
 lofty = "0.21"
 rfd = "0.15"
@@ -41,6 +42,10 @@ windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Storage
 [profile.dev.package.argon2]
 opt-level = 3
 [profile.dev.package.blake2]
+opt-level = 3
+
+# la recherche de fichiers compare des millions de noms : memchr à pleine vitesse
+[profile.release.package.memchr]
 opt-level = 3
 
 [profile.release]

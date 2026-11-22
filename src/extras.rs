@@ -1,7 +1,7 @@
 //! Liste des outils ajoutés en lot (trait `Outil`), dans l'ordre du menu de chaque catégorie.
 use crate::minecraft::Pilote;
 use crate::outil::Outil;
-use crate::{bureau, coeur, jeux2, jeux3, creatif, dependances, mcplus, mcplus2, fichiers2, fichiers3, systeme3, quotidien2, micro, creatif2, interface, jeux4, mcplus3, fichiers4, systeme4, reseau3, quotidien3, creatif3, minijeux3, interface2, jeux5, fichiers5, systeme5, creatif4, minijeux4, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
+use crate::{bureau, coeur, jeux2, jeux3, creatif, dependances, mcplus, mcplus2, fichiers2, fichiers3, systeme3, quotidien2, micro, creatif2, interface, jeux4, mcplus3, fichiers4, systeme4, reseau3, quotidien3, creatif3, minijeux3, interface2, jeux5, fichiers5, systeme5, creatif4, minijeux4, recherche, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
 
 pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>> {
     vec![
@@ -62,6 +62,7 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         Box::new(jeux5::Comparateur::new()),
         Box::new(jeux5::Expirent::new()),
         // fichiers
+        Box::new(recherche::RechercheFichiers::new()),
         Box::new(fichiers2::Favoris::new()),
         Box::new(fichiers3::SyncUsb::new()),
         Box::new(fichiers3::Surveillance::new()),

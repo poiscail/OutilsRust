@@ -72,6 +72,7 @@ Plan, liste et graphe : [PLAN.md](PLAN.md).
 | Système ++++ | alerte programme gourmand, pilotes à jour, bilan du PC sur 100, test de vitesse programmé, partage de dossier sur le réseau, changer de région pour un jeu (WARP), ping dans l'overlay |
 | Créatif ++++ | traducteur vocal, éditeur vidéo simple, memes vidéo (MP4 / GIF), bannières et logos (Discord, YouTube, Twitch), stickers et émojis Discord, correcteur d'orthographe partout (Ctrl+Alt+Y), commandes vocales |
 | Fun +++ | jeux de cartes (huit américain, bataille), bataille navale (ordi ou réseau), snake à deux (même clavier ou réseau), dames 10×10, sudoku du jour, quiz drapeaux et capitales, course de frappe en réseau |
+| Recherche de fichiers | tout le PC en quelques millisecondes (Ctrl+Alt+F) : index des noms en mémoire, lecture de la table NTFS + journal USN en administrateur, sinon parcours parallèle + surveillance des dossiers ; filtres ext:, type:, taille:, date:, dossier:, !, jokers, recherche floue |
 
 ## Options (onglet Personnaliser)
 
