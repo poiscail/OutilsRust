@@ -369,6 +369,7 @@ pub struct Rythme {
     battements: u32,
     rec: RecordRythme,
     doigts: HashMap<u64, Pos2>,
+    vu: Instant,
 }
 
 const NOTES: [f32; 4] = [261.6, 329.6, 392.0, 523.3];
@@ -376,7 +377,7 @@ const DUREE: f32 = 60.0;
 
 impl Rythme {
     pub fn new() -> Self {
-        Rythme { synthe: None, notes: vec![], debut: None, bpm: 110.0, score: 0, combo: 0, jugement: (String::new(), Instant::now()), battements: 0, rec: charger("rythme"), doigts: HashMap::new() }
+        Rythme { synthe: None, notes: vec![], debut: None, bpm: 110.0, score: 0, combo: 0, jugement: (String::new(), Instant::now()), battements: 0, rec: charger("rythme"), doigts: HashMap::new(), vu: Instant::now() }
     }
 
     fn jouer(&mut self, couloir: usize) {
@@ -414,8 +415,19 @@ impl Outil for Rythme {
     fn cat(&self) -> Cat {
         Cat::Fun
     }
+    fn tic(&mut self, _: &egui::Context) {
+        // l'appli ou l'outil est quitté : partie arrêtée et son coupé (sinon il tourne pour rien)
+        if self.vu.elapsed() > Duration::from_secs(1) {
+            self.debut = None;
+            self.synthe = None;
+        }
+    }
     fn ui(&mut self, ui: &mut egui::Ui) {
+        self.vu = Instant::now();
         let Some(debut) = self.debut else {
+            if !self.jugement.0.is_empty() {
+                ui.label(RichText::new(&self.jugement.0).size(20.0).strong().color(ROSE));
+            }
             ui.label(RichText::new("Touche les couloirs quand les notes arrivent sur la ligne").size(18.0).strong());
             ui.horizontal(|ui| {
                 ui.label("Tempo");
@@ -496,7 +508,8 @@ impl Outil for Rythme {
                 enregistrer("rythme", &self.rec);
             }
             self.debut = None;
-            self.jugement = (format!("Fini : {} / {} notes", reussies, self.notes.len()), Instant::now());
+            self.synthe = None;
+            self.jugement = (format!("Fini : {} / {} notes · {} points", reussies, self.notes.len(), self.score), Instant::now());
             android::vibrer(200);
         } else {
             ui.ctx().request_repaint();

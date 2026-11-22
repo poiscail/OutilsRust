@@ -116,7 +116,9 @@ impl ProfilsJeux {
                         if let Some(pr) = x.jeux.get(j) {
                             let mut fait = vec![];
                             dossier = crate::jeux4::jeux_installes().into_iter().find(|g| g.nom == *j).map(|g| g.dir).unwrap_or_default();
-                            if pr.plan > 0 {
+                            // « Optimisation au lancement » gère déjà le mode performances : on ne s'en mêle pas
+                            let optim: crate::jeux5::ReglageOptim = charger("optim_jeu");
+                            if pr.plan > 0 && !(pr.plan == 1 && optim.actif && optim.performances) {
                                 a_restaurer.0 = plan_actuel();
                                 let s = if pr.plan == 1 { "SCHEME_MIN" } else { "SCHEME_MAX" };
                                 let _ = std::process::Command::new("powercfg").args(["/setactive", s]).creation_flags(SANS_FENETRE).status();

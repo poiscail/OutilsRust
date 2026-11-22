@@ -655,9 +655,14 @@ mod codec {
                 let mut tampon = vec![0u8; 1 << 20];
                 let mut info: AMediaCodecBufferInfo = std::mem::zeroed();
                 let debut = std::time::Instant::now();
+                let mut progres = std::time::Instant::now();
                 while !fin {
                     if debut.elapsed().as_secs() > 3600 {
                         resultat = Err("trop long".into());
+                        break;
+                    }
+                    // certains encodeurs ne signalent jamais la fin : on s'arrête après 8 s sans rien produire
+                    if fin_dec && progres.elapsed().as_secs() > 8 {
                         break;
                     }
                     // 1. lecture : vidéo vers le décodeur, son mis de côté
@@ -720,6 +725,7 @@ mod codec {
                         let b = AMediaCodec_getOutputBuffer(enc, i as usize, &mut taille);
                         if info.flags & AMEDIACODEC_BUFFER_FLAG_CODEC_CONFIG as u32 == 0 && info.size > 0 && tv >= 0 {
                             AMediaMuxer_writeSampleData(mux, tv as usize, b, &info);
+                            progres = std::time::Instant::now();
                         }
                         AMediaCodec_releaseOutputBuffer(enc, i as usize, false);
                         if info.flags & AMEDIACODEC_BUFFER_FLAG_END_OF_STREAM as u32 != 0 {

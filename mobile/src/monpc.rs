@@ -56,6 +56,33 @@ pub fn dechiffrer(cle_b64: &str, b64: &str) -> Option<String> {
     String::from_utf8(c.decrypt(aes_gcm::Nonce::from_slice(&b[..12]), &b[12..]).ok()?).ok()
 }
 
+pub fn decoder(s: &str) -> String {
+    let b = s.as_bytes();
+    let mut o = Vec::with_capacity(b.len());
+    let mut i = 0;
+    while i < b.len() {
+        let hexa = |c: u8| (c as char).to_digit(16);
+        if b[i] == b'%' && i + 2 < b.len() {
+            if let (Some(h), Some(l)) = (hexa(b[i + 1]), hexa(b[i + 2])) {
+                o.push((h * 16 + l) as u8);
+                i += 3;
+                continue;
+            }
+        }
+        o.push(b[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&o).into_owned()
+}
+
+/// « /cmd/mc_dire?texte=Salut%20!» → « mc_dire Salut ! » ; « /api/lancer?id=730 » → « lancer 730 ».
+pub fn commande_relais(chemin: &str) -> String {
+    let (c, q) = chemin.split_once('?').unwrap_or((chemin, ""));
+    let nom = c.trim_start_matches("/cmd/").trim_start_matches("/api/");
+    let valeur = q.split('&').find_map(|x| x.split_once('=').map(|y| y.1)).map(decoder).unwrap_or_default();
+    if valeur.is_empty() { nom.to_string() } else { format!("{nom} {valeur}") }
+}
+
 /// Envoie une commande au PC par le relais (quand on n'est pas à la maison).
 pub fn commande_distance(p: &Pc, cmd: &str) -> Result<(), String> {
     if !p.distance_actif || p.distance_sujet.is_empty() {
@@ -318,7 +345,7 @@ impl MonPc {
                 Ok(r) => Ok(r),
                 // pas à la maison : par le relais chiffré
                 Err(_) if injoignable && p.distance_actif => {
-                    let cmd = c.trim_start_matches("/cmd/").replacen("?texte=", " ", 1);
+                    let cmd = commande_relais(&c);
                     commande_distance(&p, &cmd)?;
                     Ok("🌍 Envoyé par l'accès à distance".into())
                 }
@@ -431,7 +458,6 @@ impl Outil for MonPc {
             self.rafraichir();
         }
         let infos = self.infos.lock().unwrap().clone();
-        let joignable = infos.as_ref().is_some_and(|j| !j.is_null());
         ui.horizontal_wrapped(|ui| {
             ui.label(RichText::new(format!("🖥 {}", if pc.nom.is_empty() { &pc.ip } else { &pc.nom })).size(18.0).strong());
             match &infos {
@@ -745,5 +771,10 @@ mod tests {
         assert!(lire_adresse("https://exemple.fr").is_none());
         assert_eq!(p.url("/api/fichier?chemin=a"), "http://192.168.1.20:8642/api/fichier?chemin=a&k=abc123");
         assert_eq!(encoder("C:\\été 1.txt"), "C%3A%5C%C3%A9t%C3%A9%201.txt");
+        assert_eq!(decoder(&encoder("Salut à tous !")), "Salut à tous !");
+        assert_eq!(commande_relais(&format!("/cmd/mc_dire?texte={}", encoder("Coucou !"))), "mc_dire Coucou !");
+        assert_eq!(commande_relais("/api/lancer?id=730"), "lancer 730");
+        assert_eq!(commande_relais("/cmd/vol_plus"), "vol_plus");
+        assert_eq!(decoder("100%é%2"), "100%é%2");
     }
 }

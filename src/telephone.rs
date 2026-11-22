@@ -636,6 +636,17 @@ impl Telephone {
             if cmd == "etat" {
                 return etat_json(&c2).to_string();
             }
+            if let Some(id) = cmd.strip_prefix("lancer ") {
+                return match crate::jeux4::jeux_installes().into_iter().find(|j| j.id == id) {
+                    Some(j) => {
+                        use std::os::windows::process::CommandExt;
+                        let _ = std::process::Command::new("cmd").args(["/c", "start", "", &j.cmd]).current_dir(if j.dir.is_empty() { "." } else { &j.dir }).creation_flags(0x0800_0000).spawn();
+                        noter(&c2, format!("🌍 Lancement de {} (à distance)", j.nom));
+                        serde_json::json!({ "ok": format!("Lancement de {}", j.nom) }).to_string()
+                    }
+                    None => serde_json::json!({ "erreur": "jeu introuvable" }).to_string(),
+                };
+            }
             let (a, t) = cmd.split_once(' ').unwrap_or((cmd, ""));
             match commande(&c2, a, Some(t)) {
                 Ok(m) => {

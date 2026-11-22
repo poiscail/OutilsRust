@@ -15,8 +15,14 @@ use std::time::{Duration, Instant};
 pub const PORT_ENTREES: u16 = 8644;
 pub const PORT_SON: u16 = 8645;
 
+/// Configuration du PC associé (relue toutes les 5 s au plus : ces écrans se redessinent 60 fois par seconde).
 fn pc() -> Option<Pc> {
-    charger::<Option<Pc>>("pc").filter(|p| !p.ip.is_empty())
+    static CACHE: Mutex<Option<(Instant, Option<Pc>)>> = Mutex::new(None);
+    let mut c = CACHE.lock().unwrap();
+    if c.as_ref().is_none_or(|(t, _)| t.elapsed() > Duration::from_secs(5)) {
+        *c = Some((Instant::now(), charger::<Option<Pc>>("pc").filter(|p| !p.ip.is_empty())));
+    }
+    c.as_ref().and_then(|x| x.1.clone())
 }
 
 fn sans_pc(ui: &mut egui::Ui) {
