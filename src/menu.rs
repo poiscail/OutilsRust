@@ -227,7 +227,9 @@ pub fn sous_cat(nom: &str, c: Cat) -> &'static str {
             }
         }
         Cat::Fichiers => {
-            if a(&["photo", "image", "pdf", "document", "ocr", "visionneuse", "exif", "video", "episode", "musique", "renommer"]) {
+            if a(&["suspect", "hexadecimale", "metadonnees"]) {
+                ("Sécurité", "Security")
+            } else if a(&["photo", "image", "pdf", "document", "ocr", "visionneuse", "exif", "video", "episode", "musique", "renommer"]) {
                 ("Photos, vidéos, documents", "Photos, videos, documents")
             } else if a(&["espace", "gros", "doublon", "double", "installateurs", "corbeille", "deplacer", "compresser", "archives", "tri"]) {
                 ("Faire de la place", "Free up space")
@@ -238,7 +240,9 @@ pub fn sous_cat(nom: &str, c: Cat) -> &'static str {
             }
         }
         Cat::Systeme => {
-            if a(&["optimiseur", "processus", "gourmand", "memoire", "demarrage", "services", "bilan", "stress", "surchauffe", "ressources", "maintenance", "indesirable"]) {
+            if a(&["pare feu", "surveillance des", "durcissement", "indesirable", "antivirus"]) {
+                ("Sécurité", "Security")
+            } else if a(&["optimiseur", "processus", "gourmand", "memoire", "demarrage", "services", "bilan", "stress", "surchauffe", "ressources", "maintenance", "indesirable"]) {
                 ("Vitesse et nettoyage", "Speed and cleanup")
             } else if a(&["infos", "pilotes", "batterie", "disque", "ecran", "peripherique", "fiche", "polices", "performances", "nouveau pc"]) {
                 ("Matériel", "Hardware")
@@ -249,7 +253,9 @@ pub fn sous_cat(nom: &str, c: Cat) -> &'static str {
             }
         }
         Cat::Quotidien => {
-            if a(&["taches", "kanban", "agenda", "emploi", "comptes", "notes", "reveil", "minuteur", "liens", "films", "livres", "planificateur", "eau"]) {
+            if a(&["mot de passe", "coffre", "2fa", "fuites"]) {
+                ("Mots de passe et comptes", "Passwords and accounts")
+            } else if a(&["taches", "kanban", "agenda", "emploi", "comptes", "notes", "reveil", "minuteur", "liens", "films", "livres", "planificateur", "eau"]) {
                 ("Organisation", "Organization")
             } else if a(&["voix", "vocal", "dictee", "tradu", "orthographe", "texte", "presse"]) {
                 ("Texte, voix et langues", "Text, voice and languages")
@@ -267,7 +273,9 @@ pub fn sous_cat(nom: &str, c: Cat) -> &'static str {
             }
         }
         Cat::Fun => {
-            if a(&["personnaliser", "economiseur", "apparence"]) {
+            if a(&["defis", "decodeur", "steganographie", "hachage", "hacking"]) {
+                ("Hacking (CTF)", "Hacking (CTF)")
+            } else if a(&["personnaliser", "economiseur", "apparence"]) {
                 ("Apparence", "Look")
             } else if a(&["deux", "reseau"]) {
                 ("À plusieurs", "Multiplayer")
@@ -276,7 +284,9 @@ pub fn sous_cat(nom: &str, c: Cat) -> &'static str {
             }
         }
         Cat::Reseau => {
-            if a(&["wifi", "point d acces", "appareils", "allumer", "partager", "maison"]) {
+            if a(&["ports de", "objets", "audit", "intrus", "attaques", "parle mon", "verificateur de lien", "mail", "pot de miel", "calculatrice"]) {
+                ("Sécurité", "Security")
+            } else if a(&["wifi", "point d acces", "appareils", "allumer", "partager", "maison"]) {
                 ("Maison et Wi-Fi", "Home and Wi-Fi")
             } else {
                 ("Internet", "Internet")

@@ -1,5 +1,35 @@
 # Nouveautés d'Outils
 
+## 0.15.0 — Sécurité et hacking (légal)
+À n'utiliser que sur ton matériel, ton réseau, ou des exercices faits pour ça.
+### Ton réseau
+- 🔓 Scanner de ports de la maison et 📹 objets connectés à risque (Telnet, caméras sans mot de passe…)
+- 🛡 Audit de la box : sécurité du Wi-Fi, services ouverts, UPnP, DNS, avec une note sur 100
+- 🚨 Alerte d'intrus sur le Wi-Fi (avec le fabricant de l'appareil) et 🕵 détecteur d'attaques (usurpation de la box, faux Wi-Fi, DNS changés)
+- 📡 À qui parle mon PC ? : les serveurs contactés par chaque appli, pisteurs et télémétrie repérés
+- 🍯 Pot de miel : de faux services qui te préviennent si quelque chose fouille ton réseau
+- 🧮 Calculatrice réseau (sous-réseaux, IPv6, binaire, hexa)
+### Mots de passe et comptes
+- 🔑 Solidité d'un mot de passe : motifs repérés et temps pour le casser
+- 🧾 Audit du coffre : mots de passe faibles, réutilisés, fuités, sites piratés, double authentification à activer
+- 🔢 Codes 2FA (comme Google Authenticator), chiffrés
+- 📰 Fuites de données : les services piratés que tu utilises, et une alerte à chaque nouvelle fuite
+### Fichiers, liens, e-mails
+- 🧪 Fichier suspect ? : vrai type, fausse extension, macros, commandes cachées, signature, VirusTotal
+- 🔗 Vérificateur de lien : faux sites, redirections, âge du domaine — sans cliquer
+- 📧 E-mail suspect ? : expéditeur usurpé (SPF, DKIM, DMARC), adresse de réponse piégée
+- 🔬 Visionneuse hexadécimale avec le texte caché dans les fichiers
+- 🧹 Métadonnées cachées (GPS des photos, auteur des documents) et nettoyage
+### Apprendre (CTF)
+- 🏴 13 défis de sécurité avec points et rangs
+- 🧩 Décodeur universel avec détection automatique, 🖼 stéganographie, #️⃣ labo de hachage (MD5, SHA, sel, cassage, collisions)
+- 🎓 Les plateformes légales pour s'entraîner (Root-Me, TryHackMe, PicoCTF…) et un parcours
+### Protéger le PC
+- 🧱 Pare-feu simplifié, 👁 surveillance des changements sensibles (hosts, démarrage, proxy, DNS, services), 🛡 durcissement de Windows avec une note et des corrections
+### Téléphone (appli 0.6)
+- 🛡 Permissions des applis : qui a accès à la caméra, au micro, à la position, aux SMS
+- 🔐 Audit du Wi-Fi depuis le téléphone : sécurité des réseaux, WPS, faux Wi-Fi, appareils à risque
+
 ## 0.14.0
 ### Outils lui-même
 - ⚡ Démarrage plus rapide : plus de la moitié des outils ne se chargent qu'à leur première ouverture, et l'exe est plus léger

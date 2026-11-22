@@ -969,7 +969,7 @@ mod tests {
     use super::*;
 
     fn v(ssid: &str, rssi: i32, f: i32, l: i32) -> ReseauVoisin {
-        ReseauVoisin { ssid: ssid.into(), bssid: String::new(), rssi, frequence: f, largeur: l }
+        ReseauVoisin { ssid: ssid.into(), bssid: String::new(), rssi, frequence: f, largeur: l, securite: String::new() }
     }
 
     #[test]

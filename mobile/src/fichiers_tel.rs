@@ -720,7 +720,7 @@ mod tests {
         assert!(fichier_louche("/storage/emulated/0/Download/facture.pdf.apk").iter().any(|r| r.0 == 3));
         assert!(fichier_louche("/storage/emulated/0/Download/FreeRobux_generator.apk").len() >= 2);
         assert!(fichier_louche("/storage/emulated/0/DCIM/Camera/IMG_1.jpg").is_empty());
-        let a = crate::android::Appli { paquet: "x.y".into(), nom: "Super Cleaner".into(), systeme: false, installateur: None, permissions: vec!["android.permission.READ_SMS".into()], installee: 0 };
+        let a = crate::android::Appli { paquet: "x.y".into(), nom: "Super Cleaner".into(), systeme: false, installateur: None, permissions: vec!["android.permission.READ_SMS".into()], installee: 0, accordees: vec![] };
         let (n, r) = appli_louche(&a, "x.y/.S");
         assert!(n >= 8 && r.len() >= 4);
         let ok = crate::android::Appli { installateur: Some("com.android.vending".into()), permissions: vec![], nom: "Météo".into(), ..a.clone() };

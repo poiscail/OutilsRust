@@ -346,7 +346,7 @@ impl Outil for WifiMdp {
 // 114 · Ports ouverts
 // ---------------------------------------------------------------------------------------------------
 
-fn ports_ecoute() -> Vec<(String, u16, String)> {
+pub(crate) fn ports_ecoute() -> Vec<(String, u16, String)> {
     use windows_sys::Win32::NetworkManagement::IpHelper::*;
     let mut v = vec![];
     unsafe {

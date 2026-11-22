@@ -1,7 +1,7 @@
 //! Liste des outils ajoutés en lot (trait `Outil`), dans l'ordre du menu de chaque catégorie.
 use crate::minecraft::Pilote;
 use crate::outil::{Cat, Outil};
-use crate::{moi, jeux7, dns_maison, maintenance, sauvegarde_auto, indesirables, nouveau_pc, banc, bureau, coeur, jeux2, jeux3, creatif, dependances, mcplus, mcplus2, fichiers2, fichiers3, systeme3, quotidien2, micro, creatif2, interface, jeux4, mcplus3, fichiers4, systeme4, reseau3, quotidien3, creatif3, minijeux3, interface2, jeux5, fichiers5, systeme5, creatif4, minijeux4, recherche, jeux6, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
+use crate::{secu_reseau, secu_mdp, secu_fichiers, ctf, secu_pc, moi, jeux7, dns_maison, maintenance, sauvegarde_auto, indesirables, nouveau_pc, banc, bureau, coeur, jeux2, jeux3, creatif, dependances, mcplus, mcplus2, fichiers2, fichiers3, systeme3, quotidien2, micro, creatif2, interface, jeux4, mcplus3, fichiers4, systeme4, reseau3, quotidien3, creatif3, minijeux3, interface2, jeux5, fichiers5, systeme5, creatif4, minijeux4, recherche, jeux6, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
 
 pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>> {
     vec![
@@ -67,6 +67,9 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         // fichiers
         Box::new(recherche::RechercheFichiers::new()),
         Box::new(sauvegarde_auto::SauvegardeAuto::new()),
+        paresseux("🧪 Fichier suspect ?", Cat::Fichiers, move || Box::new(secu_fichiers::FichierSuspect::new())),
+        paresseux("🔬 Visionneuse hexadécimale", Cat::Fichiers, move || Box::new(secu_fichiers::Hexa::new())),
+        paresseux("🧹 Métadonnées cachées", Cat::Fichiers, move || Box::new(secu_fichiers::Metadonnees::new())),
         paresseux("⭐ Dossiers favoris", Cat::Fichiers, move || Box::new(fichiers2::Favoris::new())),
         Box::new(fichiers3::SyncUsb::new()),
         Box::new(fichiers3::Surveillance::new()),
@@ -128,6 +131,9 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         Box::new(moi::SanteOutils::new()),
         Box::new(maintenance::Maintenance::new()),
         Box::new(indesirables::Indesirables::new()),
+        paresseux("🧱 Pare-feu simplifié", Cat::Systeme, move || Box::new(secu_pc::ParefeuSimple::new())),
+        Box::new(secu_pc::Surveillance::new()),
+        paresseux("🛡 Durcissement de Windows", Cat::Systeme, move || Box::new(secu_pc::Durcissement::new())),
         paresseux("🚚 Nouveau PC", Cat::Systeme, move || Box::new(nouveau_pc::NouveauPc::new())),
         paresseux("🏁 Comparateur de performances", Cat::Systeme, move || Box::new(banc::Banc::new())),
         Box::new(systeme5::Gourmands::new()),
@@ -161,6 +167,16 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         paresseux("⬇ Télécharger une vidéo", Cat::Reseau, move || Box::new(reseau2::Telechargeur::new())),
         paresseux("🚫 Bloqueur de pubs et de sites", Cat::Reseau, move || Box::new(reseau2::BloqueurUi::new())),
         Box::new(dns_maison::DnsMaison::new()),
+        paresseux("🔓 Scanner de ports de la maison", Cat::Reseau, move || Box::new(secu_reseau::ScannerPorts::new(false))),
+        paresseux("📹 Objets connectés à risque", Cat::Reseau, move || Box::new(secu_reseau::ScannerPorts::new(true))),
+        paresseux("🛡 Audit de la box", Cat::Reseau, move || Box::new(secu_reseau::AuditBox::new())),
+        Box::new(secu_reseau::Gardien::new(false)),
+        Box::new(secu_reseau::Gardien::new(true)),
+        paresseux("📡 À qui parle mon PC ?", Cat::Reseau, move || Box::new(secu_reseau::Trafic::new())),
+        paresseux("🧮 Calculatrice réseau", Cat::Reseau, move || Box::new(ctf::CalculReseau::new())),
+        Box::new(secu_pc::PotDeMiel::new()),
+        paresseux("🔗 Vérificateur de lien", Cat::Reseau, move || Box::new(secu_fichiers::Lien::new())),
+        paresseux("📧 E-mail suspect ?", Cat::Reseau, move || Box::new(secu_fichiers::Mail::new())),
         paresseux("🧭 DNS le plus rapide", Cat::Reseau, move || Box::new(reseau2::DnsRapide::new())),
         paresseux("📶 Mots de passe Wi-Fi", Cat::Reseau, move || Box::new(reseau2::WifiMdp::new())),
         paresseux("🔌 Ports ouverts", Cat::Reseau, move || Box::new(reseau2::Ports::new())),
@@ -170,6 +186,10 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         paresseux("🔗 Liens courts", Cat::Reseau, move || Box::new(reseau2::LiensCourts::new())),
         // quotidien
         Box::new(listes::Liste::new(&listes::TACHES)),
+        paresseux("🔑 Solidité d'un mot de passe", Cat::Quotidien, move || Box::new(secu_mdp::Solidite::new())),
+        paresseux("🧾 Audit du coffre", Cat::Quotidien, move || Box::new(secu_mdp::AuditCoffre::new())),
+        Box::new(secu_mdp::Codes2fa::new()),
+        Box::new(secu_mdp::Fuites::new()),
         paresseux("🗂 Tableau Kanban", Cat::Quotidien, move || Box::new(listes::Kanban::new())),
         Box::new(quotidien2::Meteo::new()),
         paresseux("🔎 Recherche partout", Cat::Quotidien, move || Box::new(interface2::RecherchePartout::new())),
@@ -209,6 +229,11 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         paresseux("🎙 Enregistrer le son du PC", Cat::Creatif, move || Box::new(son::EnregistreurSon::new())),
         paresseux("🎚 Égaliseur audio", Cat::Creatif, move || Box::new(son::Egaliseur::new())),
         // fun
+        paresseux("🏴 Défis de sécurité", Cat::Fun, move || Box::new(ctf::Defis::new())),
+        paresseux("🧩 Décodeur CTF", Cat::Fun, move || Box::new(ctf::Decodeur::new())),
+        paresseux("🖼 Stéganographie", Cat::Fun, move || Box::new(ctf::Stegano::new())),
+        paresseux("#️⃣ Labo de hachage", Cat::Fun, move || Box::new(ctf::Hachage::new())),
+        paresseux("🎓 S'entraîner au hacking (légal)", Cat::Fun, move || Box::new(ctf::Entrainement::new())),
         paresseux("🎲 Dés et tirage", Cat::Fun, move || Box::new(ludique::Des::new())),
         paresseux("❓ Quiz", Cat::Fun, move || Box::new(creatif2::Quiz::new())),
         paresseux("♟ Échecs", Cat::Fun, move || Box::new(minijeux3::Echecs::new())),

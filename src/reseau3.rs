@@ -61,7 +61,7 @@ pub fn mac_aleatoire(m: &str) -> bool {
     u8::from_str_radix(m.get(..2).unwrap_or("00"), 16).is_ok_and(|b| b & 2 != 0)
 }
 
-fn ping(ip: Ipv4Addr) -> Option<u32> {
+pub(crate) fn ping(ip: Ipv4Addr) -> Option<u32> {
     use windows_sys::Win32::NetworkManagement::IpHelper::*;
     unsafe {
         let h = IcmpCreateFile();
@@ -81,7 +81,7 @@ fn ping(ip: Ipv4Addr) -> Option<u32> {
 }
 
 /// Table ARP : ip → mac.
-fn table_arp() -> BTreeMap<Ipv4Addr, String> {
+pub(crate) fn table_arp() -> BTreeMap<Ipv4Addr, String> {
     use windows_sys::Win32::NetworkManagement::IpHelper::*;
     let mut m = BTreeMap::new();
     unsafe {
@@ -105,7 +105,7 @@ fn table_arp() -> BTreeMap<Ipv4Addr, String> {
     m
 }
 
-fn nom_hote(ip: Ipv4Addr) -> Option<String> {
+pub(crate) fn nom_hote(ip: Ipv4Addr) -> Option<String> {
     use windows_sys::Win32::Networking::WinSock::*;
     unsafe {
         let mut wsa: WSADATA = std::mem::zeroed();
@@ -122,7 +122,7 @@ fn nom_hote(ip: Ipv4Addr) -> Option<String> {
     }
 }
 
-fn passerelle() -> Option<Ipv4Addr> {
+pub(crate) fn passerelle() -> Option<Ipv4Addr> {
     use windows_sys::Win32::NetworkManagement::IpHelper::*;
     unsafe {
         let mut t: *mut MIB_IPFORWARD_TABLE2 = std::ptr::null_mut();
@@ -154,7 +154,7 @@ struct Connus {
     vus: BTreeMap<String, String>,     // mac → première fois
 }
 
-fn scanner(prog: &Mutex<(usize, usize)>) -> Vec<Appareil> {
+pub(crate) fn scanner(prog: &Mutex<(usize, usize)>) -> Vec<Appareil> {
     let Some(moi) = crate::telephone::ip_locale().and_then(|s| s.parse::<Ipv4Addr>().ok()) else { return vec![] };
     let ips = adresses_du_reseau(moi);
     *prog.lock().unwrap() = (0, ips.len());

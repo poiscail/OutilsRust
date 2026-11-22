@@ -22,6 +22,8 @@ pub struct Appli {
     pub installateur: Option<String>,
     pub permissions: Vec<String>,
     pub installee: u64, // secondes Unix
+    /// permissions réellement accordées par l'utilisateur
+    pub accordees: Vec<String>,
 }
 
 /// Racine du stockage partagé (Téléchargements, DCIM…).
@@ -378,16 +380,26 @@ pub fn applis() -> Vec<Appli> {
                     };
                     let rp = env.get_field(&pi, "requestedPermissions", "[Ljava/lang/String;")?.l()?;
                     let mut permissions = vec![];
+                    let mut accordees = vec![];
                     if !rp.is_null() {
                         let t = JObjectArray::from(rp);
                         let m = env.get_array_length(&t)?;
+                        let fl = env.get_field(&pi, "requestedPermissionsFlags", "[I")?.l()?;
+                        let mut drapeaux = vec![0i32; m as usize];
+                        if !fl.is_null() {
+                            let fl = jni::objects::JIntArray::from(fl);
+                            let _ = env.get_int_array_region(&fl, 0, &mut drapeaux);
+                        }
                         for j in 0..m {
                             let e = env.get_object_array_element(&t, j)?;
                             let s: String = env.get_string(&JString::from(e))?.into();
+                            if drapeaux.get(j as usize).is_some_and(|f| f & 2 != 0) {
+                                accordees.push(s.clone()); // REQUESTED_PERMISSION_GRANTED
+                            }
                             permissions.push(s);
                         }
                     }
-                    Ok(Appli { paquet, nom, systeme: drap & 1 != 0, installateur, permissions, installee })
+                    Ok(Appli { paquet, nom, systeme: drap & 1 != 0, installateur, permissions, installee, accordees })
                 })?;
                 v.push(a);
             }
@@ -397,8 +409,8 @@ pub fn applis() -> Vec<Appli> {
     }
     #[allow(unreachable_code)]
     vec![
-        Appli { paquet: "com.whatsapp".into(), nom: "WhatsApp".into(), systeme: false, installateur: Some("com.android.vending".into()), permissions: vec!["android.permission.READ_CONTACTS".into()], installee: 1_700_000_000 },
-        Appli { paquet: "com.free.vpn.cracked".into(), nom: "Free VPN Pro".into(), systeme: false, installateur: None, permissions: vec!["android.permission.READ_SMS".into(), "android.permission.BIND_ACCESSIBILITY_SERVICE".into(), "android.permission.REQUEST_INSTALL_PACKAGES".into()], installee: 1_760_000_000 },
+        Appli { paquet: "com.whatsapp".into(), nom: "WhatsApp".into(), systeme: false, installateur: Some("com.android.vending".into()), permissions: vec!["android.permission.READ_CONTACTS".into(), "android.permission.CAMERA".into()], installee: 1_700_000_000, accordees: vec!["android.permission.CAMERA".into()] },
+        Appli { paquet: "com.free.vpn.cracked".into(), nom: "Free VPN Pro".into(), systeme: false, installateur: None, permissions: vec!["android.permission.READ_SMS".into(), "android.permission.BIND_ACCESSIBILITY_SERVICE".into(), "android.permission.REQUEST_INSTALL_PACKAGES".into(), "android.permission.ACCESS_FINE_LOCATION".into()], installee: 1_760_000_000, accordees: vec!["android.permission.READ_SMS".into(), "android.permission.ACCESS_FINE_LOCATION".into()] },
     ]
 }
 
@@ -830,6 +842,8 @@ pub struct ReseauVoisin {
     pub rssi: i32,
     pub frequence: i32,
     pub largeur: i32, // MHz
+    /// sécurité annoncée, ex. « [WPA2-PSK-CCMP][ESS][WPS] »
+    pub securite: String,
 }
 
 /// Réseaux Wi-Fi visibles (demande la localisation, activée dans Android).
@@ -849,6 +863,8 @@ pub fn scan_wifi() -> Vec<ReseauVoisin> {
                     let s = env.call_method(&l, "get", "(I)Ljava/lang/Object;", &[JValue::Int(k)])?.l()?;
                     let ssid = env.get_field(&s, "SSID", "Ljava/lang/String;")?.l()?;
                     let bssid = env.get_field(&s, "BSSID", "Ljava/lang/String;")?.l()?;
+                    let caps = env.get_field(&s, "capabilities", "Ljava/lang/String;")?.l()?;
+                    let securite = if caps.is_null() { String::new() } else { jni_::chaine(env, &caps)? };
                     let largeur = match env.get_field(&s, "channelWidth", "I")?.i()? {
                         1 => 40,
                         2 => 80,
@@ -861,6 +877,7 @@ pub fn scan_wifi() -> Vec<ReseauVoisin> {
                         rssi: env.get_field(&s, "level", "I")?.i()?,
                         frequence: env.get_field(&s, "frequency", "I")?.i()?,
                         largeur,
+                        securite,
                     })
                 })?;
                 v.push(r);
@@ -871,11 +888,11 @@ pub fn scan_wifi() -> Vec<ReseauVoisin> {
     }
     #[allow(unreachable_code)]
     vec![
-        ReseauVoisin { ssid: "Box-Maison".into(), bssid: "aa".into(), rssi: -48, frequence: 2437, largeur: 20 },
-        ReseauVoisin { ssid: "Voisin1".into(), bssid: "bb".into(), rssi: -60, frequence: 2437, largeur: 20 },
-        ReseauVoisin { ssid: "Voisin2".into(), bssid: "cc".into(), rssi: -70, frequence: 2412, largeur: 40 },
-        ReseauVoisin { ssid: "Box-Maison".into(), bssid: "dd".into(), rssi: -55, frequence: 5180, largeur: 80 },
-        ReseauVoisin { ssid: "Voisin3".into(), bssid: "ee".into(), rssi: -75, frequence: 5500, largeur: 80 },
+        ReseauVoisin { ssid: "Box-Maison".into(), bssid: "aa".into(), rssi: -48, frequence: 2437, largeur: 20, securite: "[WPA2-PSK-CCMP][RSN-PSK-CCMP][ESS][WPS]".into() },
+        ReseauVoisin { ssid: "Voisin1".into(), bssid: "bb".into(), rssi: -60, frequence: 2437, largeur: 20, securite: "[ESS]".into() },
+        ReseauVoisin { ssid: "Voisin2".into(), bssid: "cc".into(), rssi: -70, frequence: 2412, largeur: 40, securite: "[WEP][ESS]".into() },
+        ReseauVoisin { ssid: "Box-Maison".into(), bssid: "dd".into(), rssi: -55, frequence: 5180, largeur: 80, securite: "[ESS]".into() },
+        ReseauVoisin { ssid: "Voisin3".into(), bssid: "ee".into(), rssi: -75, frequence: 5500, largeur: 80, securite: "[WPA3-SAE-CCMP][ESS]".into() },
     ]
 }
 

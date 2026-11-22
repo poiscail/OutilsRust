@@ -33,6 +33,7 @@ mod appli;
 mod batterie_tel;
 mod photos_tel;
 mod partage_tel;
+mod secu_tel;
 mod son;
 mod capteurs_tel;
 mod commun;
@@ -107,9 +108,11 @@ pub fn catalogue() -> Vec<Fiche> {
         f(Box::new(pc_tel::TraductionPhoto::new()), "PC et réseau", Aucun, "Vise un texte : il est lu par le PC et traduit."),
         f(Box::new(wifi_tel::Wifi::new()), "PC et réseau", Aucun, "Signal, appareils connectés, débit et ping."),
         f(Box::new(reseau_tel::MaBox::new()), "PC et réseau", Aucun, "Optimise ton Wi-Fi : diagnostic noté, meilleur canal, signal pièce par pièce, DNS, intrus, partage par QR code."),
+        f(Box::new(secu_tel::AuditWifi::new()), "PC et réseau", Aucun, "Sécurité de ton Wi-Fi et des réseaux autour, faux Wi-Fi, appareils à risque de la maison."),
         f(Box::new(reseau_tel::Mobile::new()), "PC et réseau", Aucun, "Signal 4G/5G, données par appli et forfait, Wi-Fi ou 4G, économies de données, coupures."),
         // Téléphone
         f(Box::new(fichiers_tel::FichiersTel::new()), "Téléphone", Aucun, "Espace, doublons, rangement, renommage, fichiers et applis louches. Rien n'est effacé sans passer par la corbeille d'Outils."),
+        f(Box::new(secu_tel::Permissions::new()), "Téléphone", Aucun, "Quelles applis ont accès à la caméra, au micro, à la position, aux SMS, aux contacts."),
         f(Box::new(batterie_tel::BatterieOutil::new()), "Téléphone", Aucun, "État de la batterie, autonomie, alerte de charge à 80 % et de surchauffe."),
         f(Box::new(photos_tel::Nettoyeur::new()), "Téléphone", Aucun, "Photos floues, rafales et vieilles captures d'écran, à trier en un geste."),
         f(Box::new(photos_tel::Coffre::new()), "Téléphone", Aucun, "Photos cachées et chiffrées, protégées par un code."),

@@ -78,6 +78,7 @@ Plan, liste et graphe : [PLAN.md](PLAN.md).
 | Outils 0.14 | chargement à la demande, mode sourdine en jeu, ressources et santé d'Outils, accueil personnalisable, recherche par intention, sous-catégories, aide « ? », menus en anglais |
 | Jeux, PC, réseau 0.14 | problèmes en jeu (cause probable), lanceur GOG / Riot / Ubisoft / EA / Battle.net / Xbox avec jaquettes, alertes de plus bas prix Steam, maintenance hebdomadaire, sauvegarde automatique versionnée, programmes indésirables, nouveau PC, comparateur de performances, bloqueur de pubs DNS pour la maison |
 | Téléphone 0.5 | tuiles des réglages rapides (lampe, lecture/pause et muet du PC), « Partager › Outils », manette personnalisable avec profils par jeu |
+| Sécurité 0.15 | scanner de ports, audit de la box, intrus, attaques réseau, trafic des applis, pot de miel, solidité et audit des mots de passe, codes 2FA, fuites, fichier / lien / e-mail suspect, hexadécimal, métadonnées, défis CTF, décodeur, stéganographie, hachage, pare-feu, surveillance, durcissement de Windows ; téléphone : permissions des applis, audit Wi-Fi |
 
 ## Options (onglet Personnaliser)
 
