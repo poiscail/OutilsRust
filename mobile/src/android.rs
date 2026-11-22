@@ -782,3 +782,232 @@ pub fn lire_qr(l: usize, h: usize, y: &[u8]) -> Option<String> {
     let mut img = rqrr::PreparedImage::prepare_from_greyscale(l, h, |x, yy| y[yy * l + x]);
     img.detect_grids().into_iter().find_map(|g| g.decode().ok().map(|(_, t)| t))
 }
+
+// ---------------------------------------------------------------------------------------------------
+// Réseaux Wi-Fi alentour, réseau mobile, consommation de données, réglages d'Android
+// ---------------------------------------------------------------------------------------------------
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ReseauVoisin {
+    pub ssid: String,
+    pub bssid: String,
+    pub rssi: i32,
+    pub frequence: i32,
+    pub largeur: i32, // MHz
+}
+
+/// Réseaux Wi-Fi visibles (demande la localisation, activée dans Android).
+pub fn scan_wifi() -> Vec<ReseauVoisin> {
+    #[cfg(target_os = "android")]
+    {
+        use jni::objects::JValue;
+        return jni_::avec(|env, act| {
+            let wm = jni_::service(env, act, "wifi")?;
+            let _ = env.call_method(&wm, "startScan", "()Z", &[]);
+            let _ = env.exception_clear();
+            let l = env.call_method(&wm, "getScanResults", "()Ljava/util/List;", &[])?.l()?;
+            let n = env.call_method(&l, "size", "()I", &[])?.i()?;
+            let mut v = vec![];
+            for k in 0..n {
+                let r = env.with_local_frame(16, |env| -> jni::errors::Result<ReseauVoisin> {
+                    let s = env.call_method(&l, "get", "(I)Ljava/lang/Object;", &[JValue::Int(k)])?.l()?;
+                    let ssid = env.get_field(&s, "SSID", "Ljava/lang/String;")?.l()?;
+                    let bssid = env.get_field(&s, "BSSID", "Ljava/lang/String;")?.l()?;
+                    let largeur = match env.get_field(&s, "channelWidth", "I")?.i()? {
+                        1 => 40,
+                        2 => 80,
+                        3 | 4 => 160,
+                        _ => 20,
+                    };
+                    Ok(ReseauVoisin {
+                        ssid: jni_::chaine(env, &ssid)?,
+                        bssid: jni_::chaine(env, &bssid)?,
+                        rssi: env.get_field(&s, "level", "I")?.i()?,
+                        frequence: env.get_field(&s, "frequency", "I")?.i()?,
+                        largeur,
+                    })
+                })?;
+                v.push(r);
+            }
+            Ok(v)
+        })
+        .unwrap_or_default();
+    }
+    #[allow(unreachable_code)]
+    vec![
+        ReseauVoisin { ssid: "Box-Maison".into(), bssid: "aa".into(), rssi: -48, frequence: 2437, largeur: 20 },
+        ReseauVoisin { ssid: "Voisin1".into(), bssid: "bb".into(), rssi: -60, frequence: 2437, largeur: 20 },
+        ReseauVoisin { ssid: "Voisin2".into(), bssid: "cc".into(), rssi: -70, frequence: 2412, largeur: 40 },
+        ReseauVoisin { ssid: "Box-Maison".into(), bssid: "dd".into(), rssi: -55, frequence: 5180, largeur: 80 },
+        ReseauVoisin { ssid: "Voisin3".into(), bssid: "ee".into(), rssi: -75, frequence: 5500, largeur: 80 },
+    ]
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct SignalMobile {
+    pub operateur: String,
+    pub generation: String, // « 5G », « 4G »…
+    pub dbm: i32,
+    pub niveau: i32, // 0 à 4
+}
+
+/// Signal du réseau mobile (aucune autorisation nécessaire).
+pub fn signal_mobile() -> Option<SignalMobile> {
+    #[cfg(target_os = "android")]
+    {
+        use jni::objects::JValue;
+        return jni_::avec(|env, act| {
+            let tm = jni_::service(env, act, "phone")?;
+            let o = env.call_method(&tm, "getNetworkOperatorName", "()Ljava/lang/String;", &[])?.l()?;
+            let operateur = jni_::chaine(env, &o)?;
+            let ss = env.call_method(&tm, "getSignalStrength", "()Landroid/telephony/SignalStrength;", &[])?.l()?;
+            if ss.is_null() {
+                return Ok(SignalMobile { operateur, generation: "aucun réseau".into(), dbm: 0, niveau: 0 });
+            }
+            let l = env.call_method(&ss, "getCellSignalStrengths", "()Ljava/util/List;", &[])?.l()?;
+            let n = env.call_method(&l, "size", "()I", &[])?.i()?;
+            let mut meilleur: Option<SignalMobile> = None;
+            for k in 0..n {
+                let c = env.call_method(&l, "get", "(I)Ljava/lang/Object;", &[JValue::Int(k)])?.l()?;
+                let classe = env.call_method(&c, "getClass", "()Ljava/lang/Class;", &[])?.l()?;
+                let nom = env.call_method(&classe, "getSimpleName", "()Ljava/lang/String;", &[])?.l()?;
+                let nom = jni_::chaine(env, &nom)?;
+                let generation = match nom.as_str() {
+                    "CellSignalStrengthNr" => "5G",
+                    "CellSignalStrengthLte" => "4G",
+                    "CellSignalStrengthWcdma" | "CellSignalStrengthTdscdma" | "CellSignalStrengthCdma" => "3G",
+                    "CellSignalStrengthGsm" => "2G",
+                    _ => "?",
+                };
+                let dbm = env.call_method(&c, "getDbm", "()I", &[])?.i()?;
+                let niveau = env.call_method(&c, "getLevel", "()I", &[])?.i()?;
+                // la 5G « non autonome » s'ajoute à la 4G : on garde la génération la plus récente
+                if meilleur.as_ref().is_none_or(|m| generation < m.generation.as_str() || m.generation == "?") {
+                    meilleur = Some(SignalMobile { operateur: operateur.clone(), generation: generation.into(), dbm, niveau });
+                }
+            }
+            Ok(meilleur.unwrap_or(SignalMobile { operateur, generation: "aucun réseau".into(), dbm: 0, niveau: 0 }))
+        });
+    }
+    #[allow(unreachable_code)]
+    Some(SignalMobile { operateur: "Opérateur".into(), generation: "4G".into(), dbm: -94, niveau: 2 })
+}
+
+/// Réseau utilisé en ce moment : « Wi-Fi », « mobile » ou « aucun ».
+pub fn reseau_actif() -> &'static str {
+    #[cfg(target_os = "android")]
+    {
+        use jni::objects::JValue;
+        return jni_::avec(|env, act| {
+            let cm = jni_::service(env, act, "connectivity")?;
+            let n = env.call_method(&cm, "getActiveNetwork", "()Landroid/net/Network;", &[])?.l()?;
+            if n.is_null() {
+                return Ok("aucun");
+            }
+            let c = env.call_method(&cm, "getNetworkCapabilities", "(Landroid/net/Network;)Landroid/net/NetworkCapabilities;", &[JValue::Object(&n)])?.l()?;
+            if c.is_null() {
+                return Ok("aucun");
+            }
+            let a = |env: &mut jni::JNIEnv, t: i32| env.call_method(&c, "hasTransport", "(I)Z", &[JValue::Int(t)]).and_then(|v| v.z());
+            Ok(if a(env, 1)? { "Wi-Fi" } else if a(env, 0)? { "mobile" } else { "autre" })
+        })
+        .unwrap_or("aucun");
+    }
+    #[allow(unreachable_code)]
+    "Wi-Fi"
+}
+
+/// L'appli a-t-elle l'accès aux statistiques d'utilisation (pour la consommation de données) ?
+pub fn acces_statistiques() -> bool {
+    #[cfg(target_os = "android")]
+    {
+        use jni::objects::JValue;
+        return jni_::avec(|env, act| {
+            let ao = jni_::service(env, act, "appops")?;
+            let uid = env.call_static_method("android/os/Process", "myUid", "()I", &[])?.i()?;
+            let p = env.call_method(act, "getPackageName", "()Ljava/lang/String;", &[])?.l()?;
+            let op = env.new_string("android:get_usage_stats")?;
+            Ok(env.call_method(&ao, "checkOpNoThrow", "(Ljava/lang/String;ILjava/lang/String;)I", &[JValue::Object(&op), JValue::Int(uid), JValue::Object(&p)])?.i()? == 0)
+        })
+        .unwrap_or(false);
+    }
+    #[allow(unreachable_code)]
+    true
+}
+
+/// Données consommées par appli entre deux dates (secondes Unix) : (nom, reçu, envoyé), triées.
+/// `mobile` : données mobiles, sinon Wi-Fi.
+pub fn conso_par_appli(mobile: bool, debut: u64, fin: u64) -> Vec<(String, u64, u64)> {
+    #[cfg(target_os = "android")]
+    {
+        use jni::objects::{JObject, JValue};
+        return jni_::avec(|env, act| {
+            let nsm = jni_::service(env, act, "netstats")?;
+            let st = env.call_method(&nsm, "querySummary", "(ILjava/lang/String;JJ)Landroid/app/usage/NetworkStats;", &[JValue::Int(if mobile { 0 } else { 1 }), JValue::Object(&JObject::null()), JValue::Long(debut as i64 * 1000), JValue::Long(fin as i64 * 1000)])?.l()?;
+            let b = env.new_object("android/app/usage/NetworkStats$Bucket", "()V", &[])?;
+            let mut par_uid: std::collections::HashMap<i32, (u64, u64)> = Default::default();
+            while env.call_method(&st, "hasNextBucket", "()Z", &[])?.z()? {
+                env.call_method(&st, "getNextBucket", "(Landroid/app/usage/NetworkStats$Bucket;)Z", &[JValue::Object(&b)])?;
+                let uid = env.call_method(&b, "getUid", "()I", &[])?.i()?;
+                let rx = env.call_method(&b, "getRxBytes", "()J", &[])?.j()?.max(0) as u64;
+                let tx = env.call_method(&b, "getTxBytes", "()J", &[])?.j()?.max(0) as u64;
+                let e = par_uid.entry(uid).or_default();
+                e.0 += rx;
+                e.1 += tx;
+            }
+            let _ = env.call_method(&st, "close", "()V", &[]);
+            let pm = env.call_method(act, "getPackageManager", "()Landroid/content/pm/PackageManager;", &[])?.l()?;
+            let mut v = vec![];
+            for (uid, (rx, tx)) in par_uid {
+                let nom = env.with_local_frame(16, |env| -> jni::errors::Result<String> {
+                    Ok(match uid {
+                        -4 => "Applis désinstallées".into(),
+                        -5 => "Partage de connexion".into(),
+                        0 | 1000 => "Système Android".into(),
+                        _ => {
+                            let p = env.call_method(&pm, "getNameForUid", "(I)Ljava/lang/String;", &[JValue::Int(uid)])?.l()?;
+                            let paquet = jni_::chaine(env, &p)?;
+                            let paquet = paquet.split(':').next().unwrap_or("").to_string();
+                            let jp = env.new_string(&paquet)?;
+                            match env.call_method(&pm, "getApplicationInfo", "(Ljava/lang/String;I)Landroid/content/pm/ApplicationInfo;", &[JValue::Object(&jp), JValue::Int(0)]) {
+                                Ok(ai) => {
+                                    let ai = ai.l()?;
+                                    let l = env.call_method(&pm, "getApplicationLabel", "(Landroid/content/pm/ApplicationInfo;)Ljava/lang/CharSequence;", &[JValue::Object(&ai)])?.l()?;
+                                    jni_::chaine(env, &l)?
+                                }
+                                Err(_) => {
+                                    let _ = env.exception_clear();
+                                    if paquet.is_empty() { format!("uid {uid}") } else { paquet }
+                                }
+                            }
+                        }
+                    })
+                })?;
+                v.push((nom, rx, tx));
+            }
+            v.sort_by_key(|x| std::cmp::Reverse(x.1 + x.2));
+            Ok(v)
+        })
+        .unwrap_or_default();
+    }
+    #[allow(unreachable_code)]
+    {
+        let _ = (mobile, debut, fin);
+        vec![("YouTube".into(), 2_400_000_000, 30_000_000), ("TikTok".into(), 1_100_000_000, 80_000_000), ("Snapchat".into(), 300_000_000, 200_000_000), ("Système Android".into(), 90_000_000, 20_000_000)]
+    }
+}
+
+/// Ouvre un écran des réglages d'Android (« android.settings.… »), éventuellement pour Outils.
+pub fn ouvrir_reglage(action: &str, pour_outils: bool) {
+    #[cfg(target_os = "android")]
+    {
+        use jni::objects::JValue;
+        let _ = jni_::avec(|env, act| {
+            let p = jni_::paquet(env, act)?;
+            let i = jni_::intention(env, action, pour_outils.then(|| format!("package:{p}")).as_deref())?;
+            env.call_method(act, "startActivity", "(Landroid/content/Intent;)V", &[JValue::Object(&i)])?;
+            Ok(())
+        });
+    }
+    let _ = (action, pour_outils);
+}

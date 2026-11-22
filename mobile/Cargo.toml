@@ -1,6 +1,6 @@
 [package]
 name = "outils-mobile"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 description = "Outils sur téléphone Android : jeux et outils du quotidien, partagés avec la version PC"
 
@@ -29,6 +29,7 @@ rfd = { path = "shims/rfd" }
 
 sha1_smol = "1"
 rqrr = "0.9"
+qrcode = { version = "0.14", default-features = false }
 
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.14"

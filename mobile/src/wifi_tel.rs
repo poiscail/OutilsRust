@@ -63,7 +63,7 @@ pub fn deviner(ports: &[u16], passerelle: bool) -> &'static str {
 const PORTS: [u16; 15] = [80, 443, 22, 445, 139, 3389, 62078, 8008, 8009, 9100, 631, 554, 5000, 7000, 8080];
 
 /// Teste un appareil : présent ? et quels ports répondent.
-fn sonder(ip: &str) -> Option<Vec<u16>> {
+pub fn sonder(ip: &str) -> Option<Vec<u16>> {
     let mut vivant = false;
     let mut ouverts = vec![];
     for p in PORTS {
@@ -81,7 +81,7 @@ fn sonder(ip: &str) -> Option<Vec<u16>> {
     vivant.then_some(ouverts)
 }
 
-fn ping_tcp(hote: &str) -> Option<u128> {
+pub fn ping_tcp(hote: &str) -> Option<u128> {
     use std::net::ToSocketAddrs;
     let a = (hote, 443).to_socket_addrs().ok()?.next()?;
     let mut v = vec![];

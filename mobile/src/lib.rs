@@ -35,6 +35,7 @@ mod creatif;
 mod fichiers_tel;
 mod jeux_tel;
 mod monpc;
+mod reseau_tel;
 mod wifi_tel;
 mod minecraft;
 mod outil;
@@ -94,6 +95,8 @@ pub fn catalogue() -> Vec<Fiche> {
         // PC et réseau
         f(Box::new(monpc::MonPc::new()), "PC et réseau", Aucun, "Télécommande, état, jeux, fichiers, presse-papiers et Minecraft de ton PC (Outils ouvert sur le PC, même Wi-Fi)."),
         f(Box::new(wifi_tel::Wifi::new()), "PC et réseau", Aucun, "Signal, appareils connectés, débit et ping."),
+        f(Box::new(reseau_tel::MaBox::new()), "PC et réseau", Aucun, "Optimise ton Wi-Fi : diagnostic noté, meilleur canal, signal pièce par pièce, DNS, intrus, partage par QR code."),
+        f(Box::new(reseau_tel::Mobile::new()), "PC et réseau", Aucun, "Signal 4G/5G, données par appli et forfait, Wi-Fi ou 4G, économies de données, coupures."),
         // Téléphone
         f(Box::new(fichiers_tel::FichiersTel::new()), "Téléphone", Aucun, "Espace, doublons, rangement, renommage, fichiers et applis louches. Rien n'est effacé sans passer par la corbeille d'Outils."),
         f(Box::new(capteurs_tel::Lampe::new()), "Téléphone", Aucun, "Lampe, stroboscope et SOS."),
