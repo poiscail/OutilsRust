@@ -32,11 +32,13 @@ mod android;
 mod appli;
 mod batterie_tel;
 mod photos_tel;
+mod son;
 mod capteurs_tel;
 mod commun;
 mod creatif;
 mod fichiers_tel;
 mod jeux_tel;
+mod jeux_tel2;
 mod monpc;
 mod reseau_tel;
 mod wifi_tel;
@@ -115,6 +117,9 @@ pub fn catalogue() -> Vec<Fiche> {
         f(Box::new(jeux_tel::Labyrinthe::new()), "Jeux", Aucun, "Incline le téléphone pour guider la bille."),
         f(Box::new(jeux_tel::FaceAFace::new()), "Jeux", Aucun, "À deux sur le même écran : réflexes et air hockey."),
         f(Box::new(jeux_tel::Badges::new()), "Jeux", Aucun, "Les succès gagnés dans tous les jeux."),
+        f(Box::new(jeux_tel2::Classement::new()), "Jeux", Aucun, "Compare tes scores avec tes amis (sudoku du jour, labyrinthe, réflexes, rythme, badges)."),
+        f(Box::new(jeux_tel2::BoulesDeNeige::new()), "Jeux", Aucun, "Bataille de boules de neige à deux, ou contre le téléphone."),
+        f(Box::new(jeux_tel2::Rythme::new()), "Jeux", Aucun, "Touche les notes en rythme sur la musique."),
         f(Box::new(minijeux::MiniJeux::new()), "Jeux", Manette, "12 jeux : serpent, casse-briques, démineur, blocs qui tombent… Utilise la manette en bas."),
         f(Box::new(minijeux4::Cartes::new()), "Jeux", Aucun, "Huit américain et bataille contre le téléphone."),
         f(Box::new(minijeux3::Solitaire::new()), "Jeux", Aucun, "Touche une carte puis l'endroit où la poser."),

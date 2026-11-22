@@ -285,7 +285,7 @@ impl FaceAFace {
 }
 
 /// Positions des doigts posés sur l'écran (et de la souris, pour essayer sur PC).
-fn appuis(ui: &egui::Ui, doigts: &mut HashMap<u64, Pos2>) -> Vec<Pos2> {
+pub fn appuis(ui: &egui::Ui, doigts: &mut HashMap<u64, Pos2>) -> Vec<Pos2> {
     let mut nouveaux = vec![];
     ui.input(|i| {
         for e in &i.events {
