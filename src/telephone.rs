@@ -20,12 +20,13 @@ pub struct Reglages {
     pub auto: bool, // démarre avec Outils
     pub dossier_reception: PathBuf,
     pub fichiers: Vec<PathBuf>,
+    pub distance: crate::pont::Distance,
 }
 
 impl Default for Reglages {
     fn default() -> Self {
         let dl = PathBuf::from(std::env::var("USERPROFILE").unwrap_or_default()).join("Downloads").join("Depuis le téléphone");
-        Reglages { port: 8642, cle: nouvelle_cle(), auto: false, dossier_reception: dl, fichiers: vec![] }
+        Reglages { port: 8642, cle: nouvelle_cle(), auto: false, dossier_reception: dl, fichiers: vec![], distance: crate::pont::Distance::nouvelle() }
     }
 }
 
@@ -173,6 +174,7 @@ pub const SYNCHRO: [&str; 4] = ["agenda", "ecole", "rebours", "sante"];
 
 /// Toute notification du PC part aussi vers le téléphone appairé.
 pub fn pousser_notif(titre: &str, texte: &str) {
+    crate::pont::notifier_distance(titre, texte);
     let n = NUMERO.fetch_add(1, Relaxed) + 1;
     let mut q = NOTIFS.lock().unwrap();
     q.push_back((n, titre.to_string(), texte.to_string()));
@@ -249,22 +251,91 @@ fn date_fichier(p: &Path) -> u64 {
     p.metadata().and_then(|m| m.modified()).ok().and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok()).map_or(0, |d| d.as_secs())
 }
 
+
+/// Actions du téléphone (réseau local ou accès à distance).
+fn commande(c: &Contexte, action: &str, texte: Option<&str>) -> Result<String, String> {
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
+    let req_texte = texte.unwrap_or("");
+    let r: Result<&str, String> = match action {
+                "vol_plus" => {
+                    for _ in 0..2 {
+                        touche(VK_VOLUME_UP);
+                    }
+                    Ok("Volume +")
+                }
+                "vol_moins" => {
+                    for _ in 0..2 {
+                        touche(VK_VOLUME_DOWN);
+                    }
+                    Ok("Volume −")
+                }
+                "muet" => {
+                    touche(VK_VOLUME_MUTE);
+                    Ok("Muet")
+                }
+                "lecture" => {
+                    touche(VK_MEDIA_PLAY_PAUSE);
+                    Ok("Lecture / pause")
+                }
+                "suivant" => {
+                    touche(VK_MEDIA_NEXT_TRACK);
+                    Ok("Piste suivante")
+                }
+                "precedent" => {
+                    touche(VK_MEDIA_PREV_TRACK);
+                    Ok("Piste précédente")
+                }
+                "verrouiller" => {
+                    unsafe { windows_sys::Win32::System::Shutdown::LockWorkStation() };
+                    Ok("PC verrouillé")
+                }
+                "veille" => {
+                    std::thread::spawn(|| {
+                        std::thread::sleep(Duration::from_secs(2));
+                        unsafe { windows_sys::Win32::System::Power::SetSuspendState(0, 0, 0) };
+                    });
+                    Ok("Mise en veille")
+                }
+                "mc_demarrer" => c.mc.demarrer().map(|_| "Serveur Minecraft : démarrage"),
+                "mc_sauvegarder" => {
+                    c.mc.commande("save-all");
+                    Ok("Serveur Minecraft : sauvegarde")
+                }
+                "mc_dire" => {
+                    let t: String = req_texte.chars().filter(|c| !c.is_control()).take(200).collect();
+                    c.mc.commande(&format!("say [Téléphone] {t}"));
+                    Ok("Message envoyé dans le chat")
+                }
+                "mc_arreter" => {
+                    let mc = c.mc.clone();
+                    std::thread::spawn(move || mc.arreter());
+                    Ok("Serveur Minecraft : arrêt")
+                }
+                _ => Err("action inconnue".into()),
+            
+    };
+    r.map(String::from)
+}
+
+/// État du PC en JSON (pour l'appli et l'accès à distance).
+fn etat_json(c: &Contexte) -> serde_json::Value {
+    let (m, jeu) = MESURES.get().map(|l| l(true)).unwrap_or((crate::moniteur::Instantane { fps: -1.0, cpu: -1.0, cpu_t: -1.0, gpu: -1.0, gpu_t: -1.0, ram: -1.0 }, None));
+    let (mc, joueurs) = match c.mc.statut() {
+        None => ("arrêté", vec![]),
+        Some((false, _)) => ("démarrage", vec![]),
+        Some((true, j)) => ("en ligne", j),
+    };
+    serde_json::json!({
+        "nom": nom_pc(), "version": env!("CARGO_PKG_VERSION"),
+        "cpu": m.cpu, "cpu_t": m.cpu_t, "gpu": m.gpu, "gpu_t": m.gpu_t, "ram": m.ram, "fps": m.fps, "jeu": jeu,
+        "mc": mc, "joueurs": joueurs, "macs": macs(),
+    })
+}
+
 /// Requêtes de l'appli Android (déjà authentifiées). Renvoie faux si le chemin n'est pas de l'API.
 fn api(s: &mut TcpStream, req: &Requete, lecteur: &mut BufReader<TcpStream>, c: &Contexte) -> bool {
     match (req.methode.as_str(), req.chemin.as_str()) {
-        ("GET", "/api/etat") => {
-            let (m, jeu) = MESURES.get().map(|l| l(true)).unwrap_or((crate::moniteur::Instantane { fps: -1.0, cpu: -1.0, cpu_t: -1.0, gpu: -1.0, gpu_t: -1.0, ram: -1.0 }, None));
-            let (mc, joueurs) = match c.mc.statut() {
-                None => ("arrêté", vec![]),
-                Some((false, _)) => ("démarrage", vec![]),
-                Some((true, j)) => ("en ligne", j),
-            };
-            json(s, serde_json::json!({
-                "nom": nom_pc(), "version": env!("CARGO_PKG_VERSION"),
-                "cpu": m.cpu, "cpu_t": m.cpu_t, "gpu": m.gpu, "gpu_t": m.gpu_t, "ram": m.ram, "fps": m.fps, "jeu": jeu,
-                "mc": mc, "joueurs": joueurs, "macs": macs(),
-            }));
-        }
+        ("GET", "/api/etat") => json(s, etat_json(c)),
         ("GET", "/api/jeux") => {
             let v: Vec<serde_json::Value> = crate::jeux4::jeux_installes().iter().map(|j| serde_json::json!({ "id": j.id, "nom": j.nom })).collect();
             json(s, serde_json::Value::Array(v));
@@ -311,6 +382,49 @@ fn api(s: &mut TcpStream, req: &Requete, lecteur: &mut BufReader<TcpStream>, c: 
                 None => repondre(s, "404 Not Found", "text/plain; charset=utf-8", "fichier introuvable".as_bytes(), ""),
             }
         }
+        ("GET", "/api/ecran") => {
+            let largeur: u32 = req.param("l").and_then(|x| x.parse().ok()).unwrap_or(960).clamp(320, 1920);
+            let (l, h) = crate::capture::win::ecran_principal();
+            match crate::capture::win::capturer_zone(0, 0, l, h) {
+                Some(img) => {
+                    let img = image::imageops::thumbnail(&img, largeur, (largeur as u64 * h as u64 / l.max(1) as u64) as u32);
+                    let rgb = image::DynamicImage::ImageRgba8(img).to_rgb8();
+                    let mut b = vec![];
+                    let _ = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut b, 60).encode_image(&rgb);
+                    repondre(s, "200 OK", "image/jpeg", &b, "");
+                }
+                None => repondre(s, "500 Internal Server Error", "text/plain", b"capture impossible", ""),
+            }
+        }
+        ("POST", "/api/ocr") => {
+            let mut b = vec![];
+            let _ = lecteur.take(req.longueur.min(16 << 20)).read_to_end(&mut b);
+            let p = std::env::temp_dir().join(format!("outils_ocr_tel_{}.jpg", nouvelle_cle()));
+            let r = std::fs::write(&p, &b).map_err(|e| e.to_string()).and_then(|_| crate::fichiers4::ocr(&p));
+            let _ = std::fs::remove_file(&p);
+            match r {
+                Ok(texte) => {
+                    let langue = req.param("langue").unwrap_or("fr");
+                    let traduction = if texte.trim().is_empty() { String::new() } else { crate::traducteur::traduire_google(&texte, langue).unwrap_or_default() };
+                    json(s, serde_json::json!({ "texte": texte, "traduction": traduction }));
+                }
+                Err(e) => repondre(s, "500 Internal Server Error", "text/plain; charset=utf-8", e.as_bytes(), ""),
+            }
+        }
+        ("POST", "/api/webcam") => {
+            let mut b = vec![];
+            let _ = lecteur.take(req.longueur.min(4 << 20)).read_to_end(&mut b);
+            *crate::pont::WEBCAM.lock().unwrap() = Some((b, std::time::Instant::now()));
+            repondre(s, "200 OK", "text/plain", b"ok", "");
+        }
+        ("GET", "/api/pour_tel") => {
+            let v: Vec<serde_json::Value> = std::mem::take(&mut *crate::pont::POUR_TEL.lock().unwrap());
+            json(s, serde_json::Value::Array(v));
+        }
+        ("GET", "/api/distance") => {
+            let d = crate::pont::distance().lock().unwrap().clone();
+            json(s, serde_json::json!({ "actif": d.actif, "sujet": d.sujet, "cle": d.cle }));
+        }
         ("GET", "/api/notifs") => {
             let (dernier, l) = notifs_depuis(req.param("depuis").and_then(|x| x.parse().ok()).unwrap_or(0));
             let v: Vec<serde_json::Value> = l.into_iter().map(|(n, t, m)| serde_json::json!({ "n": n, "titre": t, "texte": m })).collect();
@@ -354,6 +468,12 @@ struct Contexte {
     r: Arc<Mutex<Reglages>>,
     mc: Pilote,
     journal: Arc<Mutex<Vec<String>>>,
+}
+
+fn noter_ui(j: &Arc<Mutex<Vec<String>>>, m: String) {
+    let mut j = j.lock().unwrap();
+    j.insert(0, m);
+    j.truncate(30);
 }
 
 fn noter(c: &Contexte, m: String) {
@@ -448,74 +568,13 @@ fn servir(mut s: TcpStream, c: &Contexte) {
                 repondre(&mut s, "500 Internal Server Error", "text/plain; charset=utf-8", "presse-papiers occupé".as_bytes(), "");
             }
         }
-        ("POST", a) if a.starts_with("/cmd/") => {
-            use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
-            let action = &a[5..];
-            let r: Result<&str, String> = match action {
-                "vol_plus" => {
-                    for _ in 0..2 {
-                        touche(VK_VOLUME_UP);
-                    }
-                    Ok("Volume +")
-                }
-                "vol_moins" => {
-                    for _ in 0..2 {
-                        touche(VK_VOLUME_DOWN);
-                    }
-                    Ok("Volume −")
-                }
-                "muet" => {
-                    touche(VK_VOLUME_MUTE);
-                    Ok("Muet")
-                }
-                "lecture" => {
-                    touche(VK_MEDIA_PLAY_PAUSE);
-                    Ok("Lecture / pause")
-                }
-                "suivant" => {
-                    touche(VK_MEDIA_NEXT_TRACK);
-                    Ok("Piste suivante")
-                }
-                "precedent" => {
-                    touche(VK_MEDIA_PREV_TRACK);
-                    Ok("Piste précédente")
-                }
-                "verrouiller" => {
-                    unsafe { windows_sys::Win32::System::Shutdown::LockWorkStation() };
-                    Ok("PC verrouillé")
-                }
-                "veille" => {
-                    std::thread::spawn(|| {
-                        std::thread::sleep(Duration::from_secs(2));
-                        unsafe { windows_sys::Win32::System::Power::SetSuspendState(0, 0, 0) };
-                    });
-                    Ok("Mise en veille")
-                }
-                "mc_demarrer" => c.mc.demarrer().map(|_| "Serveur Minecraft : démarrage"),
-                "mc_sauvegarder" => {
-                    c.mc.commande("save-all");
-                    Ok("Serveur Minecraft : sauvegarde")
-                }
-                "mc_dire" => {
-                    let t: String = req.param("texte").unwrap_or("").chars().filter(|c| !c.is_control()).take(200).collect();
-                    c.mc.commande(&format!("say [Téléphone] {t}"));
-                    Ok("Message envoyé dans le chat")
-                }
-                "mc_arreter" => {
-                    let mc = c.mc.clone();
-                    std::thread::spawn(move || mc.arreter());
-                    Ok("Serveur Minecraft : arrêt")
-                }
-                _ => Err("action inconnue".into()),
-            };
-            match r {
-                Ok(m) => {
-                    noter(c, format!("📱 {m}"));
-                    repondre(&mut s, "200 OK", "text/plain; charset=utf-8", m.as_bytes(), "");
-                }
-                Err(e) => repondre(&mut s, "400 Bad Request", "text/plain; charset=utf-8", e.as_bytes(), ""),
+        ("POST", a) if a.starts_with("/cmd/") => match commande(c, &a[5..], req.param("texte")) {
+            Ok(m) => {
+                noter(c, format!("📱 {m}"));
+                repondre(&mut s, "200 OK", "text/plain; charset=utf-8", m.as_bytes(), "");
             }
-        }
+            Err(e) => repondre(&mut s, "400 Bad Request", "text/plain; charset=utf-8", e.as_bytes(), ""),
+        },
         _ => repondre(&mut s, "404 Not Found", "text/plain", b"introuvable", ""),
     }
 }
@@ -527,13 +586,15 @@ pub struct Telephone {
     erreur: Arc<Mutex<Option<String>>>,
     journal: Arc<Mutex<Vec<String>>>,
     qr: Option<(String, egui::TextureHandle)>,
+    cle_partagee: Arc<Mutex<Option<Arc<Mutex<String>>>>>,
+    webcam: Option<(std::time::Instant, egui::TextureHandle)>,
 }
 
 impl Telephone {
     pub fn new(mc: Pilote) -> Self {
         let r: Reglages = std::fs::read_to_string(fichier()).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
         let auto = r.auto;
-        let mut t = Telephone { r: Arc::new(Mutex::new(r)), mc, marche: Arc::default(), erreur: Arc::default(), journal: Arc::default(), qr: None };
+        let mut t = Telephone { r: Arc::new(Mutex::new(r)), mc, marche: Arc::default(), erreur: Arc::default(), journal: Arc::default(), qr: None, cle_partagee: Arc::default(), webcam: None };
         t.enregistrer(); // garde la clé générée
         if auto {
             t.demarrer();
@@ -565,6 +626,25 @@ impl Telephone {
         let ctx = Arc::new(Contexte { r: self.r.clone(), mc: self.mc.clone(), journal: self.journal.clone() });
         let marche = self.marche.clone();
         decouverte(port, marche.clone());
+        let cle = Arc::new(Mutex::new(self.r.lock().unwrap().cle.clone()));
+        *self.cle_partagee.lock().unwrap() = Some(cle.clone());
+        crate::pont::ecouter_entrees(cle.clone(), marche.clone());
+        crate::pont::ecouter_son(cle, marche.clone());
+        *crate::pont::distance().lock().unwrap() = self.r.lock().unwrap().distance.clone();
+        let c2 = ctx.clone();
+        crate::pont::ecouter_distance(Arc::new(move |cmd: &str| -> String {
+            if cmd == "etat" {
+                return etat_json(&c2).to_string();
+            }
+            let (a, t) = cmd.split_once(' ').unwrap_or((cmd, ""));
+            match commande(&c2, a, Some(t)) {
+                Ok(m) => {
+                    noter(&c2, format!("🌍 {m} (à distance)"));
+                    serde_json::json!({ "ok": m }).to_string()
+                }
+                Err(e) => serde_json::json!({ "erreur": e }).to_string(),
+            }
+        }));
         std::thread::spawn(move || {
             while marche.load(Relaxed) {
                 match ecoute.accept() {
@@ -609,6 +689,9 @@ impl Telephone {
             if ui.button("🔑 Nouvelle clé").on_hover_text("Les anciens QR codes ne marcheront plus").clicked() {
                 r.cle = nouvelle_cle();
                 self.qr = None;
+                if let Some(c) = self.cle_partagee.lock().unwrap().as_ref() {
+                    *c.lock().unwrap() = r.cle.clone();
+                }
             }
         });
         if let Some(e) = self.erreur.lock().unwrap().clone() {
@@ -633,6 +716,47 @@ impl Telephone {
                         }
                     }
                 });
+                ui.horizontal_wrapped(|ui| {
+                    if ui.button("🔔 Faire sonner le téléphone").on_hover_text("Il sonne fort, même en silencieux (dans les 10 secondes)").clicked() {
+                        crate::pont::faire_sonner();
+                        noter_ui(&self.journal, "🔔 Le téléphone va sonner".into());
+                    }
+                    if ui.button("📤 Envoyer des fichiers au téléphone…").clicked() {
+                        for f in rfd::FileDialog::new().pick_files().unwrap_or_default() {
+                            crate::pont::envoyer_au_tel(&f);
+                            noter_ui(&self.journal, format!("📤 {} part vers le téléphone", f.file_name().unwrap_or_default().to_string_lossy()));
+                        }
+                    }
+                    if r.distance.sujet.is_empty() {
+                        r.distance = crate::pont::Distance::nouvelle();
+                    }
+                    ui.checkbox(&mut r.distance.actif, "🌍 Accès depuis l'extérieur").on_hover_text("Le téléphone pilote le PC et reçoit ses notifications même hors de la maison, par le relais ntfy.sh. Tout est chiffré avec une clé connue seulement du PC et du téléphone.");
+                });
+                // caméra et micro du téléphone
+                let image = crate::pont::WEBCAM.lock().unwrap().clone().filter(|(_, t)| t.elapsed() < Duration::from_secs(3));
+                if let Some((jpeg, quand)) = image {
+                    if self.webcam.as_ref().is_none_or(|(q, _)| *q != quand) {
+                        if let Ok(i) = image::load_from_memory(&jpeg) {
+                            let i = i.to_rgba8();
+                            let ci = egui::ColorImage::from_rgba_unmultiplied([i.width() as usize, i.height() as usize], i.as_raw());
+                            match &mut self.webcam {
+                                Some((q, t)) => {
+                                    t.set(ci, Default::default());
+                                    *q = quand;
+                                }
+                                None => self.webcam = Some((quand, ui.ctx().load_texture("webcam_tel", ci, Default::default()))),
+                            }
+                        }
+                    }
+                    if let Some((_, t)) = &self.webcam {
+                        ui.label("📷 Caméra du téléphone (capture cette fenêtre dans OBS pour t'en servir comme webcam) :");
+                        ui.add(egui::Image::new(t).max_width(480.0));
+                    }
+                    ui.ctx().request_repaint_after(Duration::from_millis(80));
+                }
+                if crate::pont::MICRO_ACTIF.lock().unwrap().is_some() {
+                    ui.colored_label(Color32::LIGHT_GREEN, "🎙 Le micro du téléphone est envoyé dans le câble virtuel : choisis « CABLE Output » comme micro dans Discord ou OBS.");
+                }
             });
         }
         ui.columns(2, |c| {
@@ -723,6 +847,7 @@ impl Telephone {
             ui.ctx().request_repaint_after(Duration::from_secs(1));
         }
         if r != avant {
+            *crate::pont::distance().lock().unwrap() = r.distance.clone();
             *self.r.lock().unwrap() = r;
             self.enregistrer();
         }

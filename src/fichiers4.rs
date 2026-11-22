@@ -846,7 +846,7 @@ impl Outil for ComparerDossiers {
 // 30 · Lire le texte d'une image (OCR de Windows)
 // ---------------------------------------------------------------------------------------------------
 
-fn ocr(p: &Path) -> Result<String, String> {
+pub(crate) fn ocr(p: &Path) -> Result<String, String> {
     use windows::core::HSTRING;
     use windows::Graphics::Imaging::BitmapDecoder;
     use windows::Media::Ocr::OcrEngine;
