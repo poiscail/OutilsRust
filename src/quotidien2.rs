@@ -82,6 +82,7 @@ pub fn trouver<'a>(tampon: &str, l: &'a [Raccourci]) -> Option<&'a Raccourci> {
     l.iter().filter(|r| r.abrev.chars().count() >= 2 && tampon.ends_with(&r.abrev)).max_by_key(|r| r.abrev.len())
 }
 
+#[cfg(windows)] // propre au PC (pas dans l'appli téléphone)
 mod crochet {
     use super::*;
     use std::ptr::null_mut;
@@ -189,6 +190,7 @@ mod crochet {
     }
 }
 
+#[cfg(windows)] // propre au PC (pas dans l'appli téléphone)
 pub struct Raccourcis {
     liste: Vec<Raccourci>,
     abrev: String,
@@ -196,6 +198,7 @@ pub struct Raccourcis {
     actif: bool,
 }
 
+#[cfg(windows)] // propre au PC (pas dans l'appli téléphone)
 impl Raccourcis {
     pub fn new() -> Self {
         let mut liste: Vec<Raccourci> = charger("raccourcis_texte");
@@ -214,6 +217,7 @@ impl Raccourcis {
     }
 }
 
+#[cfg(windows)] // propre au PC (pas dans l'appli téléphone)
 impl Outil for Raccourcis {
     fn nom(&self) -> &'static str {
         "✍ Raccourcis de texte"
@@ -677,6 +681,7 @@ pub fn lire_heure(s: &str) -> Option<u32> {
 // 56 · Dictée vocale
 // ---------------------------------------------------------------------------------------------------
 
+#[cfg(windows)] // propre au PC (pas dans l'appli téléphone)
 fn win_h() {
     use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
     let t = |vk: u16, f: u32| INPUT { r#type: INPUT_KEYBOARD, Anonymous: INPUT_0 { ki: KEYBDINPUT { wVk: vk, wScan: 0, dwFlags: f, time: 0, dwExtraInfo: 0 } } };
@@ -684,18 +689,21 @@ fn win_h() {
     unsafe { SendInput(4, seq.as_ptr(), std::mem::size_of::<INPUT>() as i32) };
 }
 
+#[cfg(windows)] // propre au PC (pas dans l'appli téléphone)
 pub struct Dictee {
     texte: String,
     focus: bool,
     message: String,
 }
 
+#[cfg(windows)] // propre au PC (pas dans l'appli téléphone)
 impl Dictee {
     pub fn new() -> Self {
         Dictee { texte: charger::<Option<String>>("dictee").unwrap_or_default(), focus: false, message: String::new() }
     }
 }
 
+#[cfg(windows)] // propre au PC (pas dans l'appli téléphone)
 impl Outil for Dictee {
     fn nom(&self) -> &'static str {
         "🎙 Dictée vocale"

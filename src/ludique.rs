@@ -253,12 +253,14 @@ impl Outil for Des {
 // 70 · À quoi on joue ce soir ?
 // ---------------------------------------------------------------------------------------------------
 
+#[cfg(windows)] // propre au PC (pas dans l'appli téléphone)
 pub struct Tirage {
     jeux: Vec<String>,
     exclus: std::collections::BTreeSet<String>,
     roue: Option<(Instant, usize)>, // animation : début, gagnant
 }
 
+#[cfg(windows)] // propre au PC (pas dans l'appli téléphone)
 impl Tirage {
     pub fn new() -> Self {
         Tirage { jeux: vec![], exclus: charger("tirage_exclus"), roue: None }
@@ -276,6 +278,7 @@ impl Tirage {
     }
 }
 
+#[cfg(windows)] // propre au PC (pas dans l'appli téléphone)
 impl Outil for Tirage {
     fn nom(&self) -> &'static str {
         "🎡 À quoi on joue ?"

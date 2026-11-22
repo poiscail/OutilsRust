@@ -1,0 +1,8 @@
+[package]
+name = "rfd"
+version = "0.15.0"
+edition = "2021"
+description = "Remplaçant vide de rfd pour Android (pas de boîtes de dialogue de fichiers)"
+
+[lib]
+path = "src/lib.rs"

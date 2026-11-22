@@ -915,12 +915,14 @@ pub fn titre_en_cours(l: &str) -> Option<String> {
     (!t.is_empty()).then_some(t)
 }
 
+#[cfg(windows)] // propre au PC (pas dans l'appli téléphone)
 struct Lecteur {
     _flux: rodio::OutputStream,
     sink: Arc<rodio::Sink>,
     stop: Arc<AtomicBool>,
 }
 
+#[cfg(windows)] // propre au PC (pas dans l'appli téléphone)
 pub struct Radio {
     favoris: Vec<Station>,
     q: String,
@@ -931,6 +933,7 @@ pub struct Radio {
     volume: f32,
 }
 
+#[cfg(windows)] // propre au PC (pas dans l'appli téléphone)
 fn chercher_radios(q: &str) -> Result<Vec<Station>, String> {
     let mut r = ureq::get("https://de1.api.radio-browser.info/json/stations/search").set("User-Agent", "Outils/1.0").timeout(Duration::from_secs(15))
         .query("limit", "40").query("order", "clickcount").query("reverse", "true").query("hidebroken", "true");
@@ -944,6 +947,7 @@ fn chercher_radios(q: &str) -> Result<Vec<Station>, String> {
     })).collect())
 }
 
+#[cfg(windows)] // propre au PC (pas dans l'appli téléphone)
 impl Radio {
     pub fn new() -> Self {
         let mut favoris: Vec<Station> = charger("radios");
@@ -1040,6 +1044,7 @@ impl Radio {
     }
 }
 
+#[cfg(windows)] // propre au PC (pas dans l'appli téléphone)
 impl Outil for Radio {
     fn nom(&self) -> &'static str {
         "📻 Radio en ligne"

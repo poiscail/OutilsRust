@@ -1,0 +1,70 @@
+[package]
+name = "outils-mobile"
+version = "0.1.0"
+edition = "2021"
+description = "Outils sur téléphone Android : jeux et outils du quotidien, partagés avec la version PC"
+
+# crate à part (pas dans l'espace de travail du programme PC)
+[workspace]
+
+[lib]
+name = "outils_mobile"
+crate-type = ["cdylib", "rlib"]
+path = "src/lib.rs"
+
+[dependencies]
+eframe = { version = "0.31", default-features = false, features = ["default_fonts", "glow", "android-native-activity"] }
+egui_extras = { version = "0.31", features = ["image", "http"] }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+ab_glyph = "0.2"
+getrandom = "0.2"
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ureq = { version = "2", features = ["json"] }
+libc = "0.2"
+log = "0.4"
+# les dialogues de fichiers n'existent pas sur téléphone : version vide
+rfd = { path = "shims/rfd" }
+
+[target.'cfg(target_os = "android")'.dependencies]
+android_logger = "0.14"
+winit = { version = "0.30", default-features = false, features = ["android-native-activity"] }
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true
+
+[package.metadata.android]
+package = "fr.poiscail.outils"
+apk_name = "Outils"
+build_targets = ["aarch64-linux-android"]
+
+[package.metadata.android.sdk]
+min_sdk_version = 24
+target_sdk_version = 34
+
+[package.metadata.android.application]
+label = "Outils"
+theme = "@android:style/Theme.DeviceDefault.NoActionBar"
+
+[package.metadata.android.application.activity]
+orientation = "unspecified"
+config_changes = "orientation|screenSize|screenLayout|keyboardHidden|keyboard|uiMode"
+
+[[package.metadata.android.uses_permission]]
+name = "android.permission.INTERNET"
+
+[[package.metadata.android.uses_permission]]
+name = "android.permission.ACCESS_NETWORK_STATE"
+
+[[package.metadata.android.uses_permission]]
+name = "android.permission.ACCESS_WIFI_STATE"
+
+# pour essayer l'appli sur PC Linux (cargo run --example bureau)
+[target.'cfg(all(not(target_os = "android"), target_os = "linux"))'.dev-dependencies]
+eframe = { version = "0.31", default-features = false, features = ["default_fonts", "glow", "x11"] }
+
+[target.'cfg(windows)'.dev-dependencies]
+eframe = { version = "0.31", default-features = false, features = ["default_fonts", "glow"] }
