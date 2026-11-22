@@ -1212,13 +1212,39 @@ $g.Culture = $r.RecognizerInfo.Culture
 $r.LoadGrammar((New-Object System.Speech.Recognition.Grammar($g)))
 $r.SetInputToDefaultAudioDevice()
 while ($true) {{ $x = $r.Recognize(); if ($x -and $x.Confidence -gt 0.6) {{ [Console]::Out.WriteLine('OK|' + $x.Text); [Console]::Out.Flush() }} }}"#, liste.join(","));
-            let enfant = Command::new("powershell.exe").args(["-NoProfile", "-NonInteractive", "-Command", &script]).stdout(Stdio::piped()).stdin(Stdio::null()).stderr(Stdio::null()).creation_flags(SANS_FENETRE).spawn();
+            // script dans un fichier UTF-8 avec BOM : la liste des phrases dépasserait la longueur
+            // maximale d'une ligne de commande, et sans BOM PowerShell 5 casse les accents
+            let fichier = std::env::temp_dir().join("outils_commandes_vocales.ps1");
+            let mut contenu = vec![0xEF, 0xBB, 0xBF];
+            contenu.extend_from_slice(script.as_bytes());
+            if std::fs::write(&fichier, contenu).is_err() {
+                *err.lock().unwrap() = "impossible d'écrire le script de reconnaissance".into();
+                m.store(false, Relaxed);
+                return;
+            }
+            let enfant = Command::new("powershell.exe").args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File"]).arg(&fichier).stdout(Stdio::piped()).stdin(Stdio::null()).stderr(Stdio::null()).creation_flags(SANS_FENETRE).spawn();
             let Ok(mut enfant) = enfant else {
                 *err.lock().unwrap() = "PowerShell introuvable".into();
                 m.store(false, Relaxed);
                 return;
             };
             let sortie = enfant.stdout.take().unwrap();
+            // décocher « Écouter » arrête tout de suite le micro (sans attendre la prochaine phrase)
+            let enfant = Arc::new(Mutex::new(enfant));
+            {
+                let (e, a) = (enfant.clone(), a.clone());
+                std::thread::spawn(move || loop {
+                    std::thread::sleep(Duration::from_millis(400));
+                    let mut c = e.lock().unwrap();
+                    if !a.load(Relaxed) {
+                        let _ = c.kill();
+                        return;
+                    }
+                    if matches!(c.try_wait(), Ok(Some(_))) {
+                        return;
+                    }
+                });
+            }
             for l in std::io::BufReader::new(sortie).lines().map_while(Result::ok) {
                 if !a.load(Relaxed) {
                     break;
@@ -1238,7 +1264,7 @@ while ($true) {{ $x = $r.Recognize(); if ($x -and $x.Confidence -gt 0.6) {{ [Con
                     }
                 }
             }
-            let _ = enfant.kill();
+            let _ = enfant.lock().unwrap().kill();
             m.store(false, Relaxed);
         });
     }

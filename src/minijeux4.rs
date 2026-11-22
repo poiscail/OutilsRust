@@ -829,7 +829,7 @@ impl Navale {
         for m in self.lien.recus() {
             let mut p = m.split_whitespace();
             match p.next() {
-                Some("NOUVEAU") => self.nouvelle(!self.lien.hote),
+                Some("NOUVEAU") => self.nouvelle(self.lien.hote),
                 Some("TIR") => {
                     let Some(k) = p.next().and_then(|x| x.parse::<usize>().ok()).filter(|k| *k < 100) else { continue };
                     self.tirs_recus[k] = true;

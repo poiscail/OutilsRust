@@ -276,7 +276,7 @@ impl Index {
         let k = i as usize;
         if self.drap[k] & SUPPRIME == 0 {
             self.drap[k] |= SUPPRIME;
-            self.vivants -= 1;
+            self.vivants = self.vivants.saturating_sub(1);
         }
         if self.cle[k] != 0 {
             self.par_cle.remove(&self.cle[k]);
@@ -553,6 +553,13 @@ pub fn analyser(q: &str, maintenant: u32) -> Requete {
             _ => {
                 if let Some(x) = t.strip_prefix('!').filter(|x| !x.is_empty()) {
                     r.exclus.push(norm(x));
+                } else if t.contains(['\\', '/']) && !t.ends_with(['\\', '/']) {
+                    // « minecraft\\saves » : le dernier morceau dans le nom, le reste dans le dossier
+                    let (d, n) = t.rsplit_once(['\\', '/']).unwrap();
+                    if !d.is_empty() {
+                        r.dossier.push(norm(d));
+                    }
+                    r.termes.push(norm(n));
                 } else {
                     let n = norm(&t);
                     if !n.is_empty() {
@@ -934,14 +941,14 @@ mod win {
 
     /// (identifiant du journal, premier USN valide, prochain USN)
     fn journal(h: &Poignee) -> Option<(u64, i64, i64)> {
-        let mut d = [0u64; 8];
+        let mut d = [0u64; 16];
         let mut r = 0u32;
-        let mut ok = unsafe { DeviceIoControl(h.0, FSCTL_QUERY_USN_JOURNAL, null(), 0, d.as_mut_ptr() as *mut c_void, 64, &mut r, null_mut()) } != 0;
+        let mut ok = unsafe { DeviceIoControl(h.0, FSCTL_QUERY_USN_JOURNAL, null(), 0, d.as_mut_ptr() as *mut c_void, 128, &mut r, null_mut()) } != 0;
         if !ok {
             // pas de journal sur ce disque : on en crée un (comme Everything)
             let c = [32u64 << 20, 8 << 20];
             unsafe { DeviceIoControl(h.0, FSCTL_CREATE_USN_JOURNAL, c.as_ptr() as *const c_void, 16, null_mut(), 0, &mut r, null_mut()) };
-            ok = unsafe { DeviceIoControl(h.0, FSCTL_QUERY_USN_JOURNAL, null(), 0, d.as_mut_ptr() as *mut c_void, 64, &mut r, null_mut()) } != 0;
+            ok = unsafe { DeviceIoControl(h.0, FSCTL_QUERY_USN_JOURNAL, null(), 0, d.as_mut_ptr() as *mut c_void, 128, &mut r, null_mut()) } != 0;
         }
         // USN_JOURNAL_DATA_V0 : id, FirstUsn, NextUsn, LowestValidUsn, MaxUsn…
         ok.then_some((d[0], d[3] as i64, d[2] as i64))
@@ -1098,11 +1105,17 @@ mod win {
     }
 
     /// Parcours parallèle à partir de dossiers déjà dans l'index.
-    pub fn parcourir(ix: &RwLock<Index>, depart: Vec<(String, u32)>, fils: usize, compte: &AtomicUsize, version: &AtomicU64) {
+    pub fn parcourir(ix: &RwLock<Index>, depart: Vec<(String, u32)>, fils: usize, compte: &AtomicUsize, version: &AtomicU64, fond: bool) {
         let file = Mutex::new((depart, 0usize)); // (à visiter, en cours)
         std::thread::scope(|s| {
             for _ in 0..fils.max(1) {
-                s.spawn(|| loop {
+                s.spawn(|| {
+                    if fond {
+                        // priorité basse (processeur et disque) : ne ralentit ni le PC ni les jeux
+                        use windows_sys::Win32::System::Threading::{GetCurrentThread, SetThreadPriority, THREAD_MODE_BACKGROUND_BEGIN};
+                        unsafe { SetThreadPriority(GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN) };
+                    }
+                    loop {
                     let tache = {
                         let mut f = file.lock().unwrap();
                         match f.0.pop() {
@@ -1134,6 +1147,7 @@ mod win {
                     f.0.extend(sous);
                     f.1 -= 1;
                     version.fetch_add(1, Relaxed);
+                    }
                 });
             }
         });
@@ -1269,7 +1283,7 @@ fn fils() -> usize {
 }
 
 #[cfg(windows)]
-fn construire(m: &Arc<Moteur>, dest: &RwLock<Index>, admin: bool) -> Vec<(usize, String, u64, i64)> {
+fn construire(m: &Arc<Moteur>, dest: &RwLock<Index>, admin: bool, fond: bool) -> Vec<(usize, String, u64, i64)> {
     let mut suivis = vec![];
     let mut a_parcourir = vec![];
     for (lettre, ntfs) in win::lecteurs() {
@@ -1300,7 +1314,7 @@ fn construire(m: &Arc<Moteur>, dest: &RwLock<Index>, admin: bool) -> Vec<(usize,
     dest.write().unwrap().recalculer();
     if !a_parcourir.is_empty() {
         *m.etat.lock().unwrap() = "Parcours des dossiers…".into();
-        win::parcourir(dest, a_parcourir, fils(), &m.compte, &m.version);
+        win::parcourir(dest, a_parcourir, fils(), &m.compte, &m.version, fond);
     }
     suivis
 }
@@ -1339,7 +1353,7 @@ fn resynchroniser(m: &Moteur, chemin: &str) {
         }
     }
     if !nouveaux.is_empty() {
-        win::parcourir(&m.index, nouveaux, 2, &m.compte, &m.version);
+        win::parcourir(&m.index, nouveaux, 2, &m.compte, &m.version, true);
     }
     m.version.fetch_add(1, Relaxed);
     m.modifie.store(true, Relaxed);
@@ -1381,6 +1395,7 @@ pub fn demarrer(forcer: bool) {
                         }
                         if ok && vols.len() == win::lecteurs().len() {
                             m.index.write().unwrap().recalculer();
+                            GEN_USN.fetch_add(1, Relaxed);
                             for (k, l, id, u) in suivis {
                                 win::suivre_usn(m.clone(), k, l, id, u);
                             }
@@ -1390,8 +1405,8 @@ pub fn demarrer(forcer: bool) {
                 }
             }
             let (sales, complet) = (sales(), complet());
-            GEN_USN.fetch_add(1, Relaxed);
             if !pret {
+                GEN_USN.fetch_add(1, Relaxed);
                 // surveiller dès maintenant pour ne rien rater pendant la construction (une seule fois)
                 if !admin && premier {
                     for (l, _) in win::lecteurs() {
@@ -1401,9 +1416,10 @@ pub fn demarrer(forcer: bool) {
                 let progressif = m.index.read().unwrap().len() == 0;
                 let neuf = RwLock::new(Index::default());
                 let suivis = if progressif {
-                    construire(&m, &m.index, admin)
+                    construire(&m, &m.index, admin, false)
                 } else {
-                    let s = construire(&m, &neuf, admin);
+                    // l'ancien index sert pendant ce temps : on peut prendre son temps
+                    let s = construire(&m, &neuf, admin, true);
                     *m.index.write().unwrap() = neuf.into_inner().unwrap();
                     s
                 };
@@ -1899,6 +1915,8 @@ mod tests {
         let r = analyser("date:2026-05", 0);
         assert_eq!(r.date_min, Some(crate::quotidien2::jours_depuis_1970(2026, 5, 1) as u32 * 86_400));
         assert!(analyser("type:video", 0).ext.contains(&b"mkv".to_vec()));
+        let r = analyser("minecraft\\saves", 0);
+        assert_eq!((r.dossier, r.termes), (vec![b"minecraft".to_vec()], vec![b"saves".to_vec()]));
         assert!(joker(b"vacances.mp4", b"*.mp4"));
         assert!(joker(b"photo12.jpg", b"photo??.jpg"));
         assert!(!joker(b"photo123.jpg", b"photo??.jpg"));
