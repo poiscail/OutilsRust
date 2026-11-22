@@ -29,6 +29,7 @@ mod quotidien2;
 mod quotidien3;
 
 mod android;
+mod appli;
 mod capteurs_tel;
 mod commun;
 mod creatif;
@@ -145,6 +146,10 @@ struct Reglages {
     recents: Vec<String>,
     taille: f32,
     clair: bool,
+    /// 0 = comme Android, 1 = sombre, 2 = clair
+    theme: u8,
+    veille: bool,
+    maj_verifiee: u64,
 }
 
 /// Touches à rejouer au jeu à l'image suivante.
@@ -184,6 +189,10 @@ pub struct App {
     injection: Injection,
     toast: Option<(String, Instant)>,
     joueur2: bool,
+    parametres: bool,
+    e: commun::Etat,
+    theme_verifie: Instant,
+    sombre: bool,
 }
 
 impl App {
@@ -199,13 +208,31 @@ impl App {
         if android::version_android() >= 33 && !android::a_permission("android.permission.POST_NOTIFICATIONS") {
             android::demander(&["android.permission.POST_NOTIFICATIONS"]);
         }
-        let a = App { fiches: catalogue(), ouvert, reglages, recherche: String::new(), clavier: false, majuscules: false, injection: Injection::default(), toast: None, joueur2: false };
+        if reglages.theme == 0 && reglages.clair {
+            reglages.theme = 2; // ancien réglage
+        }
+        if reglages.veille {
+            android::veille(true);
+        }
+        if commun::maintenant() > reglages.maj_verifiee + 86_400 {
+            reglages.maj_verifiee = commun::maintenant();
+            enregistrer("telephone", &reglages);
+            std::thread::spawn(|| {
+                let _ = appli::verifier();
+            });
+        }
+        let a = App { fiches: catalogue(), ouvert, reglages, recherche: String::new(), clavier: false, majuscules: false, injection: Injection::default(), toast: None, joueur2: false, parametres: false, e: Default::default(), theme_verifie: Instant::now(), sombre: true };
         a.style(&cc.egui_ctx);
         a
     }
 
     fn style(&self, ctx: &egui::Context) {
-        ctx.set_visuals(if self.reglages.clair { egui::Visuals::light() } else { egui::Visuals::dark() });
+        let sombre = match self.reglages.theme {
+            1 => true,
+            2 => false,
+            _ => android::mode_sombre(),
+        };
+        ctx.set_visuals(if sombre { egui::Visuals::dark() } else { egui::Visuals::light() });
         ctx.style_mut(|s| {
             let t = self.reglages.taille;
             for (st, taille) in [(egui::TextStyle::Body, 17.0), (egui::TextStyle::Button, 17.0), (egui::TextStyle::Heading, 24.0), (egui::TextStyle::Small, 13.0), (egui::TextStyle::Monospace, 15.0)] {
@@ -280,10 +307,8 @@ impl App {
         ui.horizontal(|ui| {
             ui.label(RichText::new("Outils").size(30.0).strong().color(ROSE));
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if ui.button(if self.reglages.clair { "🌙" } else { "☀" }).clicked() {
-                    self.reglages.clair = !self.reglages.clair;
-                    enregistrer("telephone", &self.reglages);
-                    self.style(ui.ctx());
+                if ui.button(RichText::new("⚙").size(20.0)).clicked() {
+                    self.parametres = true;
                 }
                 if ui.button("A+").clicked() {
                     self.reglages.taille = (self.reglages.taille + 0.1).min(1.6);
@@ -297,6 +322,11 @@ impl App {
                 }
             });
         });
+        if let Some((v, _)) = appli::MAJ.lock().unwrap().clone() {
+            if ui.add(egui::Button::new(RichText::new(format!("⬆ Nouvelle version {v} disponible : touche pour l'installer")).strong()).fill(ROSE.gamma_multiply(0.5)).min_size(Vec2::new(ui.available_width(), 40.0))).clicked() {
+                self.parametres = true;
+            }
+        }
         let r = ui.add(egui::TextEdit::singleline(&mut self.recherche).hint_text("🔎 Chercher un jeu ou un outil").desired_width(f32::INFINITY).margin(Vec2::new(10.0, 8.0)));
         if r.gained_focus() {
             self.clavier = true;
@@ -352,6 +382,111 @@ impl App {
             if z < ui.ctx().zoom_factor() - 0.01 {
                 ui.ctx().set_zoom_factor(z);
             }
+        }
+    }
+
+    /// Paramètres : apparence, veille, mises à jour, sauvegarde.
+    fn parametres_ui(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal(|ui| {
+            if ui.add(egui::Button::new(RichText::new(ou(ui, "⬅", "<")).size(24.0)).min_size(Vec2::new(52.0, 44.0))).clicked() {
+                self.parametres = false;
+            }
+            ui.heading("Paramètres");
+        });
+        commun::etat_ui(ui, &self.e);
+        let mut change = false;
+        ui.label(RichText::new("🎨 Apparence").size(19.0).strong());
+        ui.horizontal(|ui| {
+            for (k, n) in ["Comme le téléphone", "Sombre", "Clair"].iter().enumerate() {
+                change |= ui.selectable_value(&mut self.reglages.theme, k as u8, *n).changed();
+            }
+        });
+        ui.horizontal(|ui| {
+            ui.label("Taille du texte");
+            if ui.button("A−").clicked() {
+                self.reglages.taille = (self.reglages.taille - 0.1).max(0.8);
+                change = true;
+            }
+            if ui.button("A+").clicked() {
+                self.reglages.taille = (self.reglages.taille + 0.1).min(1.6);
+                change = true;
+            }
+        });
+        ui.separator();
+        ui.label(RichText::new("🔔 Rester actif quand l'appli est fermée").size(19.0).strong());
+        if ui.checkbox(&mut self.reglages.veille, "Garder Outils en veille (rappels, coupures, intrus, forfait)").changed() {
+            android::veille(self.reglages.veille);
+            change = true;
+        }
+        ui.weak("Une petite notification permanente l'indique : c'est obligatoire sur Android.");
+        if self.reglages.veille && !android::sans_optimisation_batterie() && ui.button("🔋 Ne pas couper Outils pour économiser la batterie").clicked() {
+            android::ouvrir_reglage("android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS", false);
+            self.e.lock().unwrap().1 = "Dans la liste : Outils › « Ne pas optimiser ».".into();
+        }
+        ui.separator();
+        ui.label(RichText::new("⬆ Mises à jour").size(19.0).strong());
+        ui.label(format!("Version installée : {}", appli::VERSION));
+        let maj = appli::MAJ.lock().unwrap().clone();
+        match maj {
+            Some((v, url)) => {
+                ui.label(RichText::new(format!("Nouvelle version {v} disponible !")).strong().color(commun::VERT));
+                if !android::peut_installer() {
+                    ui.weak("Android doit d'abord autoriser Outils à installer ses mises à jour.");
+                    if ui.button("Autoriser").clicked() {
+                        android::ouvrir_reglage("android.settings.MANAGE_UNKNOWN_APP_SOURCES", true);
+                    }
+                } else if commun::gros_bouton(ui, "⬇ Télécharger et installer") {
+                    commun::en_fond(&self.e, "Téléchargement…", move || appli::installer(&url).map(|_| "Confirme l'installation dans la fenêtre d'Android.".into()));
+                }
+            }
+            None => {
+                if ui.button("Vérifier maintenant").clicked() {
+                    commun::en_fond(&self.e, "Vérification…", || Ok(match appli::verifier()? {
+                        Some((v, _)) => format!("Version {v} disponible"),
+                        None => "✔ Tu as la dernière version.".into(),
+                    }));
+                }
+            }
+        }
+        ui.separator();
+        ui.label(RichText::new("💾 Sauvegarde").size(19.0).strong());
+        ui.weak("Favoris, records, badges, agenda, réglages… dans un fichier (Téléchargements › Outils), à garder ou à envoyer au PC.");
+        ui.horizontal_wrapped(|ui| {
+            if ui.button("💾 Sauvegarder").clicked() {
+                commun::en_fond(&self.e, "Sauvegarde…", || appli::sauvegarder().map(|p| format!("✔ {}", p.display())));
+            }
+            let pc: Option<monpc::Pc> = charger("pc");
+            if let Some(pc) = pc.filter(|p| !p.ip.is_empty()) {
+                if ui.button("🖥 Sauvegarder sur le PC").clicked() {
+                    commun::en_fond(&self.e, "Envoi au PC…", move || {
+                        let p = appli::sauvegarder()?;
+                        let b = std::fs::read(&p).map_err(|e| e.to_string())?;
+                        pc.post(&format!("/envoyer?nom={}", monpc::encoder(&p.file_name().unwrap_or_default().to_string_lossy())), &b)?;
+                        Ok("✔ Sauvegarde envoyée au PC (Téléchargements › Depuis le téléphone)".into())
+                    });
+                }
+            }
+        });
+        for p in appli::sauvegardes().into_iter().take(5) {
+            ui.horizontal(|ui| {
+                ui.label(p.file_name().unwrap_or_default().to_string_lossy());
+                if ui.small_button("↩ Restaurer").clicked() {
+                    let r = std::fs::read_to_string(&p).map_err(|e| e.to_string()).and_then(|t| serde_json::from_str(&t).map_err(|e| e.to_string())).and_then(|j| appli::restaurer_json(&j, &appli::dossier_donnees()));
+                    match r {
+                        Ok(n) => {
+                            self.e.lock().unwrap().1 = format!("✔ {n} fichiers restaurés : l'appli redémarre.");
+                            // les outils relisent leurs réglages au lancement
+                            android::arriere_plan();
+                            std::process::exit(0);
+                        }
+                        Err(e) => self.e.lock().unwrap().1 = format!("✖ {e}"),
+                    }
+                }
+            });
+        }
+        if change {
+            enregistrer("telephone", &self.reglages);
+            self.style(ui.ctx());
         }
     }
 
@@ -462,8 +597,21 @@ impl eframe::App for App {
         if retour {
             if self.clavier {
                 self.clavier = false;
-            } else {
+            } else if self.parametres {
+                self.parametres = false;
+            } else if self.ouvert.is_some() {
                 self.ouvert = None;
+            } else {
+                android::arriere_plan();
+            }
+        }
+        // thème « comme Android » : suit le mode sombre du téléphone
+        if self.reglages.theme == 0 && self.theme_verifie.elapsed() > Duration::from_secs(3) {
+            self.theme_verifie = Instant::now();
+            let s = android::mode_sombre();
+            if s != self.sombre {
+                self.sombre = s;
+                self.style(ctx);
             }
         }
         for f in self.fiches.iter_mut() {
@@ -520,6 +668,12 @@ impl eframe::App for App {
                 }
                 ui.add_space(10.0);
             });
+        }
+        if self.parametres {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| self.parametres_ui(ui));
+            });
+            return;
         }
         egui::CentralPanel::default().show(ctx, |ui| match self.ouvert {
             None => {

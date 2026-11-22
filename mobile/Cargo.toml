@@ -1,6 +1,6 @@
 [package]
 name = "outils-mobile"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 description = "Outils sur téléphone Android : jeux et outils du quotidien, partagés avec la version PC"
 
@@ -137,3 +137,7 @@ required = false
 [[package.metadata.android.uses_feature]]
 name = "android.hardware.sensor.stepcounter"
 required = false
+
+# egui-winit avec la touche Retour d'Android transformée en Échap (une ligne ajoutée)
+[patch.crates-io]
+egui-winit = { path = "patches/egui-winit" }

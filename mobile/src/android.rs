@@ -1011,3 +1011,226 @@ pub fn ouvrir_reglage(action: &str, pour_outils: bool) {
     }
     let _ = (action, pour_outils);
 }
+
+// ---------------------------------------------------------------------------------------------------
+// Appli : arrière-plan, veille, thème, mise à jour, batterie
+// ---------------------------------------------------------------------------------------------------
+
+/// Met l'appli en arrière-plan (touche Retour à l'accueil).
+pub fn arriere_plan() {
+    #[cfg(target_os = "android")]
+    {
+        use jni::objects::JValue;
+        let _ = jni_::avec(|env, act| {
+            env.call_method(act, "moveTaskToBack", "(Z)Z", &[JValue::Bool(1)])?;
+            Ok(())
+        });
+    }
+}
+
+#[cfg(target_os = "android")]
+fn classe_appli<'a>(env: &mut jni::JNIEnv<'a>, act: &jni::objects::JObject, nom: &str) -> jni::errors::Result<jni::objects::JObject<'a>> {
+    use jni::objects::JValue;
+    let cl = env.call_method(act, "getClassLoader", "()Ljava/lang/ClassLoader;", &[])?.l()?;
+    let n = env.new_string(nom)?;
+    env.call_method(&cl, "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;", &[JValue::Object(&n)])?.l()
+}
+
+/// Démarre ou arrête le service qui garde Outils en vie quand l'appli est fermée.
+pub fn veille(active: bool) {
+    #[cfg(target_os = "android")]
+    {
+        use jni::objects::JValue;
+        let _ = jni_::avec(|env, act| {
+            let c = classe_appli(env, act, "fr.poiscail.outils.Veille")?;
+            let i = env.new_object("android/content/Intent", "(Landroid/content/Context;Ljava/lang/Class;)V", &[JValue::Object(act), JValue::Object(&c)])?;
+            if active {
+                env.call_method(act, "startForegroundService", "(Landroid/content/Intent;)Landroid/content/ComponentName;", &[JValue::Object(&i)])?;
+            } else {
+                env.call_method(act, "stopService", "(Landroid/content/Intent;)Z", &[JValue::Object(&i)])?;
+            }
+            Ok(())
+        });
+    }
+    let _ = active;
+}
+
+/// Outils est-il exempté de l'optimisation de batterie (qui coupe les applis en arrière-plan) ?
+pub fn sans_optimisation_batterie() -> bool {
+    #[cfg(target_os = "android")]
+    {
+        use jni::objects::JValue;
+        return jni_::avec(|env, act| {
+            let pm = jni_::service(env, act, "power")?;
+            let p = env.call_method(act, "getPackageName", "()Ljava/lang/String;", &[])?.l()?;
+            env.call_method(&pm, "isIgnoringBatteryOptimizations", "(Ljava/lang/String;)Z", &[JValue::Object(&p)])?.z()
+        })
+        .unwrap_or(false);
+    }
+    #[allow(unreachable_code)]
+    true
+}
+
+/// Thème sombre activé dans Android ?
+pub fn mode_sombre() -> bool {
+    #[cfg(target_os = "android")]
+    {
+        return jni_::avec(|env, act| {
+            let r = env.call_method(act, "getResources", "()Landroid/content/res/Resources;", &[])?.l()?;
+            let c = env.call_method(&r, "getConfiguration", "()Landroid/content/res/Configuration;", &[])?.l()?;
+            Ok(env.get_field(&c, "uiMode", "I")?.i()? & 0x30 == 0x20)
+        })
+        .unwrap_or(true);
+    }
+    #[allow(unreachable_code)]
+    true
+}
+
+/// Dossier privé dont les fichiers peuvent être ouverts par d'autres applis (installeur…).
+pub fn dossier_partage() -> std::path::PathBuf {
+    let d = crate::outil::chemin("x").parent().map(|p| p.join("partage")).unwrap_or_else(|| "partage".into());
+    let _ = std::fs::create_dir_all(&d);
+    d
+}
+
+/// Outils a-t-il le droit d'installer des applis (ses mises à jour) ?
+pub fn peut_installer() -> bool {
+    #[cfg(target_os = "android")]
+    {
+        return jni_::avec(|env, act| {
+            let pm = env.call_method(act, "getPackageManager", "()Landroid/content/pm/PackageManager;", &[])?.l()?;
+            env.call_method(&pm, "canRequestPackageInstalls", "()Z", &[])?.z()
+        })
+        .unwrap_or(false);
+    }
+    #[allow(unreachable_code)]
+    true
+}
+
+/// Lance l'installeur d'Android sur un APK du dossier de partage.
+pub fn installer_apk(nom: &str) {
+    #[cfg(target_os = "android")]
+    {
+        use jni::objects::JValue;
+        let _ = jni_::avec(|env, act| {
+            let i = jni_::intention(env, "android.intent.action.VIEW", None)?;
+            let u = env.new_string(format!("content://fr.poiscail.outils.fichiers/{nom}"))?;
+            let uri = env.call_static_method("android/net/Uri", "parse", "(Ljava/lang/String;)Landroid/net/Uri;", &[JValue::Object(&u)])?.l()?;
+            let t = env.new_string("application/vnd.android.package-archive")?;
+            env.call_method(&i, "setDataAndType", "(Landroid/net/Uri;Ljava/lang/String;)Landroid/content/Intent;", &[JValue::Object(&uri), JValue::Object(&t)])?;
+            env.call_method(&i, "addFlags", "(I)Landroid/content/Intent;", &[JValue::Int(0x1 | 0x1000_0000)])?;
+            env.call_method(act, "startActivity", "(Landroid/content/Intent;)V", &[JValue::Object(&i)])?;
+            Ok(())
+        });
+    }
+    let _ = nom;
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct Batterie {
+    pub niveau: i32,
+    pub en_charge: bool,
+    pub pleine: bool,
+    pub branchement: &'static str,
+    pub sante: &'static str,
+    pub temperature: f32,
+    pub tension: f32,
+    pub courant_ma: i32,
+    pub technologie: String,
+}
+
+pub fn batterie() -> Option<Batterie> {
+    #[cfg(target_os = "android")]
+    {
+        use jni::objects::{JObject, JValue};
+        return jni_::avec(|env, act| {
+            let a = env.new_string("android.intent.action.BATTERY_CHANGED")?;
+            let f = env.new_object("android/content/IntentFilter", "(Ljava/lang/String;)V", &[JValue::Object(&a)])?;
+            let i = env.call_method(act, "registerReceiver", "(Landroid/content/BroadcastReceiver;Landroid/content/IntentFilter;)Landroid/content/Intent;", &[JValue::Object(&JObject::null()), JValue::Object(&f)])?.l()?;
+            if i.is_null() {
+                return Ok(Batterie::default());
+            }
+            let mut extra = |env: &mut jni::JNIEnv, k: &str| -> jni::errors::Result<i32> {
+                let k = env.new_string(k)?;
+                env.call_method(&i, "getIntExtra", "(Ljava/lang/String;I)I", &[JValue::Object(&k), JValue::Int(-1)])?.i()
+            };
+            let (niveau, echelle, statut, branche, sante, temp, tension) = (extra(env, "level")?, extra(env, "scale")?, extra(env, "status")?, extra(env, "plugged")?, extra(env, "health")?, extra(env, "temperature")?, extra(env, "voltage")?);
+            let k = env.new_string("technology")?;
+            let t = env.call_method(&i, "getStringExtra", "(Ljava/lang/String;)Ljava/lang/String;", &[JValue::Object(&k)])?.l()?;
+            let technologie = jni_::chaine(env, &t)?;
+            let bm = jni_::service(env, act, "batterymanager")?;
+            let courant = env.call_method(&bm, "getIntProperty", "(I)I", &[JValue::Int(2)])?.i()?;
+            Ok(Batterie {
+                niveau: if echelle > 0 { niveau * 100 / echelle } else { niveau },
+                en_charge: statut == 2 || statut == 5,
+                pleine: statut == 5,
+                branchement: match branche {
+                    1 => "secteur",
+                    2 => "USB",
+                    4 => "sans fil",
+                    _ => "",
+                },
+                sante: match sante {
+                    2 => "bonne",
+                    3 => "surchauffe",
+                    4 => "usée",
+                    5 => "surtension",
+                    7 => "trop froide",
+                    _ => "inconnue",
+                },
+                temperature: temp as f32 / 10.0,
+                tension: tension as f32 / 1000.0,
+                // certains téléphones donnent des µA, d'autres des mA
+                courant_ma: if courant.abs() > 20_000 { courant / 1000 } else { courant },
+                technologie,
+            })
+        });
+    }
+    #[allow(unreachable_code)]
+    Some(Batterie { niveau: 76, en_charge: true, pleine: false, branchement: "secteur", sante: "bonne", temperature: 31.5, tension: 4.12, courant_ma: 1450, technologie: "Li-ion".into() })
+}
+
+/// Temps passé sur chaque appli (premier plan) entre deux dates : (nom, minutes), trié.
+pub fn temps_par_appli(debut: u64, fin: u64) -> Vec<(String, u64)> {
+    #[cfg(target_os = "android")]
+    {
+        use jni::objects::JValue;
+        return jni_::avec(|env, act| {
+            let um = jni_::service(env, act, "usagestats")?;
+            let l = env.call_method(&um, "queryUsageStats", "(IJJ)Ljava/util/List;", &[JValue::Int(4), JValue::Long(debut as i64 * 1000), JValue::Long(fin as i64 * 1000)])?.l()?;
+            let pm = env.call_method(act, "getPackageManager", "()Landroid/content/pm/PackageManager;", &[])?.l()?;
+            let n = env.call_method(&l, "size", "()I", &[])?.i()?;
+            let mut par: std::collections::HashMap<String, u64> = Default::default();
+            for k in 0..n {
+                let (nom, ms) = env.with_local_frame(16, |env| -> jni::errors::Result<(String, u64)> {
+                    let u = env.call_method(&l, "get", "(I)Ljava/lang/Object;", &[JValue::Int(k)])?.l()?;
+                    let ms = env.call_method(&u, "getTotalTimeInForeground", "()J", &[])?.j()?.max(0) as u64;
+                    let p = env.call_method(&u, "getPackageName", "()Ljava/lang/String;", &[])?.l()?;
+                    let paquet = jni_::chaine(env, &p)?;
+                    let nom = match env.call_method(&pm, "getApplicationInfo", "(Ljava/lang/String;I)Landroid/content/pm/ApplicationInfo;", &[JValue::Object(&p), JValue::Int(0)]) {
+                        Ok(ai) => {
+                            let ai = ai.l()?;
+                            let l = env.call_method(&pm, "getApplicationLabel", "(Landroid/content/pm/ApplicationInfo;)Ljava/lang/CharSequence;", &[JValue::Object(&ai)])?.l()?;
+                            jni_::chaine(env, &l)?
+                        }
+                        Err(_) => {
+                            let _ = env.exception_clear();
+                            paquet
+                        }
+                    };
+                    Ok((nom, ms))
+                })?;
+                *par.entry(nom).or_default() += ms;
+            }
+            let mut v: Vec<(String, u64)> = par.into_iter().map(|(n, ms)| (n, ms / 60_000)).filter(|x| x.1 > 0).collect();
+            v.sort_by_key(|x| std::cmp::Reverse(x.1));
+            Ok(v)
+        })
+        .unwrap_or_default();
+    }
+    #[allow(unreachable_code)]
+    {
+        let _ = (debut, fin);
+        vec![("TikTok".into(), 142), ("YouTube".into(), 95), ("Snapchat".into(), 40)]
+    }
+}
