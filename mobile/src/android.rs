@@ -659,6 +659,8 @@ impl Micro {
 pub struct Camera {
     /// dernière image : (largeur, hauteur, luminance)
     pub image: std::sync::Arc<std::sync::Mutex<Option<(usize, usize, Vec<u8>)>>>,
+    /// dernière image en couleur (RVB), si demandée : (largeur, hauteur, pixels)
+    pub couleur: std::sync::Arc<std::sync::Mutex<Option<(usize, usize, Vec<u8>)>>>,
     pub erreur: std::sync::Arc<std::sync::Mutex<String>>,
     stop: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
@@ -687,10 +689,15 @@ mod cam {
 
 impl Camera {
     pub fn demarrer() -> Camera {
-        let c = Camera { image: Default::default(), erreur: Default::default(), stop: Default::default() };
+        Camera::demarrer_avec(false)
+    }
+
+    /// `en_couleur` : calcule aussi l'image en couleur (webcam).
+    pub fn demarrer_avec(en_couleur: bool) -> Camera {
+        let c = Camera { image: Default::default(), couleur: Default::default(), erreur: Default::default(), stop: Default::default() };
         #[cfg(target_os = "android")]
         {
-            let (img, err, stop) = (c.image.clone(), c.erreur.clone(), c.stop.clone());
+            let (img, coul, err, stop) = (c.image.clone(), c.couleur.clone(), c.erreur.clone(), c.stop.clone());
             std::thread::spawn(move || unsafe {
                 use ndk_sys::*;
                 let echec = |m: &str| *err.lock().unwrap() = m.to_string();
@@ -752,6 +759,18 @@ impl Camera {
                                     y[r * w..r * w + w].copy_from_slice(&src[r * pas..r * pas + w]);
                                 }
                             }
+                            if en_couleur {
+                                // plans U et V (sous-échantillonnés de moitié)
+                                let (mut pu, mut pv, mut lu, mut lv, mut ps, mut rs) = (std::ptr::null_mut(), std::ptr::null_mut(), 0, 0, 0, 0);
+                                AImage_getPlaneData(im, 1, &mut pu, &mut lu);
+                                AImage_getPlaneData(im, 2, &mut pv, &mut lv);
+                                AImage_getPlanePixelStride(im, 1, &mut ps);
+                                AImage_getPlaneRowStride(im, 1, &mut rs);
+                                if !pu.is_null() && !pv.is_null() {
+                                    let (u, v) = (std::slice::from_raw_parts(pu, lu as usize), std::slice::from_raw_parts(pv, lv as usize));
+                                    *coul.lock().unwrap() = Some((w, hh, yuv_vers_rvb(&y, u, v, w, hh, ps as usize, rs as usize)));
+                                }
+                            }
                             *img.lock().unwrap() = Some((w, hh, y));
                         }
                         AImage_delete(im);
@@ -775,6 +794,23 @@ impl Camera {
         }
         c
     }
+}
+
+/// Image YUV 4:2:0 de l'appareil photo → RVB.
+pub fn yuv_vers_rvb(y: &[u8], u: &[u8], v: &[u8], l: usize, h: usize, pas_pixel: usize, pas_ligne: usize) -> Vec<u8> {
+    let mut o = vec![0u8; l * h * 3];
+    for r in 0..h {
+        for c in 0..l {
+            let yy = y[r * l + c] as f32;
+            let k = (r / 2) * pas_ligne + (c / 2) * pas_pixel.max(1);
+            let (uu, vv) = (u.get(k).copied().unwrap_or(128) as f32 - 128.0, v.get(k).copied().unwrap_or(128) as f32 - 128.0);
+            let i = (r * l + c) * 3;
+            o[i] = (yy + 1.402 * vv).clamp(0.0, 255.0) as u8;
+            o[i + 1] = (yy - 0.344 * uu - 0.714 * vv).clamp(0.0, 255.0) as u8;
+            o[i + 2] = (yy + 1.772 * uu).clamp(0.0, 255.0) as u8;
+        }
+    }
+    o
 }
 
 /// Lit un QR code dans une image en niveaux de gris.
@@ -1235,5 +1271,97 @@ pub fn temps_par_appli(debut: u64, fin: u64) -> Vec<(String, u64)> {
     {
         let _ = (debut, fin);
         vec![("TikTok".into(), 142), ("YouTube".into(), 95), ("Snapchat".into(), 40)]
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------
+// Faire sonner (même en silencieux) et micro « brut » (son envoyé au PC)
+// ---------------------------------------------------------------------------------------------------
+
+/// Sonnerie d'alarme à fond, vibrations et lampe qui clignote pendant `secondes` (retrouver le téléphone).
+pub fn sonner(secondes: u64) {
+    #[cfg(target_os = "android")]
+    std::thread::spawn(move || {
+        use jni::objects::JValue;
+        let _ = jni_::avec(|env, act| {
+            let am = jni_::service(env, act, "audio")?;
+            let max = env.call_method(&am, "getStreamMaxVolume", "(I)I", &[JValue::Int(4)])?.i()?;
+            env.call_method(&am, "setStreamVolume", "(III)V", &[JValue::Int(4), JValue::Int(max), JValue::Int(0)])?;
+            let uri = env.call_static_method("android/media/RingtoneManager", "getDefaultUri", "(I)Landroid/net/Uri;", &[JValue::Int(4)])?.l()?;
+            let son = env.call_static_method("android/media/RingtoneManager", "getRingtone", "(Landroid/content/Context;Landroid/net/Uri;)Landroid/media/Ringtone;", &[JValue::Object(act), JValue::Object(&uri)])?.l()?;
+            if son.is_null() {
+                return Ok(());
+            }
+            let b = env.new_object("android/media/AudioAttributes$Builder", "()V", &[])?;
+            env.call_method(&b, "setUsage", "(I)Landroid/media/AudioAttributes$Builder;", &[JValue::Int(4)])?;
+            let attr = env.call_method(&b, "build", "()Landroid/media/AudioAttributes;", &[])?.l()?;
+            env.call_method(&son, "setAudioAttributes", "(Landroid/media/AudioAttributes;)V", &[JValue::Object(&attr)])?;
+            env.call_method(&son, "play", "()V", &[])?;
+            let debut = std::time::Instant::now();
+            let mut k = 0;
+            while debut.elapsed().as_secs() < secondes {
+                vibrer(400);
+                let _ = lampe(k % 2 == 0);
+                k += 1;
+                std::thread::sleep(std::time::Duration::from_millis(600));
+                if !env.call_method(&son, "isPlaying", "()Z", &[])?.z()? {
+                    env.call_method(&son, "play", "()V", &[])?;
+                }
+            }
+            let _ = lampe(false);
+            env.call_method(&son, "stop", "()V", &[])?;
+            Ok(())
+        });
+    });
+    let _ = secondes;
+}
+
+/// Micro qui donne le son brut (16 bits, 16 kHz, mono) par paquets de 40 ms.
+pub struct MicroBrut {
+    stop: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    pub erreur: std::sync::Arc<std::sync::Mutex<String>>,
+}
+
+impl Drop for MicroBrut {
+    fn drop(&mut self) {
+        self.stop.store(true, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+impl MicroBrut {
+    pub fn demarrer(paquet: impl FnMut(&[i16]) + Send + 'static) -> MicroBrut {
+        let m = MicroBrut { stop: Default::default(), erreur: Default::default() };
+        #[cfg(target_os = "android")]
+        {
+            let (stop, err) = (m.stop.clone(), m.erreur.clone());
+            let mut paquet = paquet;
+            std::thread::spawn(move || {
+                use ndk::audio::*;
+                let flux = AudioStreamBuilder::new().map(|b| b.direction(AudioDirection::Input).channel_count(1).sample_rate(16_000).format(AudioFormat::PCM_I16)).and_then(|b| b.open_stream());
+                let Ok(flux) = flux else {
+                    *err.lock().unwrap() = "micro indisponible".into();
+                    return;
+                };
+                if flux.request_start().is_err() {
+                    *err.lock().unwrap() = "micro indisponible".into();
+                    return;
+                }
+                let mut t = vec![0i16; 640];
+                while !stop.load(std::sync::atomic::Ordering::Relaxed) {
+                    if let Ok(n) = unsafe { flux.read(t.as_mut_ptr().cast(), t.len() as i32, 500_000_000) } {
+                        if n > 0 {
+                            paquet(&t[..n as usize]);
+                        }
+                    }
+                }
+                let _ = flux.request_stop();
+            });
+        }
+        #[cfg(not(target_os = "android"))]
+        {
+            let _ = paquet;
+            *m.erreur.lock().unwrap() = "pas de micro sur ce PC d'essai".into();
+        }
+        m
     }
 }

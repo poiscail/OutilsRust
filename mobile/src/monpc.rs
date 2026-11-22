@@ -22,7 +22,52 @@ pub struct Pc {
     pub cle: String,
     pub nom: String,
     pub macs: Vec<String>,
+    /// accès de l'extérieur (relais ntfy.sh, messages chiffrés)
+    pub distance_actif: bool,
+    pub distance_sujet: String,
+    pub distance_cle: String,
 }
+
+// ---------------------------------------------------------------------------------------------------
+// Messages chiffrés pour l'accès de l'extérieur (mêmes réglages que le PC)
+// ---------------------------------------------------------------------------------------------------
+
+pub fn chiffrer(cle_b64: &str, texte: &str) -> Option<String> {
+    use aes_gcm::aead::{Aead, KeyInit};
+    use base64::{engine::general_purpose::STANDARD as B64, Engine};
+    let k = B64.decode(cle_b64).ok()?;
+    let c = aes_gcm::Aes256Gcm::new_from_slice(&k).ok()?;
+    let mut n = [0u8; 12];
+    let _ = getrandom::getrandom(&mut n);
+    let mut v = n.to_vec();
+    v.extend(c.encrypt(aes_gcm::Nonce::from_slice(&n), texte.as_bytes()).ok()?);
+    Some(B64.encode(v))
+}
+
+pub fn dechiffrer(cle_b64: &str, b64: &str) -> Option<String> {
+    use aes_gcm::aead::{Aead, KeyInit};
+    use base64::{engine::general_purpose::STANDARD as B64, Engine};
+    let k = B64.decode(cle_b64).ok()?;
+    let b = B64.decode(b64.trim()).ok()?;
+    if b.len() < 28 {
+        return None;
+    }
+    let c = aes_gcm::Aes256Gcm::new_from_slice(&k).ok()?;
+    String::from_utf8(c.decrypt(aes_gcm::Nonce::from_slice(&b[..12]), &b[12..]).ok()?).ok()
+}
+
+/// Envoie une commande au PC par le relais (quand on n'est pas à la maison).
+pub fn commande_distance(p: &Pc, cmd: &str) -> Result<(), String> {
+    if !p.distance_actif || p.distance_sujet.is_empty() {
+        return Err("accès à distance non activé sur le PC (Outils › Téléphone)".into());
+    }
+    let c = chiffrer(&p.distance_cle, cmd).ok_or("clé invalide")?;
+    ureq::post(&format!("https://ntfy.sh/{}-pc", p.distance_sujet)).timeout(Duration::from_secs(15)).send_string(&c).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Dernières réponses et notifications reçues par le relais.
+pub static DISTANCE_RECU: Mutex<Vec<serde_json::Value>> = Mutex::new(Vec::new());
 
 pub fn encoder(s: &str) -> String {
     s.bytes().map(|b| if b.is_ascii_alphanumeric() || b"-_.~".contains(&b) { (b as char).to_string() } else { format!("%{b:02X}") }).collect()
@@ -65,7 +110,7 @@ pub fn lire_adresse(t: &str) -> Option<Pc> {
     let (hote, reste) = r.split_once('/').unwrap_or((r, ""));
     let (ip, port) = hote.split_once(':')?;
     let cle = reste.split(['?', '&']).find_map(|x| x.strip_prefix("k="))?;
-    Some(Pc { ip: ip.into(), port: port.parse().ok()?, cle: cle.into(), nom: String::new(), macs: vec![] })
+    Some(Pc { ip: ip.into(), port: port.parse().ok()?, cle: cle.into(), ..Default::default() })
 }
 
 /// Cherche les PC avec Outils sur le Wi-Fi : (ip, port, nom).
@@ -129,23 +174,81 @@ pub fn reveiller(macs: &[String]) -> Result<(), String> {
 fn suivre_notifs(pc: Arc<Mutex<Option<Pc>>>) {
     std::thread::spawn(move || {
         let mut depuis: Option<u64> = None;
+        let mut tour = 0u32;
+        let mut relais_depuis = "30s".to_string();
         loop {
+            tour += 1;
             let p = pc.lock().unwrap().clone();
             if let Some(p) = p {
-                if let Ok(j) = p.get_json(&format!("/api/notifs?depuis={}", depuis.unwrap_or(u64::MAX))) {
-                    let dernier = j["dernier"].as_u64().unwrap_or(0);
-                    // premier passage : on ne renvoie pas les anciennes notifications
-                    if depuis.is_some() {
-                        for n in j["liste"].as_array().into_iter().flatten() {
-                            let (t, m) = (n["titre"].as_str().unwrap_or(""), n["texte"].as_str().unwrap_or(""));
-                            crate::android::notifier(2000 + (n["n"].as_u64().unwrap_or(0) % 1000) as i32, &format!("🖥 {t}"), m);
-                            crate::systeme::notifier_toujours(&format!("🖥 {t}"), m);
+                // à la maison : fichiers envoyés par le PC, « faire sonner »
+                match p.get_json("/api/pour_tel") {
+                    Ok(v) => {
+                        for c in v.as_array().into_iter().flatten() {
+                            match c["type"].as_str() {
+                                Some("sonner") => {
+                                    crate::android::sonner(30);
+                                    crate::android::notifier(1999, "🔔 Ton PC te cherche", "Le téléphone sonne depuis Outils sur PC");
+                                }
+                                Some("fichier") => {
+                                    let (chemin, nom) = (c["chemin"].as_str().unwrap_or("").to_string(), c["nom"].as_str().unwrap_or("fichier").to_string());
+                                    let p2 = p.clone();
+                                    std::thread::spawn(move || {
+                                        let r = ureq::get(&p2.url(&format!("/api/fichier?chemin={}", encoder(&chemin)))).timeout(Duration::from_secs(3600)).call();
+                                        if let Ok(r) = r {
+                                            let dest = libre(&dossier_outils(), &nom);
+                                            if let Ok(mut f) = std::fs::File::create(&dest) {
+                                                if std::io::copy(&mut r.into_reader(), &mut f).is_ok() {
+                                                    crate::android::signaler_media(&[dest.display().to_string()]);
+                                                    crate::android::notifier(2999, "📥 Reçu du PC", &format!("{nom} (Téléchargements › Outils)"));
+                                                }
+                                            }
+                                        }
+                                    });
+                                }
+                                _ => {}
+                            }
+                        }
+                        if tour % 3 == 1 {
+                            if let Ok(j) = p.get_json(&format!("/api/notifs?depuis={}", depuis.unwrap_or(u64::MAX))) {
+                                let dernier = j["dernier"].as_u64().unwrap_or(0);
+                                // premier passage : on ne renvoie pas les anciennes notifications
+                                if depuis.is_some() {
+                                    for n in j["liste"].as_array().into_iter().flatten() {
+                                        let (t, m) = (n["titre"].as_str().unwrap_or(""), n["texte"].as_str().unwrap_or(""));
+                                        crate::android::notifier(2000 + (n["n"].as_u64().unwrap_or(0) % 1000) as i32, &format!("🖥 {t}"), m);
+                                        crate::systeme::notifier_toujours(&format!("🖥 {t}"), m);
+                                    }
+                                }
+                                depuis = Some(dernier);
+                            }
                         }
                     }
-                    depuis = Some(dernier);
+                    // pas à la maison : relais (réponses et notifications chiffrées)
+                    Err(_) if p.distance_actif && !p.distance_sujet.is_empty() => {
+                        let url = format!("https://ntfy.sh/{}-tel/json?poll=1&since={relais_depuis}", p.distance_sujet);
+                        if let Ok(r) = ureq::get(&url).timeout(Duration::from_secs(20)).call() {
+                            for l in r.into_string().unwrap_or_default().lines() {
+                                let Ok(m) = serde_json::from_str::<Value>(l) else { continue };
+                                if let Some(id) = m["id"].as_str() {
+                                    relais_depuis = id.to_string();
+                                }
+                                let Some(j) = m["message"].as_str().and_then(|t| dechiffrer(&p.distance_cle, t)).and_then(|t| serde_json::from_str::<Value>(&t).ok()) else { continue };
+                                if let Some(t) = j["notif"].as_str() {
+                                    crate::android::notifier(2500, &format!("🖥 {t}"), j["texte"].as_str().unwrap_or(""));
+                                }
+                                let mut v = DISTANCE_RECU.lock().unwrap();
+                                v.push(j);
+                                let n = v.len();
+                                if n > 20 {
+                                    v.drain(..n - 20);
+                                }
+                            }
+                        }
+                    }
+                    Err(_) => {}
                 }
             }
-            std::thread::sleep(Duration::from_secs(20));
+            std::thread::sleep(Duration::from_secs(8));
         }
     });
 }
@@ -208,9 +311,19 @@ impl MonPc {
     fn action(&self, chemin: &str) {
         let Some(p) = self.pc() else { return };
         let c = chemin.to_string();
+        let injoignable = self.infos.lock().unwrap().as_ref().is_some_and(|j| j.is_null());
         en_fond(&self.e, "…", move || {
             crate::android::vibrer(25);
-            p.post(&c, b"")
+            match p.post(&c, b"") {
+                Ok(r) => Ok(r),
+                // pas à la maison : par le relais chiffré
+                Err(_) if injoignable && p.distance_actif => {
+                    let cmd = c.trim_start_matches("/cmd/").replacen("?texte=", " ", 1);
+                    commande_distance(&p, &cmd)?;
+                    Ok("🌍 Envoyé par l'accès à distance".into())
+                }
+                Err(e) => Err(e),
+            }
         });
     }
 
@@ -219,6 +332,15 @@ impl MonPc {
         self.infos_quand = Instant::now();
         let (i, pc) = (self.infos.clone(), self.pc.clone());
         std::thread::spawn(move || {
+            if let Ok(d) = p.get_json("/api/distance") {
+                let mut q = pc.lock().unwrap().clone().unwrap_or_else(|| p.clone());
+                let (a, s, k) = (d["actif"].as_bool().unwrap_or(false), d["sujet"].as_str().unwrap_or("").to_string(), d["cle"].as_str().unwrap_or("").to_string());
+                if (a, &s, &k) != (q.distance_actif, &q.distance_sujet, &q.distance_cle) {
+                    (q.distance_actif, q.distance_sujet, q.distance_cle) = (a, s, k);
+                    enregistrer("pc", &Some(q.clone()));
+                    *pc.lock().unwrap() = Some(q);
+                }
+            }
             if let Ok(j) = p.get_json("/api/etat") {
                 // on garde les adresses MAC pour réveiller le PC plus tard
                 let macs: Vec<String> = j["macs"].as_array().into_iter().flatten().filter_map(|m| m.as_str().map(String::from)).collect();
@@ -264,7 +386,7 @@ impl MonPc {
                 en_fond(&self.e, "Association…", move || {
                     let url = format!("http://{ip}:{port}/api/appairer?code={}&appareil={}", encoder(&code), encoder(&crate::android::modele()));
                     let j: Value = ureq::get(&url).timeout(Duration::from_secs(8)).call().map_err(erreur)?.into_json().map_err(|e| e.to_string())?;
-                    let p = Pc { ip, port, cle: j["cle"].as_str().unwrap_or("").into(), nom: j["nom"].as_str().unwrap_or(&nom).into(), macs: vec![] };
+                    let p = Pc { ip, port, cle: j["cle"].as_str().unwrap_or("").into(), nom: j["nom"].as_str().unwrap_or(&nom).into(), ..Default::default() };
                     enregistrer("pc", &Some(p.clone()));
                     *pc.lock().unwrap() = Some(p);
                     Ok("✔ Téléphone associé !".into())
@@ -324,6 +446,29 @@ impl Outil for MonPc {
                 }
             }
         });
+        if infos.as_ref().is_some_and(|j| j.is_null()) && pc.distance_actif {
+            egui::Frame::group(ui.style()).show(ui, |ui| {
+                ui.label(RichText::new("🌍 Hors de la maison : accès à distance").strong());
+                ui.weak("La télécommande et Minecraft passent par le relais chiffré.");
+                if ui.button("Demander l'état du PC").clicked() {
+                    let p = pc.clone();
+                    en_fond(&self.e, "Demande envoyée…", move || {
+                        commande_distance(&p, "etat")?;
+                        Ok("Demande envoyée : la réponse arrive en quelques secondes.".into())
+                    });
+                }
+                let dernier = DISTANCE_RECU.lock().unwrap().iter().rev().find(|j| j.get("cpu").is_some()).cloned();
+                if let Some(j) = dernier {
+                    ui.label(format!("CPU {:.0} % · RAM {:.0} % · {}", j["cpu"].as_f64().unwrap_or(0.0), j["ram"].as_f64().unwrap_or(0.0), j["jeu"].as_str().map(|x| format!("🎮 {x}")).unwrap_or_else(|| "pas de jeu en cours".into())));
+                    ui.label(format!("⛏ Minecraft : {}", j["mc"].as_str().unwrap_or("?")));
+                }
+                for j in DISTANCE_RECU.lock().unwrap().iter().rev().take(3) {
+                    if let Some(m) = j["ok"].as_str() {
+                        ui.weak(format!("✔ {m}"));
+                    }
+                }
+            });
+        }
         if infos.as_ref().is_some_and(|j| j.is_null()) {
             ui.weak("Le PC est éteint, ou Outils n'est pas ouvert dessus (Téléphone › Démarrer).");
             ui.horizontal(|ui| {

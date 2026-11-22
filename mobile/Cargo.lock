@@ -2033,6 +2033,7 @@ dependencies = [
  "aes-gcm",
  "android_logger",
  "argon2",
+ "base64",
  "eframe",
  "egui_extras",
  "getrandom 0.2.17",

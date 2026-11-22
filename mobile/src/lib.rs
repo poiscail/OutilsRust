@@ -40,6 +40,7 @@ mod fichiers_tel;
 mod jeux_tel;
 mod jeux_tel2;
 mod monpc;
+mod pc_tel;
 mod reseau_tel;
 mod wifi_tel;
 mod minecraft;
@@ -99,6 +100,10 @@ pub fn catalogue() -> Vec<Fiche> {
     vec![
         // PC et réseau
         f(Box::new(monpc::MonPc::new()), "PC et réseau", Aucun, "Télécommande, état, jeux, fichiers, presse-papiers et Minecraft de ton PC (Outils ouvert sur le PC, même Wi-Fi)."),
+        f(Box::new(pc_tel::SourisClavier::new()), "PC et réseau", Aucun, "Le téléphone devient pavé tactile et clavier du PC, et montre son écran."),
+        f(Box::new(pc_tel::Manette::new()), "PC et réseau", Aucun, "Le téléphone devient une manette pour les jeux du PC."),
+        f(Box::new(pc_tel::WebcamMicro::new()), "PC et réseau", Aucun, "La caméra et le micro du téléphone pour le PC (OBS, Discord)."),
+        f(Box::new(pc_tel::TraductionPhoto::new()), "PC et réseau", Aucun, "Vise un texte : il est lu par le PC et traduit."),
         f(Box::new(wifi_tel::Wifi::new()), "PC et réseau", Aucun, "Signal, appareils connectés, débit et ping."),
         f(Box::new(reseau_tel::MaBox::new()), "PC et réseau", Aucun, "Optimise ton Wi-Fi : diagnostic noté, meilleur canal, signal pièce par pièce, DNS, intrus, partage par QR code."),
         f(Box::new(reseau_tel::Mobile::new()), "PC et réseau", Aucun, "Signal 4G/5G, données par appli et forfait, Wi-Fi ou 4G, économies de données, coupures."),

@@ -29,6 +29,7 @@ rfd = { path = "shims/rfd" }
 
 sha1_smol = "1"
 aes-gcm = "0.10"
+base64 = "0.22"
 argon2 = "0.5"
 rqrr = "0.9"
 qrcode = { version = "0.14", default-features = false }
