@@ -4,6 +4,7 @@ use std::sync::Mutex;
 pub static NOTIFICATIONS: Mutex<Vec<(String, String)>> = Mutex::new(Vec::new());
 
 pub fn notifier_toujours(titre: &str, texte: &str) {
+    crate::pont_linux::pousser_notif(titre, texte);
     let _ = std::process::Command::new("notify-send").args(["-a", "Outils", titre, texte]).spawn();
     if let Ok(mut n) = NOTIFICATIONS.lock() {
         n.push((titre.to_string(), texte.to_string()));

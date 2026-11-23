@@ -35,7 +35,13 @@ mod menu;
 #[path = "../../src/fiches.rs"]
 mod fiches;
 
+mod capture_linux;
 mod creatif;
+mod lanceur_linux;
+mod maj_linux;
+mod mc_linux;
+mod moniteur_linux;
+mod pont_linux;
 mod minecraft;
 mod outil;
 mod reseau3;
@@ -53,6 +59,12 @@ const ROSE: Color32 = Color32::from_rgb(255, 95, 162);
 
 fn outils() -> Vec<Box<dyn Outil>> {
     vec![
+        // jeux (propres à Linux)
+        Box::new(lanceur_linux::Lanceur::new()),
+        Box::new(moniteur_linux::Moniteur::new()),
+        Box::new(mc_linux::ServeurMc::new()),
+        Box::new(pont_linux::Telephone::new()),
+        Box::new(capture_linux::Capture::new()),
         // système et fichiers (propres à Linux)
         Box::new(systeme_linux::InfosPc::new()),
         Box::new(systeme_linux::Processus::new()),
@@ -140,6 +152,7 @@ impl App {
             s.spacing.item_spacing = egui::vec2(8.0, 6.0);
         });
         menu::charger_langue();
+        maj_linux::verifier();
         let ouvert = std::env::var("OUTILS_OUVRIR").ok().and_then(|x| x.parse().ok());
         App { outils: outils(), ouvert, recherche: String::new(), aide: false, erreur: None }
     }
@@ -199,6 +212,18 @@ impl eframe::App for App {
             self.ouvert = self.outils.iter().position(|o| o.nom() == n);
         }
         ctx.request_repaint_after(Duration::from_millis(500));
+        let dispo = maj_linux::DISPO.lock().unwrap().clone();
+        if let Some((v, _)) = dispo {
+            egui::TopBottomPanel::top("maj").show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(format!("🔄 Nouvelle version {v} d'Outils disponible."));
+                    if ui.button("Installer et relancer").clicked() {
+                        maj_linux::installer();
+                    }
+                    ui.weak(maj_linux::ETAT.lock().unwrap().clone());
+                });
+            });
+        }
         if let Some((t, m)) = systeme::NOTIFICATIONS.lock().ok().and_then(|mut n| n.pop()) {
             let _ = (t, m); // déjà montrée par le bureau (notify-send)
         }
@@ -206,6 +231,7 @@ impl eframe::App for App {
             ui.add_space(6.0);
             ui.horizontal(|ui| {
                 ui.heading(RichText::new("Outils").color(ROSE));
+                ui.weak(format!("v{}", maj_linux::VERSION)).on_hover_text(maj_linux::ETAT.lock().unwrap().clone());
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     let en = menu::en();
                     if ui.small_button(if en { "🌐 EN" } else { "🌐 FR" }).clicked() {
