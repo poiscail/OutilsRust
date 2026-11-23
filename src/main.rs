@@ -40,6 +40,8 @@ mod secu_fichiers;
 mod ctf;
 mod secu_pc;
 mod pratique;
+mod upnp;
+mod vpn;
 mod listes;
 mod ludique;
 mod macros;

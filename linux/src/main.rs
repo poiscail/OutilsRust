@@ -32,6 +32,10 @@ mod dns_maison;
 mod ports_risques;
 #[path = "../../src/pratique.rs"]
 mod pratique;
+#[path = "../../src/upnp.rs"]
+mod upnp;
+#[path = "../../src/vpn.rs"]
+mod vpn;
 #[path = "../../src/menu.rs"]
 mod menu;
 #[path = "../../src/fiches.rs"]
@@ -91,6 +95,7 @@ fn outils() -> Vec<Box<dyn Outil>> {
         Box::new(quotidien2::Meteo::new()),
         Box::new(pratique::Abonnements::new()),
         Box::new(pratique::TraductionDocs::new()),
+        Box::new(vpn::Vpn::new()),
         Box::new(quotidien2::Agenda::new()),
         Box::new(quotidien3::Ecole::new()),
         Box::new(quotidien3::ComptesRebours::new()),
