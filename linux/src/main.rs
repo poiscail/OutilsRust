@@ -36,6 +36,10 @@ mod pratique;
 mod upnp;
 #[path = "../../src/vpn.rs"]
 mod vpn;
+#[path = "../../src/musique.rs"]
+mod musique;
+#[path = "../../src/createur.rs"]
+mod createur;
 #[path = "../../src/menu.rs"]
 mod menu;
 #[path = "../../src/fiches.rs"]
@@ -96,6 +100,10 @@ fn outils() -> Vec<Box<dyn Outil>> {
         Box::new(pratique::Abonnements::new()),
         Box::new(pratique::TraductionDocs::new()),
         Box::new(vpn::Vpn::new()),
+        Box::new(musique::Musique::new()),
+        Box::new(createur::Shorts::new()),
+        Box::new(createur::Studio::new()),
+        Box::new(createur::Skins::new()),
         Box::new(quotidien2::Agenda::new()),
         Box::new(quotidien3::Ecole::new()),
         Box::new(quotidien3::ComptesRebours::new()),

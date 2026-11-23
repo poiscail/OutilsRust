@@ -42,6 +42,8 @@ mod secu_pc;
 mod pratique;
 mod upnp;
 mod vpn;
+mod musique;
+mod createur;
 mod listes;
 mod ludique;
 mod macros;

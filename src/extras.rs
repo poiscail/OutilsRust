@@ -6,6 +6,7 @@ use crate::{pratique, secu_reseau, secu_mdp, secu_fichiers, ctf, secu_pc, moi, j
 pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>> {
     vec![
         // minecraft
+        paresseux("🧑‍🎨 Skins Minecraft", Cat::Minecraft, move || Box::new(crate::createur::Skins::new())),
         paresseux("📥 Installer un serveur", Cat::Minecraft, { let mc = mc.clone(); move || Box::new(mcplus::Installateur::new(mc)) }),
         paresseux("⚙ Réglages du serveur", Cat::Minecraft, { let mc = mc.clone(); move || Box::new(mcplus::Proprietes::new(mc)) }),
         paresseux("🧩 Plugins et mods du serveur", Cat::Minecraft, { let mc = mc.clone(); move || Box::new(mcplus::Plugins::new(mc)) }),
@@ -227,6 +228,9 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         paresseux("✨ Captures stylées", Cat::Creatif, move || Box::new(creatif2::CapturesStylees::new())),
         Box::new(creatif2::FondsEcran::new()),
         paresseux("🎞 Zone de l'écran en GIF", Cat::Creatif, move || Box::new(creatif3::ZoneGif::new())),
+        paresseux("🎹 Éditeur de musique", Cat::Creatif, move || Box::new(crate::musique::Musique::new())),
+        paresseux("📱 Vidéo verticale (TikTok, Shorts)", Cat::Creatif, move || Box::new(crate::createur::Shorts::new())),
+        paresseux("🎨 Studio miniatures et bannières", Cat::Creatif, move || Box::new(crate::createur::Studio::new())),
         paresseux("🖼 Miniatures YouTube", Cat::Creatif, move || Box::new(creatif3::Miniatures::new())),
         paresseux("💬 Éditeur de sous-titres", Cat::Creatif, move || Box::new(creatif3::SousTitres::new())),
         Box::new(creatif3::BoiteSons::new()),
