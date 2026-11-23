@@ -1081,7 +1081,25 @@ pub enum Ordre {
     Muet,
     Heure,
     Meteo,
+    VolumeA(u8),
+    Appli(&'static str),
+    ServeurDemarrer,
+    ServeurArreter,
+    ServeurSauver,
 }
+
+/// Applications ouvrables à la voix : (nom prononcé, commande `start`).
+pub const APPLIS: [(&str, &str); 9] = [
+    ("steam", "steam://open/main"),
+    ("discord", "discord://"),
+    ("le navigateur", "https://www.google.fr"),
+    ("l'explorateur", "explorer.exe"),
+    ("le bloc-notes", "notepad.exe"),
+    ("la calculatrice", "calc.exe"),
+    ("spotify", "spotify:"),
+    ("les paramètres", "ms-settings:"),
+    ("le gestionnaire des tâches", "taskmgr.exe"),
+];
 
 /// Phrases reconnues → ordre.
 pub fn phrases(outils: &[String], jeux: &[String]) -> Vec<(String, Ordre)> {
@@ -1094,7 +1112,18 @@ pub fn phrases(outils: &[String], jeux: &[String]) -> Vec<(String, Ordre)> {
         ("outils coupe le son".into(), Ordre::Muet),
         ("outils quelle heure est-il".into(), Ordre::Heure),
         ("outils quel temps fait-il".into(), Ordre::Meteo),
+        ("outils lance le serveur".into(), Ordre::ServeurDemarrer),
+        ("outils démarre le serveur".into(), Ordre::ServeurDemarrer),
+        ("outils arrête le serveur".into(), Ordre::ServeurArreter),
+        ("outils sauvegarde le serveur".into(), Ordre::ServeurSauver),
     ];
+    for n in (0..=100).step_by(10) {
+        v.push((format!("outils mets le volume à {n}"), Ordre::VolumeA(n as u8)));
+        v.push((format!("outils volume à {n}"), Ordre::VolumeA(n as u8)));
+    }
+    for (a, c) in APPLIS {
+        v.push((format!("outils ouvre {a}"), Ordre::Appli(c)));
+    }
     for o in outils {
         let p = prononcable(o);
         if p.len() >= 3 {
@@ -1117,7 +1146,7 @@ fn touche(vk: u16) {
     unsafe { SendInput(2, s.as_ptr(), std::mem::size_of::<INPUT>() as i32) };
 }
 
-fn executer(o: &Ordre, jeux: &[crate::lanceur::Jeu]) -> String {
+fn executer(o: &Ordre, jeux: &[crate::lanceur::Jeu], mc: &crate::minecraft::Pilote) -> String {
     use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
     match o {
         Ordre::Ouvrir(n) => {
@@ -1171,10 +1200,32 @@ fn executer(o: &Ordre, jeux: &[crate::lanceur::Jeu]) -> String {
             crate::interface2::ouvrir_outil("🌤 Météo");
             "Météo".into()
         }
+        Ordre::VolumeA(n) => match crate::interface2::volume_maitre(*n as f32 / 100.0) {
+            Ok(()) => format!("Volume à {n} %"),
+            Err(e) => e,
+        },
+        Ordre::Appli(c) => {
+            let _ = Command::new("cmd").args(["/c", "start", "", c]).creation_flags(SANS_FENETRE).spawn();
+            format!("Ouverture de {c}")
+        }
+        Ordre::ServeurDemarrer => match mc.demarrer() {
+            Ok(()) => "Serveur Minecraft : démarrage".into(),
+            Err(e) => format!("Serveur : {e}"),
+        },
+        Ordre::ServeurArreter => {
+            let mc = mc.clone();
+            std::thread::spawn(move || mc.arreter());
+            "Serveur Minecraft : arrêt".into()
+        }
+        Ordre::ServeurSauver => {
+            mc.commande("save-all");
+            "Serveur Minecraft : sauvegarde".into()
+        }
     }
 }
 
 pub struct CommandesVocales {
+    mc: crate::minecraft::Pilote,
     actif: Arc<AtomicBool>,
     journal: Arc<Mutex<Vec<String>>>,
     marche: Arc<AtomicBool>,
@@ -1182,8 +1233,8 @@ pub struct CommandesVocales {
 }
 
 impl CommandesVocales {
-    pub fn new() -> Self {
-        let c = CommandesVocales { actif: Arc::new(AtomicBool::new(charger::<Option<bool>>("commandes_vocales").unwrap_or(false))), journal: Arc::default(), marche: Arc::default(), erreur: Arc::default() };
+    pub fn new(mc: crate::minecraft::Pilote) -> Self {
+        let c = CommandesVocales { mc, actif: Arc::new(AtomicBool::new(charger::<Option<bool>>("commandes_vocales").unwrap_or(false))), journal: Arc::default(), marche: Arc::default(), erreur: Arc::default() };
         if c.actif.load(Relaxed) {
             c.demarrer();
         }
@@ -1194,7 +1245,7 @@ impl CommandesVocales {
         if self.marche.swap(true, Relaxed) {
             return;
         }
-        let (a, j, m, err) = (self.actif.clone(), self.journal.clone(), self.marche.clone(), self.erreur.clone());
+        let (a, j, m, err, mc) = (self.actif.clone(), self.journal.clone(), self.marche.clone(), self.erreur.clone(), self.mc.clone());
         std::thread::spawn(move || {
             // les noms d'outils arrivent quand la fenêtre principale a démarré
             std::thread::sleep(Duration::from_secs(3));
@@ -1255,7 +1306,7 @@ while ($true) {{ $x = $r.Recognize(); if ($x -and $x.Confidence -gt 0.6) {{ [Con
                 }
                 if let Some(t) = l.strip_prefix("OK|") {
                     if let Some((_, o)) = ph.iter().find(|p| p.0 == t) {
-                        let r = executer(o, &jeux);
+                        let r = executer(o, &jeux, &mc);
                         let mut jj = j.lock().unwrap();
                         jj.push(format!("🎙 « {t} » → {r}"));
                         if jj.len() > 30 {
@@ -1296,7 +1347,7 @@ impl Outil for CommandesVocales {
             ui.colored_label(Color32::LIGHT_GREEN, "🎙 J'écoute…");
         }
         egui::Grid::new("phrases_vocales").striped(true).show(ui, |ui| {
-            for (p, d) in [("Outils, ouvre la météo", "ouvre n'importe quel outil par son nom"), ("Outils, lance Minecraft", "lance un jeu de ta bibliothèque"), ("Outils, capture d'écran", ""), ("Outils, monte / baisse / coupe le son", ""), ("Outils, verrouille le PC", ""), ("Outils, mets le PC en veille", ""), ("Outils, quelle heure est-il", "répond à voix haute")] {
+            for (p, d) in [("Outils, ouvre la météo", "ouvre n'importe quel outil par son nom"), ("Outils, lance Minecraft", "lance un jeu de ta bibliothèque"), ("Outils, ouvre Steam", "aussi Discord, le navigateur, la calculatrice, Spotify…"), ("Outils, mets le volume à 30", "de 0 à 100, par dizaines"), ("Outils, lance / arrête / sauvegarde le serveur", "serveur Minecraft"), ("Outils, capture d'écran", ""), ("Outils, monte / baisse / coupe le son", ""), ("Outils, verrouille le PC", ""), ("Outils, mets le PC en veille", ""), ("Outils, quelle heure est-il", "répond à voix haute")] {
                 ui.label(RichText::new(p).strong());
                 ui.weak(d);
                 ui.end_row();
@@ -1336,6 +1387,8 @@ mod tests {
         assert_eq!(prononcable("🎛 Profils (Jeu, Travail, Nuit)"), "profils");
         let p = phrases(&["🌤 Météo".into()], &["Minecraft".into()]);
         assert!(p.iter().any(|x| x.0 == "outils ouvre météo") && p.iter().any(|x| x.0 == "outils lance minecraft"));
+        assert!(p.iter().any(|x| x.0 == "outils mets le volume à 30" && x.1 == Ordre::VolumeA(30)));
+        assert!(p.iter().any(|x| x.0 == "outils ouvre steam") && p.iter().any(|x| x.1 == Ordre::ServeurDemarrer));
     }
 
     #[test]

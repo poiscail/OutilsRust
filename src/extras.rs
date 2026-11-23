@@ -165,7 +165,7 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         paresseux("🏳 Bannières et logos", Cat::Creatif, move || Box::new(creatif4::Bannieres::new())),
         paresseux("😺 Stickers et émojis Discord", Cat::Creatif, move || Box::new(creatif4::Stickers::new())),
         Box::new(creatif4::Correcteur::new()),
-        Box::new(creatif4::CommandesVocales::new()),
+        Box::new(creatif4::CommandesVocales::new(mc.clone())),
         paresseux("⬇ Télécharger une vidéo", Cat::Reseau, move || Box::new(reseau2::Telechargeur::new())),
         paresseux("🚫 Bloqueur de pubs et de sites", Cat::Reseau, move || Box::new(reseau2::BloqueurUi::new())),
         Box::new(dns_maison::DnsMaison::new()),
