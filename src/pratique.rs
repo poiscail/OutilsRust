@@ -23,6 +23,12 @@ fn agent() -> ureq::Agent {
     ureq::AgentBuilder::new().timeout(Duration::from_secs(20)).user_agent("Outils").build()
 }
 
+/// Sites qu'on peut ouvrir à distance depuis la télécommande TV du téléphone.
+pub fn url_autorisee(u: &str) -> bool {
+    const S: &[&str] = &["https://www.youtube.com", "https://www.netflix.com", "https://www.primevideo.com", "https://www.disneyplus.com", "https://www.twitch.tv", "https://www.crunchyroll.com", "https://www.molotov.tv", "https://www.france.tv", "https://open.spotify.com", "https://www.deezer.com"];
+    S.iter().any(|s| u == *s || u.starts_with(&format!("{s}/")))
+}
+
 // ===================================================================================================
 // 8 · Sorties à venir
 // ===================================================================================================

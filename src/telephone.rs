@@ -311,6 +311,15 @@ fn commande(c: &Contexte, action: &str, texte: Option<&str>) -> Result<String, S
                     std::thread::spawn(move || mc.arreter());
                     Ok("Serveur Minecraft : arrêt")
                 }
+                "ouvrir" => {
+                    if crate::pratique::url_autorisee(req_texte) {
+                        use std::os::windows::process::CommandExt;
+                        let _ = std::process::Command::new("cmd").args(["/c", "start", "", req_texte]).creation_flags(0x0800_0000).spawn();
+                        Ok("Ouverture")
+                    } else {
+                        Err("site non autorisé".into())
+                    }
+                }
                 _ => Err("action inconnue".into()),
             
     };

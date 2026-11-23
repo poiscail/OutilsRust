@@ -896,3 +896,123 @@ mod tests {
         assert!(BOUTONS.iter().all(|b| !b.1.is_empty()));
     }
 }
+
+// ===================================================================================================
+// Télécommande TV : piloter le PC branché à la télé (Netflix, YouTube…)
+// ===================================================================================================
+
+pub const SITES_TV: &[(&str, &str)] = &[
+    ("▶ YouTube", "https://www.youtube.com"),
+    ("🎬 Netflix", "https://www.netflix.com"),
+    ("📦 Prime Video", "https://www.primevideo.com"),
+    ("🏰 Disney+", "https://www.disneyplus.com"),
+    ("🟣 Twitch", "https://www.twitch.tv"),
+    ("🍥 Crunchyroll", "https://www.crunchyroll.com"),
+    ("🎵 Spotify", "https://open.spotify.com"),
+];
+
+pub struct TeleTv {
+    envoi: Option<Envoi>,
+    e: Etat,
+}
+
+impl TeleTv {
+    pub fn new() -> Self {
+        TeleTv { envoi: None, e: Arc::default() }
+    }
+
+    fn touche(&self, t: &str) {
+        if let Some(e) = &self.envoi {
+            e.envoyer(&[format!("k {t}")]);
+            android::vibrer(15);
+        }
+    }
+
+    fn cmd(&self, p: &Pc, c: &str) {
+        let (p, c) = (p.clone(), c.to_string());
+        android::vibrer(15);
+        en_fond(&self.e, "", move || p.post(&c, b""));
+    }
+}
+
+impl Outil for TeleTv {
+    fn nom(&self) -> &'static str {
+        "📺 Télécommande TV"
+    }
+    fn cat(&self) -> Cat {
+        Cat::Fun
+    }
+    fn ui(&mut self, ui: &mut egui::Ui) {
+        let Some(p) = pc() else {
+            sans_pc(ui);
+            return;
+        };
+        if self.envoi.as_ref().is_none_or(|e| e.ip != p.ip) {
+            self.envoi = Envoi::new(&p);
+        }
+        ui.weak("Pour le PC branché à la télé : ouvre un site, puis pilote la lecture depuis le canapé.");
+        ui.horizontal_wrapped(|ui| {
+            for (n, u) in SITES_TV {
+                if ui.add(egui::Button::new(RichText::new(*n).size(17.0)).min_size(Vec2::new(110.0, 48.0))).clicked() {
+                    self.cmd(&p, &format!("/cmd/ouvrir?texte={}", encoder(u)));
+                }
+            }
+        });
+        ui.separator();
+        let l = (ui.available_width() / 3.0 - 10.0).min(130.0);
+        let b = |ui: &mut egui::Ui, t: &str| ui.add(egui::Button::new(RichText::new(t).size(26.0)).min_size(Vec2::new(l, 64.0))).clicked();
+        ui.horizontal(|ui| {
+            ui.add_space(l + 10.0);
+            if b(ui, "⬆") {
+                self.touche("haut");
+            }
+        });
+        ui.horizontal(|ui| {
+            if b(ui, "⬅") {
+                self.touche("gauche");
+            }
+            if b(ui, "OK") {
+                self.touche("entree");
+            }
+            if b(ui, "➡") {
+                self.touche("droite");
+            }
+        });
+        ui.horizontal(|ui| {
+            if b(ui, "↩") {
+                self.touche("echap");
+            }
+            if b(ui, "⬇") {
+                self.touche("bas");
+            }
+            if b(ui, "⛶") {
+                self.touche("f");
+            }
+        });
+        ui.add_space(8.0);
+        ui.horizontal(|ui| {
+            if b(ui, "⏪") {
+                self.touche("gauche");
+            }
+            if b(ui, "⏯") {
+                self.cmd(&p, "/cmd/lecture");
+            }
+            if b(ui, "⏩") {
+                self.touche("droite");
+            }
+        });
+        ui.horizontal(|ui| {
+            if b(ui, "🔉") {
+                self.cmd(&p, "/cmd/vol_moins");
+            }
+            if b(ui, "🔇") {
+                self.cmd(&p, "/cmd/muet");
+            }
+            if b(ui, "🔊") {
+                self.cmd(&p, "/cmd/vol_plus");
+            }
+        });
+        etat_ui(ui, &self.e);
+        ui.weak("⛶ = plein écran (touche F) · ⏪ ⏩ = reculer / avancer de quelques secondes. Pour taper une recherche : outil Souris et clavier.");
+    }
+}

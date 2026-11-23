@@ -214,11 +214,7 @@ pub fn ecrire_presse(t: &str) -> bool {
     }
 }
 
-/// Sites qu'on peut ouvrir depuis la télécommande TV du téléphone.
-pub fn url_autorisee(u: &str) -> bool {
-    const S: &[&str] = &["https://www.youtube.com", "https://www.netflix.com", "https://www.primevideo.com", "https://www.disneyplus.com", "https://www.twitch.tv", "https://www.crunchyroll.com", "https://www.molotov.tv", "https://www.france.tv", "https://open.spotify.com", "https://www.deezer.com"];
-    S.iter().any(|s| u == *s || u.starts_with(&format!("{s}/")))
-}
+pub use crate::pratique::url_autorisee;
 
 fn commande(action: &str, t: Option<&str>) -> Result<String, String> {
     let ok = |b: bool, m: &str| if b { Ok(m.to_string()) } else { Err(format!("{m} : impossible (outil manquant ?)")) };

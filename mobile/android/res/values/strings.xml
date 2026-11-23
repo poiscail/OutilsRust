@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">État du PC, prochain rendez-vous et batterie</string>
+</resources>

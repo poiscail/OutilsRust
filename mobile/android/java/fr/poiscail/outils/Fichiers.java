@@ -25,10 +25,19 @@ public class Fichiers extends ContentProvider {
     @Override public boolean onCreate() { return true; }
 
     @Override public String getType(Uri uri) {
-        return uri.getLastPathSegment().endsWith(".apk") ? "application/vnd.android.package-archive" : "application/octet-stream";
+        String n = uri.getLastPathSegment();
+        if (n.endsWith(".jpg")) return "image/jpeg";
+        return n.endsWith(".apk") ? "application/vnd.android.package-archive" : "application/octet-stream";
     }
 
     @Override public ParcelFileDescriptor openFile(Uri uri, String mode) throws FileNotFoundException {
+        String nom = uri.getLastPathSegment();
+        // l'appareil photo d'Android écrit ici les pages du scanner de documents
+        if (mode.contains("w") && nom != null && nom.matches("scan_[0-9]+\\.jpg")) {
+            File dossier = new File(getContext().getFilesDir(), "partage");
+            dossier.mkdirs();
+            return ParcelFileDescriptor.open(new File(dossier, nom), ParcelFileDescriptor.MODE_READ_WRITE | ParcelFileDescriptor.MODE_CREATE | ParcelFileDescriptor.MODE_TRUNCATE);
+        }
         return ParcelFileDescriptor.open(fichier(uri), ParcelFileDescriptor.MODE_READ_ONLY);
     }
 

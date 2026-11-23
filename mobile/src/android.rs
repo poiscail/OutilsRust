@@ -1195,6 +1195,35 @@ pub fn dossier_partage() -> std::path::PathBuf {
     d
 }
 
+/// Ouvre l'appareil photo d'Android : la photo (pleine définition) arrive dans le dossier de partage
+/// sous le nom donné (« scan_<n>.jpg »).
+pub fn prendre_photo(nom: &str) -> bool {
+    #[cfg(target_os = "android")]
+    {
+        use jni::objects::JValue;
+        return jni_::avec(|env, act| {
+            let i = jni_::intention(env, "android.media.action.IMAGE_CAPTURE", None)?;
+            let u = env.new_string(format!("content://fr.poiscail.outils.fichiers/{nom}"))?;
+            let uri = env.call_static_method("android/net/Uri", "parse", "(Ljava/lang/String;)Landroid/net/Uri;", &[JValue::Object(&u)])?.l()?;
+            let cle = env.new_string("output")?;
+            env.call_method(&i, "putExtra", "(Ljava/lang/String;Landroid/os/Parcelable;)Landroid/content/Intent;", &[JValue::Object(&cle), JValue::Object(&uri)])?;
+            env.call_method(&i, "addFlags", "(I)Landroid/content/Intent;", &[JValue::Int(0x1 | 0x2)])?;
+            let r = env.call_method(act, "startActivity", "(Landroid/content/Intent;)V", &[JValue::Object(&i)]);
+            if r.is_err() || env.exception_check().unwrap_or(false) {
+                let _ = env.exception_clear();
+                return Ok(false);
+            }
+            Ok(true)
+        })
+        .unwrap_or(false);
+    }
+    #[allow(unreachable_code)]
+    {
+        let _ = nom;
+        false
+    }
+}
+
 /// Outils a-t-il le droit d'installer des applis (ses mises à jour) ?
 pub fn peut_installer() -> bool {
     #[cfg(target_os = "android")]

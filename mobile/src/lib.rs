@@ -34,6 +34,7 @@ mod batterie_tel;
 mod photos_tel;
 mod partage_tel;
 mod secu_tel;
+mod scanner_tel;
 mod son;
 mod capteurs_tel;
 mod commun;
@@ -120,6 +121,7 @@ pub fn catalogue() -> Vec<Fiche> {
         f(Box::new(monpc::MonPc::new()), "PC et réseau", Aucun, "Télécommande, état, jeux, fichiers, presse-papiers et Minecraft de ton PC (Outils ouvert sur le PC, même Wi-Fi)."),
         f(Box::new(pc_tel::SourisClavier::new()), "PC et réseau", Aucun, "Le téléphone devient pavé tactile et clavier du PC, et montre son écran."),
         f(Box::new(pc_tel::Manette::new()), "PC et réseau", Aucun, "Le téléphone devient une manette pour les jeux du PC."),
+        f(Box::new(pc_tel::TeleTv::new()), "PC et réseau", Aucun, "Le PC branché à la télé : Netflix, YouTube, lecture, volume, depuis le canapé."),
         f(Box::new(pc_tel::WebcamMicro::new()), "PC et réseau", Aucun, "La caméra et le micro du téléphone pour le PC (OBS, Discord)."),
         f(Box::new(pc_tel::TraductionPhoto::new()), "PC et réseau", Aucun, "Vise un texte : il est lu par le PC et traduit."),
         f(Box::new(wifi_tel::Wifi::new()), "PC et réseau", Aucun, "Signal, appareils connectés, débit et ping."),
@@ -131,6 +133,7 @@ pub fn catalogue() -> Vec<Fiche> {
         f(Box::new(secu_tel::Permissions::new()), "Téléphone", Aucun, "Quelles applis ont accès à la caméra, au micro, à la position, aux SMS, aux contacts."),
         f(Box::new(batterie_tel::BatterieOutil::new()), "Téléphone", Aucun, "État de la batterie, autonomie, alerte de charge à 80 % et de surchauffe."),
         f(Box::new(photos_tel::Nettoyeur::new()), "Téléphone", Aucun, "Photos floues, rafales et vieilles captures d'écran, à trier en un geste."),
+        f(Box::new(scanner_tel::Scanner::new()), "Téléphone", Aucun, "Photographie des pages, redressées et nettes, réunies en un PDF."),
         f(Box::new(photos_tel::Coffre::new()), "Téléphone", Aucun, "Photos cachées et chiffrées, protégées par un code."),
         f(Box::new(photos_tel::Compresseur::new()), "Téléphone", Aucun, "Réduire une vidéo pour WhatsApp ou Discord."),
         f(Box::new(partage_tel::PartageRecu::new()), "Téléphone", Aucun, "Ce que tu partages vers Outils depuis une autre appli : envoyer au PC, coffre, compresser, ranger."),

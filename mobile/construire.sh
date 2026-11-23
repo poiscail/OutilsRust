@@ -25,14 +25,15 @@ cargo build --release --lib --target aarch64-linux-android
 cp target/aarch64-linux-android/release/liboutils_mobile.so "$B/lib/arm64-v8a/"
 "$CLANG/llvm-strip" "$B/lib/arm64-v8a/liboutils_mobile.so"
 
+echo "▶ Ressources et manifeste"
+sed -e "s/@VERSION@/$VERSION/" -e "s/@CODE@/$CODE/" android/AndroidManifest.xml > "$B/AndroidManifest.xml"
+mkdir -p "$B/gen"
+"$OUTILS/aapt2" compile --dir android/res -o "$B/res.zip"
+"$OUTILS/aapt2" link -I "$JAR" --manifest "$B/AndroidManifest.xml" -o "$B/base.apk" "$B/res.zip" --auto-add-overlay
+
 echo "▶ Java"
 javac -nowarn --release 11 -cp "$JAR" -d "$B/classes" $(find android/java -name '*.java')
 "$OUTILS/d8" --release --min-api 26 --lib "$JAR" --output "$B/dex" $(find "$B/classes" -name '*.class')
-
-echo "▶ Ressources et manifeste"
-sed -e "s/@VERSION@/$VERSION/" -e "s/@CODE@/$CODE/" android/AndroidManifest.xml > "$B/AndroidManifest.xml"
-"$OUTILS/aapt2" compile --dir android/res -o "$B/res.zip"
-"$OUTILS/aapt2" link -I "$JAR" --manifest "$B/AndroidManifest.xml" -o "$B/base.apk" "$B/res.zip" --auto-add-overlay
 
 echo "▶ APK"
 cp "$B/dex/classes.dex" "$B/"
