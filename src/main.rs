@@ -44,6 +44,7 @@ mod upnp;
 mod vpn;
 mod musique;
 mod createur;
+mod profils;
 mod listes;
 mod ludique;
 mod macros;
@@ -196,6 +197,9 @@ struct App {
     aide: bool,
     precedent: String,
     premiere_image: bool,
+    tablette: bool,
+    tab_cat: Option<Cat>,
+    code_profil: String,
 }
 
 impl App {
@@ -228,6 +232,7 @@ impl App {
             maj_ignoree: false, disques: (None, vec![]), lance_au_demarrage: std::env::args().any(|a| a == "--demarrage"), onglet: 0, extras, favoris: outil::charger("onglets_favoris"), palette: None, plantages: coeur::nouveaux_plantages(), erreur_onglet: None, recherche: String::new(),
             dock: interface::Dock::new(), notifs_ouvert: false, visite: interface::visite_a_faire().then_some(0), mini: None, nouveautes: interface2::nouvelle_version(), tv: false, manette: 0,
             accueil_cfg: moi::Accueil::charger(), edition_accueil: false, nouveaux: menu::Nouveaux::default(), aide: false, precedent: String::new(), premiere_image: true,
+            tablette: tablette_au_demarrage(), tab_cat: None, code_profil: String::new(),
         }
     }
 
@@ -545,6 +550,24 @@ impl eframe::App for App {
             self.ui_mini(ctx);
             return;
         }
+        if profils::ecran_code(ctx, &mut self.code_profil) {
+            return;
+        }
+        if self.tablette {
+            // gros boutons et interface agrandie (reprise si le thème change le zoom)
+            let z = (self.theme.zoom() * 1.25).min(2.2);
+            if (ctx.zoom_factor() - z).abs() > 0.01 {
+                ctx.set_zoom_factor(z);
+            }
+            if ctx.style().spacing.interact_size.y < 39.0 {
+                ctx.style_mut(|s| {
+                    s.spacing.interact_size.y = 40.0;
+                    s.spacing.button_padding = egui::vec2(12.0, 8.0);
+                    s.spacing.scroll.bar_width = 14.0;
+                });
+            }
+            self.barre_tablette(ctx);
+        } else {
         egui::SidePanel::left("outils").exact_width(210.0).show(ctx, |ui| {
             ui.add_space(8.0);
             ui.horizontal(|ui| {
@@ -552,6 +575,9 @@ impl eframe::App for App {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui.small_button("📺").on_hover_text("Mode grand écran, pilotable à la manette (Start pour sortir)").clicked() {
                         self.basculer_tv(ctx);
+                    }
+                    if ui.small_button("👆").on_hover_text("Mode tablette (grosses tuiles, pour l'écran tactile)").clicked() {
+                        self.basculer_tablette(ctx);
                     }
                     if ui.small_button("🗗").on_hover_text("Mode mini (petite fenêtre toujours visible)").clicked() {
                         self.mini = Some(ctx.input(|i| i.viewport().inner_rect.map(|r| r.size())).unwrap_or(egui::vec2(1100.0, 720.0)));
@@ -678,6 +704,9 @@ impl eframe::App for App {
             ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
                 ui.horizontal(|ui| {
                     ui.weak(concat!("v", env!("CARGO_PKG_VERSION")));
+                    if let Some(p) = profils::actif() {
+                        ui.weak(format!("· 👤 {p}"));
+                    }
                     let en = menu::en();
                     if ui.small_button(if en { "🌐 EN" } else { "🌐 FR" }).on_hover_text(if en { "Passer en français" } else { "Switch menus to English" }).clicked() {
                         menu::changer_langue(!en);
@@ -686,6 +715,7 @@ impl eframe::App for App {
             });
 
         });
+        }
         let nom_onglet = self.entrees().into_iter().find(|e| e.0 == self.onglet).map(|e| e.1).unwrap_or_default();
         if let Ok(mut o) = coeur::ONGLET.lock() {
             o.clone_from(&nom_onglet);
@@ -756,6 +786,7 @@ impl eframe::App for App {
             }
             let onglet = self.onglet;
             let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| match onglet {
+            0 if self.tablette => self.tuiles(ui),
             0 => self.accueil(ui),
             1 => self.tri.ui(ui),
             2 => self.lanceur.ui(ui),
@@ -812,6 +843,7 @@ impl eframe::App for App {
 fn main() -> eframe::Result {
     let _ = moi::DEMARRE.set(Instant::now());
     coeur::activer_portable();
+    profils::choisir_au_demarrage();
     coeur::installer_crochet();
     // lancé par Windows comme économiseur d'écran (Outils.scr) : /s plein écran, /p aperçu (ignoré)
     let arg = std::env::args().nth(1).map(|a| a.to_ascii_lowercase()).unwrap_or_default();
@@ -839,7 +871,140 @@ enum Commande {
     ServeurArreter,
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Default)]
+#[serde(default)]
+struct ReglagesTablette {
+    actif: bool,
+    /// passe tout seul en mode tablette quand le PC hybride est utilisé sans clavier
+    auto: bool,
+}
+
+/// Le PC est-il utilisé comme une tablette (clavier détaché ou replié) ?
+fn pc_en_tablette() -> bool {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{GetSystemMetrics, SM_CONVERTIBLESLATEMODE};
+    unsafe { GetSystemMetrics(SM_CONVERTIBLESLATEMODE) == 0 }
+}
+
+fn tablette_au_demarrage() -> bool {
+    let r: ReglagesTablette = outil::charger("tablette");
+    r.actif || (r.auto && pc_en_tablette())
+}
+
 impl App {
+    fn basculer_tablette(&mut self, ctx: &egui::Context) {
+        self.tablette = !self.tablette;
+        let mut r: ReglagesTablette = outil::charger("tablette");
+        r.actif = self.tablette;
+        outil::enregistrer("tablette", &r);
+        self.tab_cat = None;
+        if self.tablette {
+            self.onglet = 0;
+        } else {
+            self.theme.reappliquer();
+            ctx.style_mut(|s| {
+                let d = egui::style::Spacing::default();
+                (s.spacing.interact_size, s.spacing.button_padding, s.spacing.scroll) = (d.interact_size, d.button_padding, d.scroll);
+            });
+        }
+    }
+
+    /// Barre du haut du mode tablette : retour, accueil, recherche.
+    fn barre_tablette(&mut self, ctx: &egui::Context) {
+        egui::TopBottomPanel::top("tablette").show(ctx, |ui| {
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                let gros = |t: &str| egui::Button::new(egui::RichText::new(t).size(20.0)).min_size(egui::vec2(64.0, 48.0));
+                if (self.onglet != 0 || self.tab_cat.is_some()) && ui.add(gros("⬅ Retour")).clicked() {
+                    if self.onglet != 0 {
+                        self.onglet = 0;
+                    } else {
+                        self.tab_cat = None;
+                    }
+                }
+                if ui.add(gros("🏠")).clicked() {
+                    self.onglet = 0;
+                    self.tab_cat = None;
+                }
+                let titre = if self.onglet != 0 {
+                    menu::affiche(&self.entrees().into_iter().find(|e| e.0 == self.onglet).map(|e| e.1).unwrap_or_default())
+                } else {
+                    self.tab_cat.map(|c| menu::cat(c).to_string()).unwrap_or_else(|| "Outils".into())
+                };
+                ui.heading(titre);
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui.add(gros("🖥")).on_hover_text("Quitter le mode tablette").clicked() {
+                        self.basculer_tablette(ctx);
+                    }
+                    if self.onglet == 0 {
+                        ui.add(egui::TextEdit::singleline(&mut self.recherche).hint_text("🔎 Chercher un outil").desired_width(220.0).font(egui::TextStyle::Heading));
+                    }
+                });
+            });
+            ui.add_space(4.0);
+        });
+    }
+
+    /// Accueil du mode tablette : grosses tuiles (catégories, puis outils).
+    fn tuiles(&mut self, ui: &mut egui::Ui) {
+        let tous = self.entrees();
+        let q = self.recherche.trim().to_lowercase();
+        let liste: Vec<(usize, String)> = if !q.is_empty() {
+            tous.iter().filter(|e| e.0 != 0 && (e.1.to_lowercase().contains(&q) || menu::affiche(&e.1).to_lowercase().contains(&q))).map(|e| (e.0, e.1.clone())).collect()
+        } else if let Some(c) = self.tab_cat {
+            tous.iter().filter(|e| e.2 == Some(c)).map(|e| (e.0, e.1.clone())).collect()
+        } else {
+            Vec::new()
+        };
+        let cote = 150.0;
+        let colonnes = ((ui.available_width() / (cote + 12.0)) as usize).max(2);
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            if q.is_empty() && self.tab_cat.is_none() {
+                if !self.favoris.is_empty() {
+                    ui.strong("⭐ Favoris");
+                    let fav: Vec<(usize, String)> = tous.iter().filter(|e| self.favoris.contains(&e.1)).map(|e| (e.0, e.1.clone())).collect();
+                    self.grille_tuiles(ui, &fav, colonnes, cote);
+                    ui.add_space(10.0);
+                }
+                ui.strong("Catégories");
+                egui::Grid::new("tuiles_cat").spacing([12.0, 12.0]).show(ui, |ui| {
+                    for (k, c) in Cat::TOUTES.iter().enumerate() {
+                        let n = menu::cat(*c);
+                        let (icone, texte) = n.split_once(' ').unwrap_or(("📁", n));
+                        let b = egui::Button::new(egui::RichText::new(format!("{icone}\n{texte}")).size(22.0)).min_size(egui::vec2(cote, cote * 0.8)).wrap();
+                        if ui.add(b).clicked() {
+                            self.tab_cat = Some(*c);
+                        }
+                        if (k + 1) % colonnes == 0 {
+                            ui.end_row();
+                        }
+                    }
+                });
+            } else {
+                self.grille_tuiles(ui, &liste, colonnes, cote);
+                if liste.is_empty() {
+                    ui.weak("Aucun outil trouvé.");
+                }
+            }
+        });
+    }
+
+    fn grille_tuiles(&mut self, ui: &mut egui::Ui, liste: &[(usize, String)], colonnes: usize, cote: f32) {
+        egui::Grid::new(ui.next_auto_id()).spacing([12.0, 12.0]).show(ui, |ui| {
+            for (k, (i, n)) in liste.iter().enumerate() {
+                let nom = menu::affiche(n);
+                let (icone, texte) = nom.split_once(' ').map(|(a, b)| (a.to_string(), b.to_string())).unwrap_or((interface::icone(n).to_string(), nom.clone()));
+                let b = egui::Button::new(egui::RichText::new(format!("{icone}\n{texte}")).size(17.0)).min_size(egui::vec2(cote, cote * 0.75)).wrap();
+                if ui.add_sized([cote, cote * 0.75], b).clicked() {
+                    self.onglet = *i;
+                    self.recherche.clear();
+                }
+                if (k + 1) % colonnes == 0 {
+                    ui.end_row();
+                }
+            }
+        });
+    }
+
     fn basculer_tv(&mut self, ctx: &egui::Context) {
         self.tv = !self.tv;
         ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(self.tv));

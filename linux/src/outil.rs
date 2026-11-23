@@ -59,6 +59,11 @@ pub fn dossier() -> PathBuf {
         .clone()
 }
 
+/// Dossier commun (programmes téléchargés).
+pub fn racine() -> PathBuf {
+    dossier()
+}
+
 pub fn chemin(nom: &str) -> PathBuf {
     dossier().join(format!("{nom}.json"))
 }

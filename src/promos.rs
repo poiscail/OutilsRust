@@ -39,7 +39,7 @@ pub struct Donnees {
 }
 
 fn fichier() -> PathBuf {
-    PathBuf::from(std::env::var("APPDATA").unwrap_or(".".into())).join("Outils").join("promos.json")
+    crate::outil::base().join("promos.json")
 }
 
 fn maintenant() -> u64 {

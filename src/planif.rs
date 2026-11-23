@@ -76,7 +76,7 @@ impl Default for Tache {
 }
 
 fn fichier() -> PathBuf {
-    PathBuf::from(std::env::var("APPDATA").unwrap_or(".".into())).join("Outils").join("planificateur.json")
+    crate::outil::base().join("planificateur.json")
 }
 
 pub fn lire_heure(h: &str) -> Option<i64> {

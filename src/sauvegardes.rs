@@ -33,7 +33,7 @@ impl Default for Reglages {
 }
 
 fn fichier() -> PathBuf {
-    PathBuf::from(std::env::var("APPDATA").unwrap_or(".".into())).join("Outils").join("sauvegardes.json")
+    crate::outil::base().join("sauvegardes.json")
 }
 
 /// Nom sans caractères interdits dans un nom de fichier Windows.

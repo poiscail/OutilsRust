@@ -37,7 +37,7 @@ impl Default for Reglages {
 }
 
 fn fichier() -> PathBuf {
-    PathBuf::from(std::env::var("APPDATA").unwrap_or(".".into())).join("Outils").join("viseur.json")
+    crate::outil::base().join("viseur.json")
 }
 
 /// Image carrée du viseur : (côté, pixels BGRA prémultipliés). Le centre est le pixel (côté/2, côté/2).

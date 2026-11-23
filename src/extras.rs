@@ -194,6 +194,8 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         Box::new(secu_mdp::Codes2fa::new()),
         Box::new(pratique::ResumeJour::new()),
         Box::new(pratique::Abonnements::new()),
+        Box::new(crate::profils::SauvegardeCloud::new()),
+        paresseux("👥 Profils", Cat::Systeme, move || Box::new(crate::profils::Profils::new())),
         paresseux("🔐 VPN maison", Cat::Reseau, move || Box::new(crate::vpn::Vpn::new())),
         paresseux("📑 Traduire un document", Cat::Quotidien, move || Box::new(pratique::TraductionDocs::new())),
         Box::new(secu_mdp::Fuites::new()),

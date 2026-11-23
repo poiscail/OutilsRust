@@ -40,7 +40,7 @@ impl Default for Reglages {
 }
 
 fn fichier() -> PathBuf {
-    PathBuf::from(std::env::var("APPDATA").unwrap_or(".".into())).join("Outils").join("capture.json")
+    crate::outil::base().join("capture.json")
 }
 
 fn horodatage() -> String {

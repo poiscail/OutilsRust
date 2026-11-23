@@ -33,7 +33,7 @@ impl Default for Reglages {
 }
 
 fn fichier() -> PathBuf {
-    PathBuf::from(std::env::var("APPDATA").unwrap_or(".".into())).join("Outils").join("discord.json")
+    crate::outil::base().join("discord.json")
 }
 
 /// Trame IPC Discord : opcode (u32 LE), longueur (u32 LE), JSON.

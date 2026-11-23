@@ -1,0 +1,386 @@
+[
+ {
+  "nom": "Minecraft nuit",
+  "sombre": true,
+  "accent": [
+   90,
+   200,
+   70
+  ],
+  "fond": [
+   14,
+   18,
+   12
+  ],
+  "panneau": [
+   28,
+   34,
+   24
+  ],
+  "texte": [
+   225,
+   235,
+   215
+  ],
+  "opacite": 0.88,
+  "assombrir": 0.4,
+  "petales": false,
+  "pluie": false,
+  "lucioles": true,
+  "neige": false,
+  "intensite": 1.0,
+  "police": null
+ },
+ {
+  "nom": "Halloween",
+  "sombre": true,
+  "accent": [
+   255,
+   130,
+   20
+  ],
+  "fond": [
+   16,
+   10,
+   6
+  ],
+  "panneau": [
+   32,
+   20,
+   12
+  ],
+  "texte": [
+   250,
+   225,
+   200
+  ],
+  "opacite": 0.85,
+  "assombrir": 0.45,
+  "petales": false,
+  "pluie": false,
+  "lucioles": true,
+  "neige": false,
+  "intensite": 1.0,
+  "police": null
+ },
+ {
+  "nom": "Noël",
+  "sombre": true,
+  "accent": [
+   220,
+   40,
+   50
+  ],
+  "fond": [
+   10,
+   24,
+   16
+  ],
+  "panneau": [
+   20,
+   40,
+   28
+  ],
+  "texte": [
+   245,
+   240,
+   230
+  ],
+  "opacite": 0.85,
+  "assombrir": 0.35,
+  "petales": false,
+  "pluie": false,
+  "lucioles": false,
+  "neige": true,
+  "intensite": 1.0,
+  "police": null
+ },
+ {
+  "nom": "Printemps",
+  "sombre": false,
+  "accent": [
+   230,
+   90,
+   140
+  ],
+  "fond": [
+   250,
+   240,
+   244
+  ],
+  "panneau": [
+   255,
+   250,
+   252
+  ],
+  "texte": [
+   60,
+   35,
+   50
+  ],
+  "opacite": 0.92,
+  "assombrir": 0.1,
+  "petales": true,
+  "pluie": false,
+  "lucioles": false,
+  "neige": false,
+  "intensite": 1.0,
+  "police": null
+ },
+ {
+  "nom": "Orage",
+  "sombre": true,
+  "accent": [
+   150,
+   170,
+   255
+  ],
+  "fond": [
+   10,
+   12,
+   20
+  ],
+  "panneau": [
+   22,
+   26,
+   40
+  ],
+  "texte": [
+   215,
+   220,
+   240
+  ],
+  "opacite": 0.8,
+  "assombrir": 0.5,
+  "petales": false,
+  "pluie": true,
+  "lucioles": false,
+  "neige": false,
+  "intensite": 1.0,
+  "police": null
+ },
+ {
+  "nom": "Matrix",
+  "sombre": true,
+  "accent": [
+   40,
+   255,
+   90
+  ],
+  "fond": [
+   0,
+   8,
+   2
+  ],
+  "panneau": [
+   4,
+   18,
+   8
+  ],
+  "texte": [
+   150,
+   255,
+   170
+  ],
+  "opacite": 0.85,
+  "assombrir": 0.5,
+  "petales": false,
+  "pluie": false,
+  "lucioles": false,
+  "neige": false,
+  "intensite": 1.0,
+  "police": null
+ },
+ {
+  "nom": "Glace",
+  "sombre": false,
+  "accent": [
+   60,
+   160,
+   230
+  ],
+  "fond": [
+   232,
+   244,
+   252
+  ],
+  "panneau": [
+   246,
+   251,
+   255
+  ],
+  "texte": [
+   20,
+   50,
+   80
+  ],
+  "opacite": 0.9,
+  "assombrir": 0.1,
+  "petales": false,
+  "pluie": false,
+  "lucioles": false,
+  "neige": true,
+  "intensite": 1.0,
+  "police": null
+ },
+ {
+  "nom": "Vaporwave",
+  "sombre": true,
+  "accent": [
+   255,
+   110,
+   200
+  ],
+  "fond": [
+   24,
+   10,
+   40
+  ],
+  "panneau": [
+   40,
+   18,
+   64
+  ],
+  "texte": [
+   160,
+   240,
+   255
+  ],
+  "opacite": 0.75,
+  "assombrir": 0.35,
+  "petales": false,
+  "pluie": false,
+  "lucioles": false,
+  "neige": false,
+  "intensite": 1.0,
+  "police": null
+ },
+ {
+  "nom": "Lave",
+  "sombre": true,
+  "accent": [
+   255,
+   80,
+   20
+  ],
+  "fond": [
+   24,
+   6,
+   4
+  ],
+  "panneau": [
+   44,
+   14,
+   8
+  ],
+  "texte": [
+   255,
+   220,
+   190
+  ],
+  "opacite": 0.85,
+  "assombrir": 0.4,
+  "petales": false,
+  "pluie": false,
+  "lucioles": false,
+  "neige": false,
+  "intensite": 1.0,
+  "police": null
+ },
+ {
+  "nom": "Menthe",
+  "sombre": false,
+  "accent": [
+   30,
+   170,
+   130
+  ],
+  "fond": [
+   234,
+   248,
+   242
+  ],
+  "panneau": [
+   248,
+   255,
+   252
+  ],
+  "texte": [
+   20,
+   60,
+   50
+  ],
+  "opacite": 0.95,
+  "assombrir": 0.1,
+  "petales": false,
+  "pluie": false,
+  "lucioles": false,
+  "neige": false,
+  "intensite": 1.0,
+  "police": null
+ },
+ {
+  "nom": "Encre",
+  "sombre": true,
+  "accent": [
+   200,
+   200,
+   200
+  ],
+  "fond": [
+   8,
+   8,
+   8
+  ],
+  "panneau": [
+   18,
+   18,
+   18
+  ],
+  "texte": [
+   230,
+   230,
+   230
+  ],
+  "opacite": 1.0,
+  "assombrir": 0.5,
+  "petales": false,
+  "pluie": false,
+  "lucioles": false,
+  "neige": false,
+  "intensite": 1.0,
+  "police": null
+ },
+ {
+  "nom": "Ciel étoilé",
+  "sombre": true,
+  "accent": [
+   255,
+   215,
+   110
+  ],
+  "fond": [
+   6,
+   10,
+   28
+  ],
+  "panneau": [
+   14,
+   20,
+   46
+  ],
+  "texte": [
+   220,
+   228,
+   255
+  ],
+  "opacite": 0.78,
+  "assombrir": 0.45,
+  "petales": false,
+  "pluie": false,
+  "lucioles": true,
+  "neige": false,
+  "intensite": 1.0,
+  "police": null
+ }
+]

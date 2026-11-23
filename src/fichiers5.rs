@@ -49,7 +49,7 @@ fn maintenant() -> i64 {
 }
 
 fn donnees() -> PathBuf {
-    PathBuf::from(std::env::var("APPDATA").unwrap_or_default()).join("Outils")
+    crate::outil::base()
 }
 
 // ---------------------------------------------------------------------------------------------------

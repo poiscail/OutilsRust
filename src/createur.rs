@@ -71,7 +71,7 @@ fn telecharger(url: &str, dest: &Path, msg: &Arc<Mutex<String>>, quoi: &str) -> 
 // ---------------------------------------------------------------------------------------------------
 
 fn dossier_whisper() -> PathBuf {
-    crate::outil::chemin("x").parent().map(|p| p.join("whisper")).unwrap_or_default()
+    crate::outil::racine().join("whisper")
 }
 
 fn chercher(d: &Path, noms: &[&str]) -> Option<PathBuf> {

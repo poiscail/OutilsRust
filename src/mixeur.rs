@@ -33,7 +33,7 @@ impl Default for Reglages {
 }
 
 fn fichier() -> PathBuf {
-    PathBuf::from(std::env::var("APPDATA").unwrap_or(".".into())).join("Outils").join("mixeur.json")
+    crate::outil::base().join("mixeur.json")
 }
 
 #[derive(Clone, Default, Debug)]

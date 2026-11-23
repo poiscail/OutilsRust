@@ -35,7 +35,7 @@ impl Default for Reglages {
 }
 
 fn fichier() -> PathBuf {
-    PathBuf::from(std::env::var("APPDATA").unwrap_or(".".into())).join("Outils").join("ne_pas_deranger.json")
+    crate::outil::base().join("ne_pas_deranger.json")
 }
 
 /// Vrai si `minute` est dans la plage [debut, fin[ (qui peut passer minuit).

@@ -22,7 +22,7 @@ pub struct Reglages {
 }
 
 fn fichier() -> PathBuf {
-    PathBuf::from(std::env::var("APPDATA").unwrap_or(".".into())).join("Outils").join("mods.json")
+    crate::outil::base().join("mods.json")
 }
 
 /// Dossier où vont les mods désactivés.

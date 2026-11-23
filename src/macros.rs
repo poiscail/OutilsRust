@@ -33,7 +33,7 @@ impl Default for Macro {
 }
 
 fn fichier() -> PathBuf {
-    PathBuf::from(std::env::var("APPDATA").unwrap_or(".".into())).join("Outils").join("macros.json")
+    crate::outil::base().join("macros.json")
 }
 
 const MODIFS: [u16; 6] = [0x11, 0xA2, 0xA3, 0x12, 0xA4, 0xA5]; // Ctrl, Alt (et gauche / droite)

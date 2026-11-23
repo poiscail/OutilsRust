@@ -29,7 +29,7 @@ impl Default for Note {
 }
 
 fn fichier() -> PathBuf {
-    PathBuf::from(std::env::var("APPDATA").unwrap_or(".".into())).join("Outils").join("notes.json")
+    crate::outil::base().join("notes.json")
 }
 
 /// "JJ/MM/AAAA HH:MM" en heure locale.

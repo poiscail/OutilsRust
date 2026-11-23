@@ -264,7 +264,7 @@ pub const DONNEES: &[&str] = &[
 /// Faut-il ignorer ce chemin (relatif) dans une sauvegarde ? (gros programmes, caches, copie de l'économiseur)
 pub fn ignorer(rel: &str) -> bool {
     let r = rel.replace('\\', "/").to_lowercase();
-    r.starts_with("outils/bin/") || r.starts_with("outils/plantages/") || r.starts_with("outils/avant_restauration_") || r == "outils/outils.scr" || r.ends_with(".part")
+    r.starts_with("outils/bin/") || r.starts_with("outils/whisper/") || r.starts_with("outils/plantages/") || r.starts_with("outils/avant_restauration_") || r == "outils/outils.scr" || r.ends_with(".part")
 }
 
 pub fn exporter(base: &Path, dest: &Path) -> Result<usize, String> {

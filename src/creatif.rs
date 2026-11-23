@@ -665,7 +665,7 @@ impl Outil for Icones {
                 ui.monospace(d.display().to_string());
                 if ui.button("Appliquer l'icône").clicked() {
                     // l'icône est rangée dans le dossier d'Outils pour ne pas encombrer le dossier
-                    let rep = PathBuf::from(std::env::var("APPDATA").unwrap_or_default()).join("Outils").join("icones");
+                    let rep = crate::outil::base().join("icones");
                     let _ = std::fs::create_dir_all(&rep);
                     let f = rep.join(format!("dossier_{:x}.ico", crate::outil::hasard(u64::MAX)));
                     self.message = std::fs::write(&f, &donnees).map_err(|e| e.to_string()).and_then(|_| appliquer_icone_dossier(d, &f))

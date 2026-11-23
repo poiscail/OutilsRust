@@ -31,7 +31,7 @@ impl Default for Reglages {
 }
 
 fn fichier() -> PathBuf {
-    PathBuf::from(std::env::var("APPDATA").unwrap_or(".".into())).join("Outils").join("telephone.json")
+    crate::outil::base().join("telephone.json")
 }
 
 pub fn nouvelle_cle() -> String {

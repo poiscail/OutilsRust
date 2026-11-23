@@ -23,7 +23,7 @@ impl Default for Reglages {
 }
 
 fn fichier() -> PathBuf {
-    PathBuf::from(std::env::var("APPDATA").unwrap_or(".".into())).join("Outils").join("traduction_instantanee.json")
+    crate::outil::base().join("traduction_instantanee.json")
 }
 
 pub const LANGUES: [(&str, &str); 10] = [

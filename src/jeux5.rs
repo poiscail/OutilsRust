@@ -864,7 +864,7 @@ fn dossier_mc() -> PathBuf {
 }
 
 fn dossier_profils() -> PathBuf {
-    PathBuf::from(std::env::var("APPDATA").unwrap_or_default()).join("Outils").join("profils_mods")
+    crate::outil::base().join("profils_mods")
 }
 
 /// Versions de Minecraft avec chargeur de mods installées : (chargeur, version du jeu), ex. ("fabric", "1.21.1").

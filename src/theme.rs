@@ -113,8 +113,38 @@ impl ThemePartage {
     }
 }
 
+/// Code texte d'un thème, à coller dans un message (« OUTILS-THEME: » + JSON en Base64).
+pub fn code_theme(t: &ThemePartage) -> String {
+    use base64::Engine;
+    format!("OUTILS-THEME:{}", base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(serde_json::to_vec(t).unwrap_or_default()))
+}
+
+pub fn lire_code(s: &str) -> Option<ThemePartage> {
+    use base64::Engine;
+    let c = s.trim().strip_prefix("OUTILS-THEME:")?;
+    let t: ThemePartage = serde_json::from_slice(&base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(c.trim()).ok()?).ok()?;
+    (!t.nom.trim().is_empty() && t.nom.len() <= 60).then_some(t)
+}
+
+/// Thèmes de la galerie : ceux fournis avec Outils, puis les nouveaux publiés en ligne.
+fn charger_galerie() -> Vec<ThemePartage> {
+    let mut v: Vec<ThemePartage> = serde_json::from_str(include_str!("../themes/galerie.json")).unwrap_or_default();
+    let en_ligne = ureq::get("https://raw.githubusercontent.com/poiscail/OutilsRust/HEAD/themes/galerie.json")
+        .timeout(Duration::from_secs(8))
+        .call()
+        .ok()
+        .and_then(|r| r.into_json::<Vec<ThemePartage>>().ok())
+        .unwrap_or_default();
+    for t in en_ligne {
+        if !v.iter().any(|x| x.nom == t.nom) {
+            v.push(t);
+        }
+    }
+    v
+}
+
 fn donnees() -> PathBuf {
-    PathBuf::from(std::env::var("APPDATA").unwrap_or_default()).join("Outils")
+    crate::outil::base()
 }
 
 fn fichier() -> PathBuf {
@@ -228,6 +258,8 @@ pub struct Theme {
     rotation: Arc<Mutex<Rotation>>,
     erreur: Option<String>,
     nom_theme: String,
+    code_colle: String,
+    galerie: Arc<Mutex<Option<Vec<ThemePartage>>>>,
 }
 
 impl Theme {
@@ -257,7 +289,7 @@ impl Theme {
                 }
             }
         });
-        let t = Theme { r, a_appliquer: true, a_police: true, texture: None, texture_de: None, dossier_fonds, fond_applique: None, rotation, erreur: None, nom_theme: String::new() };
+        let t = Theme { r, a_appliquer: true, a_police: true, texture: None, texture_de: None, dossier_fonds, fond_applique: None, rotation, erreur: None, nom_theme: String::new(), code_colle: String::new(), galerie: Arc::default() };
         t.appliquer_options();
         if fonds_nouveaux {
             t.enregistrer();
@@ -273,7 +305,7 @@ impl Theme {
         let mut r: Reglages = std::fs::read_to_string(fichier()).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
         r.fond_windows = false;
         r.rotation = false;
-        Theme { r, a_appliquer: true, a_police: true, texture: None, texture_de: None, dossier_fonds, fond_applique: None, rotation: Arc::default(), erreur: None, nom_theme: String::new() }
+        Theme { r, a_appliquer: true, a_police: true, texture: None, texture_de: None, dossier_fonds, fond_applique: None, rotation: Arc::default(), erreur: None, nom_theme: String::new(), code_colle: String::new(), galerie: Arc::default() }
     }
 
     pub fn dossier_fonds(&self) -> &Path {
@@ -444,6 +476,10 @@ impl Theme {
 
     /// À appeler au début de chaque image, avant les panneaux : peint le fond dessous.
     /// Réapplique couleurs et taille (après le mode grand écran).
+    pub fn zoom(&self) -> f32 {
+        self.r.zoom.clamp(0.6, 2.0)
+    }
+
     pub fn reappliquer(&mut self) {
         self.a_appliquer = true;
     }
@@ -586,6 +622,60 @@ impl Theme {
                 }
             }
         });
+        ui.horizontal_wrapped(|ui| {
+            if ui.button("🔗 Copier le code du thème").on_hover_text("Un texte à coller dans Discord ou un message : ton ami le colle ici pour avoir le même thème").clicked() {
+                let n = if self.nom_theme.trim().is_empty() { "Thème d'un ami".to_string() } else { self.nom_theme.trim().to_string() };
+                ui.ctx().copy_text(code_theme(&ThemePartage::depuis(&n, &self.r)));
+            }
+            ui.add(egui::TextEdit::singleline(&mut self.code_colle).hint_text("colle un code OUTILS-THEME:…").desired_width(220.0));
+            if !self.code_colle.trim().is_empty() {
+                match lire_code(&self.code_colle) {
+                    Some(t) => {
+                        if ui.button(format!("✔ Appliquer « {} »", t.nom)).clicked() {
+                            t.appliquer(&mut self.r);
+                            mes.retain(|x| x.nom != t.nom);
+                            mes.push(t);
+                            self.code_colle.clear();
+                        }
+                    }
+                    None => {
+                        ui.colored_label(Color32::LIGHT_RED, "code invalide");
+                    }
+                }
+            }
+        });
+        egui::CollapsingHeader::new("🌍 Galerie de thèmes").show(ui, |ui| {
+            let g = self.galerie.lock().unwrap().clone();
+            match g {
+                None => {
+                    let gal = self.galerie.clone();
+                    *gal.lock().unwrap() = Some(Vec::new());
+                    std::thread::spawn(move || *gal.lock().unwrap() = Some(charger_galerie()));
+                }
+                Some(v) if v.is_empty() => {
+                    ui.spinner();
+                }
+                Some(v) => {
+                    ui.horizontal_wrapped(|ui| {
+                        for t in v {
+                            let c = Color32::from_rgb(t.accent[0], t.accent[1], t.accent[2]);
+                            let f = Color32::from_rgb(t.fond[0], t.fond[1], t.fond[2]);
+                            let b = egui::Button::new(RichText::new(format!("● {}", t.nom)).color(c)).fill(f);
+                            if ui.add(b).on_hover_text("Clic : essayer · ＋ : garder dans mes thèmes").clicked() {
+                                t.appliquer(&mut self.r);
+                            }
+                            ui.menu_button("＋", |ui| {
+                                if ui.button("Garder dans mes thèmes").clicked() {
+                                    mes.retain(|x| x.nom != t.nom);
+                                    mes.push(t.clone());
+                                    ui.close_menu();
+                                }
+                            });
+                        }
+                    });
+                }
+            }
+        });
         if mes != avant_mes {
             crate::outil::enregistrer("mes_themes", &mes);
         }
@@ -714,6 +804,15 @@ impl Theme {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn code_et_galerie() {
+        let t = ThemePartage::depuis("Mon thème", &Reglages::default());
+        assert!(lire_code(&code_theme(&t)) == Some(t));
+        assert!(lire_code("OUTILS-THEME:zzz").is_none() && lire_code("bonjour").is_none());
+        let g: Vec<ThemePartage> = serde_json::from_str(include_str!("../themes/galerie.json")).unwrap();
+        assert!(g.len() >= 10 && g.iter().all(|t| !t.nom.is_empty()));
+    }
 
     #[test]
     fn couvrir() {

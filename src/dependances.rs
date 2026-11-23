@@ -18,7 +18,7 @@ const FFMPEG_ZIP: &[&str] = &[
 const YTDLP: &str = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe";
 
 pub fn dossier() -> PathBuf {
-    PathBuf::from(std::env::var("APPDATA").unwrap_or(".".into())).join("Outils").join("bin")
+    crate::outil::racine().join("bin")
 }
 
 fn local(nom: &str) -> PathBuf {

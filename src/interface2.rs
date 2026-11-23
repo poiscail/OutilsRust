@@ -400,7 +400,7 @@ impl RecherchePartout {
         if q.chars().count() < 2 {
             return;
         }
-        let d = PathBuf::from(std::env::var("APPDATA").unwrap_or_default()).join("Outils");
+        let d = crate::outil::base();
         for e in std::fs::read_dir(&d).into_iter().flatten().flatten() {
             let n = e.file_name().to_string_lossy().into_owned();
             if !n.ends_with(".json") || ["utilisation.json", "notifications.json", "version_vue.json"].contains(&n.as_str()) {

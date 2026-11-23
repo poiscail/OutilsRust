@@ -44,8 +44,24 @@ pub trait Outil {
     }
 }
 
+/// Profil choisi au démarrage (None : profil principal). Fixé une seule fois, avant la fenêtre.
+pub static PROFIL: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
+
+/// Dossier commun d'Outils (programmes téléchargés, liste des profils).
+pub fn racine() -> PathBuf {
+    PathBuf::from(std::env::var("APPDATA").unwrap_or(".".into())).join("Outils")
+}
+
+/// Dossier des réglages du profil actif.
+pub fn base() -> PathBuf {
+    match PROFIL.get().and_then(|p| p.as_deref()) {
+        Some(p) => racine().join("profils").join(p),
+        None => racine(),
+    }
+}
+
 pub fn chemin(nom: &str) -> PathBuf {
-    PathBuf::from(std::env::var("APPDATA").unwrap_or(".".into())).join("Outils").join(format!("{nom}.json"))
+    base().join(format!("{nom}.json"))
 }
 
 /// Réglages enregistrés (ou valeurs par défaut).

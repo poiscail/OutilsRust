@@ -30,7 +30,7 @@ impl Default for Reglages {
 }
 
 fn dossier() -> PathBuf {
-    PathBuf::from(std::env::var("APPDATA").unwrap_or(".".into())).join("Outils")
+    crate::outil::racine()
 }
 
 fn fichier() -> PathBuf {

@@ -15,7 +15,7 @@ use windows_sys::Win32::System::Threading::{OpenProcess, QueryFullProcessImageNa
 const HISTO: usize = 120;
 
 fn fichier() -> PathBuf {
-    PathBuf::from(std::env::var("APPDATA").unwrap_or(".".into())).join("Outils").join("reseau.json")
+    crate::outil::base().join("reseau.json")
 }
 
 pub fn resoudre(hote: &str) -> Option<Ipv4Addr> {
