@@ -1,5 +1,34 @@
 # Nouveautés d'Outils
 
+## 0.16.0 — Créatif, VPN maison, profils et Linux 0.2
+### Jeux
+- 📅 Sorties à venir : la date de sortie des jeux que tu attends, et une notification le jour J
+- 🎛 Réglages graphiques conseillés pour tes jeux, selon ta carte graphique
+### Pratique
+- 🎙 Commandes vocales : « Outils, ouvre Steam », « Outils, mets le volume à 30 », « Outils, lance le serveur »
+- ☀ Résumé de la journée chaque matin : météo, agenda, devoirs, abonnements, sorties
+- 💳 Abonnements : le total par mois et un rappel avant chaque prélèvement
+- 📑 Traduire un document Word, PowerPoint ou Excel en gardant la mise en page
+### Sécurité
+- 🔐 VPN maison (WireGuard) : rejoins ta maison depuis la 4G avec un simple QR code
+### Créatif
+- 🎹 Éditeur de musique : batterie, basse, mélodie, morceaux, export WAV / MP3
+- 📱 Vidéo verticale pour TikTok et Shorts, avec sous-titres écrits automatiquement (sur le PC, sans internet)
+- 🎨 Studio miniatures et bannières : YouTube, Twitch, X, Discord, avec 6 modèles
+- 🧑‍🎨 Skins Minecraft : génère, dessine ou récupère le skin d'un joueur
+### Outils lui-même
+- 🌍 Galerie de thèmes et codes de thème à partager dans un message
+- 👥 Profils : un Outils par personne sur le même PC (avec code facultatif)
+- ☁ Sauvegarde dans le cloud chaque jour (OneDrive, Google Drive, Dropbox)
+- 👆 Mode tablette : grosses tuiles et bouton retour pour l'écran tactile
+### Téléphone (appli 0.8)
+- 🧩 Widget d'écran d'accueil : état du PC, agenda du jour, batterie
+- 📺 Télécommande TV : ouvre YouTube, Netflix… sur le PC et navigue avec les flèches
+- 📄 Scanner de documents : redresse la page et crée un PDF
+### 🐧 Linux 0.2
+- Lanceur de jeux (Steam, Heroic, Lutris), serveur Minecraft, lien avec le téléphone, captures et vidéo, moniteur de jeu (MangoHud), mise à jour automatique
+- Les nouveautés créatives, le VPN maison et les outils pratiques de la 0.16
+
 ## 0.15.1 — Téléphone 0.7 et version Linux
 ### Téléphone (appli 0.7)
 - 🔤 Tous les émojis s'affichent enfin (plus de carrés vides), texte en Roboto, plus lisible
