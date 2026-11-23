@@ -687,7 +687,7 @@ impl Hachage {
 
 impl Outil for Hachage {
     fn nom(&self) -> &'static str {
-        "#️⃣ Labo de hachage"
+        "🧬 Labo de hachage"
     }
     fn cat(&self) -> Cat {
         Cat::Fun

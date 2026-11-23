@@ -54,7 +54,7 @@ pub fn lire_date(s: &str) -> Option<(i32, u32, u32)> {
 
 /// (date AAAA-MM-JJ, minutes depuis minuit) maintenant, heure locale.
 fn maintenant() -> (String, u32) {
-    let h = crate::minecraft::horodatage(); // AAAA-MM-JJ_HH-MM-SS
+    let h = crate::minecraft::horodatage_iso(); // AAAA-MM-JJ_HH-MM-SS
     let n = |a: usize| h.get(a..a + 2).and_then(|x| x.parse::<u32>().ok()).unwrap_or(0);
     (h.get(..10).unwrap_or("").to_string(), n(11) * 60 + n(14))
 }

@@ -12,7 +12,7 @@ use std::time::Duration;
 
 /// (date AAAA-MM-JJ, minutes depuis minuit)
 fn maintenant() -> (String, u32) {
-    let h = crate::minecraft::horodatage();
+    let h = crate::minecraft::horodatage_iso();
     let n = |a: usize| h.get(a..a + 2).and_then(|x| x.parse::<u32>().ok()).unwrap_or(0);
     (h.get(..10).unwrap_or("").to_string(), n(11) * 60 + n(14))
 }

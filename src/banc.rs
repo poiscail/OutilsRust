@@ -127,7 +127,7 @@ fn lire_sans_cache(p: &std::path::Path) -> std::io::Result<f32> {
 
 pub fn mesurer(etat: &Mutex<String>) -> Resultat {
     let (cpu_nom, fils, gpu_nom, ram_go) = info_materiel();
-    let mut r = Resultat { date: crate::minecraft::horodatage().replace('_', " "), cpu_nom, fils, gpu_nom, ram_go, ..Default::default() };
+    let mut r = Resultat { date: crate::minecraft::date_lisible(), cpu_nom, fils, gpu_nom, ram_go, ..Default::default() };
     let d = Arc::new(donnees_test());
     *etat.lock().unwrap() = "Processeur, 1 cœur…".into();
     r.un_coeur = compresser_pendant(&d, Duration::from_secs(3));

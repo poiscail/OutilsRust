@@ -84,7 +84,7 @@ impl Outil for Permissions {
             for a in tri {
                 egui::Frame::group(ui.style()).show(ui, |ui| {
                     ui.set_width(ui.available_width());
-                    ui.horizontal(|ui| {
+                    ui.horizontal_wrapped(|ui| {
                         ui.label(RichText::new(&a.nom).strong());
                         if ui.small_button("⚙ Réglages").clicked() {
                             crate::android::fiche_appli(&a.paquet);
@@ -103,7 +103,7 @@ impl Outil for Permissions {
                 }
                 egui::CollapsingHeader::new(RichText::new(format!("{nom} · {} appli(s)", qui.len())).color(if *g == 3 { Color32::from_rgb(255, 170, 80) } else { ui.visuals().text_color() })).id_salt(perm).show(ui, |ui| {
                     for a in qui {
-                        ui.horizontal(|ui| {
+                        ui.horizontal_wrapped(|ui| {
                             ui.label(&a.nom);
                             if ui.small_button("⚙").clicked() {
                                 crate::android::fiche_appli(&a.paquet);

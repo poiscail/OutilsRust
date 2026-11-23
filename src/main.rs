@@ -34,6 +34,7 @@ mod indesirables;
 mod nouveau_pc;
 mod banc;
 mod secu_reseau;
+mod ports_risques;
 mod secu_mdp;
 mod secu_fichiers;
 mod ctf;

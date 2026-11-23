@@ -161,7 +161,7 @@ impl Outil for ProblemesJeu {
             return;
         }
         self.calme.push((genre, Instant::now()));
-        let e = Evenement { heure: crate::minecraft::horodatage(), jeu: jeu.clone().unwrap_or_default(), genre, detail, cause: cause(&m) };
+        let e = Evenement { heure: crate::minecraft::date_lisible(), jeu: jeu.clone().unwrap_or_default(), genre, detail, cause: cause(&m) };
         if self.r.direct {
             crate::systeme::notifier(&format!("{} dans {}", genre.texte(), e.jeu), &e.cause);
         }
@@ -223,7 +223,7 @@ impl Outil for ProblemesJeu {
                     ui.set_width(ui.available_width());
                     ui.horizontal_wrapped(|ui| {
                         ui.strong(e.genre.texte());
-                        ui.weak(format!("{} · {}", e.heure.replace('_', " "), e.jeu));
+                        ui.weak(format!("{} · {}", e.heure, e.jeu));
                     });
                     ui.label(&e.detail);
                     ui.label(RichText::new(&e.cause).italics());

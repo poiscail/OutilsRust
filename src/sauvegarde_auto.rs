@@ -144,7 +144,7 @@ fn tourner(taches: Arc<Mutex<Vec<Tache>>>, etat: Arc<Mutex<String>>, occupe: Arc
         for (k, b) in &faits {
             if let Some(t) = l.get_mut(*k) {
                 t.derniere = maintenant();
-                t.bilan = format!("{} · {b}", crate::minecraft::horodatage().replace('_', " "));
+                t.bilan = format!("{} · {b}", crate::minecraft::date_lisible());
             }
         }
         if !faits.is_empty() {

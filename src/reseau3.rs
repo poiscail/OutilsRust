@@ -245,11 +245,11 @@ impl Outil for Appareils {
         let mut change = false;
         for a in &v {
             if !a.mac.is_empty() && !self.connus.vus.contains_key(&a.mac) {
-                self.connus.vus.insert(a.mac.clone(), crate::minecraft::horodatage().get(..10).unwrap_or("").to_string());
+                self.connus.vus.insert(a.mac.clone(), crate::minecraft::horodatage_iso().get(..10).unwrap_or("").to_string());
                 change = true;
             }
         }
-        let nouveaux = v.iter().filter(|a| self.connus.vus.get(&a.mac).is_some_and(|d| crate::minecraft::horodatage().starts_with(d.as_str())) && self.connus.surnoms.get(&a.mac).is_none()).count();
+        let nouveaux = v.iter().filter(|a| self.connus.vus.get(&a.mac).is_some_and(|d| crate::minecraft::horodatage_iso().starts_with(d.as_str())) && self.connus.surnoms.get(&a.mac).is_none()).count();
         ui.label(format!("{} appareil(s) trouvé(s){}", v.len(), if nouveaux > 0 { format!(" · {nouveaux} vu(s) pour la première fois aujourd'hui") } else { String::new() }));
         egui::ScrollArea::vertical().show(ui, |ui| {
             egui::Grid::new("appareils").striped(true).spacing([14.0, 5.0]).show(ui, |ui| {

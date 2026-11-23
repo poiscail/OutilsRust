@@ -105,6 +105,24 @@ pub fn horodatage() -> String {
     format!("{:04}{:02}{:02}_{:02}{:02}{:02}", t.wYear, t.wMonth, t.wDay, t.wHour, t.wMinute, t.wSecond)
 }
 
+/// Heure locale « AAAA-MM-JJ_HH-MM-SS » (pour les dates qu'on relit et compare).
+pub fn horodatage_iso() -> String {
+    iso(&horodatage())
+}
+
+/// « AAAAMMJJ_HHMMSS » → « AAAA-MM-JJ_HH-MM-SS ».
+pub fn iso(h: &str) -> String {
+    let g = |a: usize, b: usize| h.get(a..b).unwrap_or("00");
+    format!("{}-{}-{}_{}-{}-{}", g(0, 4), g(4, 6), g(6, 8), g(9, 11), g(11, 13), g(13, 15))
+}
+
+/// Date et heure à afficher : « 23/11/2026 10:15 ».
+pub fn date_lisible() -> String {
+    let h = horodatage();
+    let g = |a: usize, b: usize| h.get(a..b).unwrap_or("00").to_string();
+    format!("{}/{}/{} {}:{}", g(6, 8), g(4, 6), g(0, 4), g(9, 11), g(11, 13))
+}
+
 /// Zippe `src` avec des chemins relatifs à `base` ; ignore les fichiers illisibles (session.lock).
 pub fn zipper(src: &Path, base: &Path, dest: &Path) -> R<()> {
     let mut z = zip::ZipWriter::new(fs::File::create(dest).map_err(err)?);

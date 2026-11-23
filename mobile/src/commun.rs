@@ -126,15 +126,33 @@ pub fn acces_fichiers_ui(ui: &mut egui::Ui) -> bool {
     if crate::android::acces_fichiers() {
         return true;
     }
+    let photos = crate::android::acces_photos();
+    if photos {
+        ui.horizontal_wrapped(|ui| {
+            ui.weak("Accès aux photos seulement. Pour supprimer, ranger ou voir tous les fichiers :");
+            if ui.small_button("📂 Accès complet").clicked() {
+                crate::android::demander_acces_fichiers();
+            }
+        });
+        return true;
+    }
     egui::Frame::group(ui.style()).show(ui, |ui| {
-        ui.label(RichText::new("Outils a besoin d'accéder aux fichiers du téléphone").strong());
-        ui.weak("Android va ouvrir un écran : active « Autoriser l'accès pour gérer tous les fichiers » pour Outils, puis reviens ici.");
-        if gros_bouton(ui, "📂 Autoriser l'accès aux fichiers") {
+        {
+            ui.label(RichText::new("Outils a besoin d'accéder à tes fichiers").strong());
+            ui.weak("1. Touche le premier bouton : Android demande « Autoriser l'accès aux photos et vidéos » → Autoriser.");
+            if gros_bouton(ui, "🖼 Autoriser l'accès aux photos") {
+                crate::android::demander_acces_photos();
+            }
+            ui.weak("2. Pour supprimer, ranger ou voir tous les fichiers :");
+        }
+        if gros_bouton(ui, "📂 Accès complet aux fichiers") {
             crate::android::demander_acces_fichiers();
         }
+        ui.weak("Dans l'écran qui s'ouvre, trouve Outils et active « Autoriser l'accès pour gérer tous les fichiers », puis reviens avec ←. Si l'écran des réglages de l'appli s'ouvre : Autorisations › Fichiers et contenus multimédias › Autoriser la gestion de tous les fichiers.");
     });
     ui.ctx().request_repaint_after(Duration::from_secs(1));
-    false
+    // les outils de photos marchent déjà en lecture avec l'accès aux photos
+    photos
 }
 
 /// Catégorie d'un fichier d'après son extension.

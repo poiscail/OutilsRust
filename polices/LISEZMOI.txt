@@ -1,0 +1,5 @@
+NotoEmoji-Regular.ttf — police d'émojis monochrome « Noto Emoji »
+Copyright 2013-2026 Google LLC
+Distribuée sous la licence SIL Open Font License, version 1.1 : https://openfontlicense.org
+(source : Google Fonts, https://fonts.google.com/noto/specimen/Noto+Emoji)
+Utilisée par l'appli téléphone et la version Linux d'Outils pour afficher les émojis des outils.

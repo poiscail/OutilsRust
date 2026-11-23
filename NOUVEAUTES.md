@@ -1,5 +1,19 @@
 # Nouveautés d'Outils
 
+## 0.15.1 — Téléphone 0.7 et version Linux
+### Téléphone (appli 0.7)
+- 🔤 Tous les émojis s'affichent enfin (plus de carrés vides), texte en Roboto, plus lisible
+- 📐 Le texte ne rapetisse plus : les rangées de boutons passent à la ligne au lieu de déborder de l'écran
+- 🖼 Accès aux photos réparé : la fenêtre classique d'Android « Autoriser l'accès aux photos », puis l'accès complet si besoin (avec des écrans de secours selon les téléphones)
+### Corrections (PC et téléphone)
+- 📅 Agenda, comptes à rebours, rappels et statistiques par jour lisaient mal la date : corrigé
+### 🐧 Nouveau : Outils pour Linux (0.1)
+- Infos du PC, processus, espace disque, nettoyage, mises à jour (apt, dnf, pacman, zypper, Flatpak, Snap), programmes au démarrage
+- Sécurité du réseau (appareils et ports à risque, audit de la box et du Wi-Fi, ports ouverts sur le PC), vérificateur de lien, e-mail suspect, bloqueur de pubs DNS
+- Fichier suspect, visionneuse hexadécimale, métadonnées cachées ; solidité des mots de passe, codes 2FA, fuites de données
+- Tous les jeux et défis (échecs, dames, cartes, sudoku, CTF, stéganographie, hachage…), météo, agenda, devoirs, calculatrice
+- Menu en anglais, recherche par intention, aide « ? »
+
 ## 0.15.0 — Sécurité et hacking (légal)
 À n'utiliser que sur ton matériel, ton réseau, ou des exercices faits pour ça.
 ### Ton réseau
@@ -22,7 +36,7 @@
 - 🧹 Métadonnées cachées (GPS des photos, auteur des documents) et nettoyage
 ### Apprendre (CTF)
 - 🏴 13 défis de sécurité avec points et rangs
-- 🧩 Décodeur universel avec détection automatique, 🖼 stéganographie, #️⃣ labo de hachage (MD5, SHA, sel, cassage, collisions)
+- 🧩 Décodeur universel avec détection automatique, 🖼 stéganographie, 🧬 labo de hachage (MD5, SHA, sel, cassage, collisions)
 - 🎓 Les plateformes légales pour s'entraîner (Root-Me, TryHackMe, PicoCTF…) et un parcours
 ### Protéger le PC
 - 🧱 Pare-feu simplifié, 👁 surveillance des changements sensibles (hosts, démarrage, proxy, DNS, services), 🛡 durcissement de Windows avec une note et des corrections

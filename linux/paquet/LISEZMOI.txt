@@ -1,0 +1,15 @@
+Outils pour Linux
+=================
+
+Installer : ouvre un terminal dans ce dossier et tape
+    ./installer.sh
+Outils apparaît ensuite dans le menu des applications.
+
+Ou sans installer : double-clique sur « outils » (ou ./outils dans un terminal).
+
+Désinstaller : ./installer.sh --retirer
+
+Fonctionne sur les distributions de 2020 et plus récentes (Ubuntu 20.04+, Debian 11+, Fedora 31+,
+Linux Mint 20+, Arch, Manjaro…), en X11 comme en Wayland, sur PC 64 bits (x86_64).
+Réglages : ~/.config/outils
+Les actions sur le système (nettoyage des paquets, mises à jour) demandent ton mot de passe.

@@ -96,7 +96,7 @@ impl Outil for Lampe {
         }
         ui.separator();
         let mode = self.mode.load(Relaxed);
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             if ui.selectable_label(mode == 1, RichText::new("⚡ Stroboscope").size(18.0)).clicked() {
                 self.lancer_fil();
                 self.mode.store(if mode == 1 { 0 } else { 1 }, Relaxed);
@@ -156,7 +156,7 @@ impl Outil for Boussole {
         let c = self.c.get_or_insert_with(|| Capteurs::demarrer(true, true, false));
         let m = *c.m.lock().unwrap();
         ui.ctx().request_repaint_after(Duration::from_millis(33));
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.selectable_value(&mut self.niveau, false, RichText::new("🧭 Boussole").size(18.0));
             ui.selectable_value(&mut self.niveau, true, RichText::new("🫧 Niveau").size(18.0));
         });
@@ -286,7 +286,7 @@ impl Outil for Sonometre {
         ui.painter().rect_filled(r, 8.0, ui.visuals().extreme_bg_color);
         let pts: Vec<egui::Pos2> = v.iter().enumerate().map(|(k, x)| egui::pos2(r.left() + k as f32 / 299.0 * r.width(), r.bottom() - x / 120.0 * r.height())).collect();
         ui.painter().add(egui::Shape::line(pts, Stroke::new(2.0_f32, ROSE)));
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.label(format!("max {:.0} dB · moyenne {:.0} dB", self.max, moy));
             if ui.small_button("Remettre à zéro").clicked() {
                 self.max = 0.0;
@@ -412,7 +412,7 @@ impl Outil for Sport {
                 if !self.p.historique.is_empty() {
                     ui.label(RichText::new("Derniers jours").strong());
                     for (j, p) in self.p.historique.iter().rev().take(7) {
-                        ui.horizontal(|ui| {
+                        ui.horizontal_wrapped(|ui| {
                             ui.label(format!("{}/{}", &j[6..8], &j[4..6]));
                             ui.add(egui::ProgressBar::new((*p as f32 / self.p.objectif as f32).min(1.0)).text(p.to_string()));
                         });
@@ -423,7 +423,7 @@ impl Outil for Sport {
                 ui.vertical_centered(|ui| {
                     ui.label(RichText::new(chrono(self.ecoule())).size(56.0).monospace().strong());
                 });
-                ui.horizontal(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     let marche = self.debut.is_some();
                     if ui.add_sized([ui.available_width() / 2.0 - 6.0, 60.0], egui::Button::new(RichText::new(if marche { "⏸ Pause" } else { "▶ Départ" }).size(22.0))).clicked() {
                         match self.debut.take() {
@@ -444,7 +444,7 @@ impl Outil for Sport {
                 });
                 let mut prec = Duration::ZERO;
                 for (k, t) in self.tours.iter().enumerate() {
-                    ui.horizontal(|ui| {
+                    ui.horizontal_wrapped(|ui| {
                         ui.label(format!("Tour {}", k + 1));
                         ui.strong(chrono(*t - prec));
                         ui.weak(chrono(*t));
@@ -453,7 +453,7 @@ impl Outil for Sport {
                 }
             }
             _ => {
-                ui.horizontal(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     ui.add(egui::DragValue::new(&mut self.effort).range(5..=600).suffix(" s effort"));
                     ui.add(egui::DragValue::new(&mut self.repos).range(0..=600).suffix(" s repos"));
                     ui.add(egui::DragValue::new(&mut self.series).range(1..=50).suffix(" séries"));
@@ -610,7 +610,7 @@ impl Outil for ScannerQr {
         for (k, t) in self.historique.clone().iter().enumerate() {
             egui::Frame::group(ui.style()).show(ui, |ui| {
                 ui.label(RichText::new(t).size(if k == 0 { 18.0 } else { 15.0 }).strong());
-                ui.horizontal(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     if t.starts_with("http://") || t.starts_with("https://") {
                         if ui.button("🌐 Ouvrir").clicked() {
                             ui.ctx().open_url(egui::OpenUrl::new_tab(t));

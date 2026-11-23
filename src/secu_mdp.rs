@@ -496,6 +496,7 @@ pub const DOUBLE_AUTH: &[&str] = &[
     "riotgames.com", "snapchat.com", "tiktok.com", "reddit.com", "dropbox.com", "proton.me", "linkedin.com", "roblox.com", "nintendo.com", "playstation.com", "xbox.com",
 ];
 
+#[cfg(windows)]
 #[derive(Clone)]
 struct Probleme {
     site: String,
@@ -503,6 +504,7 @@ struct Probleme {
     soucis: Vec<(u8, String)>,
 }
 
+#[cfg(windows)]
 fn auditer(entrees: Vec<crate::coffre::Entree>, etat: &Mutex<String>) -> Vec<Probleme> {
     let fuites = liste_fuites(false).unwrap_or_default();
     let mut compte: HashMap<String, usize> = HashMap::new();
@@ -549,6 +551,7 @@ fn auditer(entrees: Vec<crate::coffre::Entree>, etat: &Mutex<String>) -> Vec<Pro
     v
 }
 
+#[cfg(windows)]
 pub struct AuditCoffre {
     mdp: String,
     r: Arc<Mutex<Option<Result<(usize, Vec<Probleme>), String>>>>,
@@ -556,12 +559,14 @@ pub struct AuditCoffre {
     en_cours: Arc<AtomicBool>,
 }
 
+#[cfg(windows)]
 impl AuditCoffre {
     pub fn new() -> Self {
         AuditCoffre { mdp: String::new(), r: Arc::default(), etat: Arc::default(), en_cours: Arc::default() }
     }
 }
 
+#[cfg(windows)]
 impl Outil for AuditCoffre {
     fn nom(&self) -> &'static str {
         "🧾 Audit du coffre"

@@ -530,7 +530,7 @@ impl Outil for SourisClavier {
                 e.envoyer(&c);
             }
         };
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.selectable_value(&mut self.ecran, false, RichText::new("🖱 Pavé tactile").size(17.0));
             ui.selectable_value(&mut self.ecran, true, RichText::new("📺 Écran du PC").size(17.0));
         });
@@ -612,7 +612,7 @@ impl Outil for SourisClavier {
                 }
             }
             envoyer(&self.envoi, cmds);
-            ui.horizontal(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 let l = ui.available_width() / 2.0 - 6.0;
                 if ui.add_sized([l, 48.0], egui::Button::new("Clic gauche")).clicked() {
                     envoyer(&self.envoi, vec!["c g".into()]);

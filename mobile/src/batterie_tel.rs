@@ -162,7 +162,7 @@ impl Outil for BatterieOutil {
         if let Some(v) = self.applis.lock().unwrap().clone() {
             let max = v.first().map(|x| x.1).unwrap_or(1).max(1);
             for (n, m) in v.iter().take(12) {
-                ui.horizontal(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     ui.add_sized([130.0, 22.0], egui::Label::new(n).truncate());
                     ui.add(egui::ProgressBar::new(*m as f32 / max as f32).desired_width(ui.available_width() - 70.0).fill(ROSE));
                     ui.label(format!("{} h {:02}", m / 60, m % 60));

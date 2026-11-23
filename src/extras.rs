@@ -232,7 +232,7 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         paresseux("🏴 Défis de sécurité", Cat::Fun, move || Box::new(ctf::Defis::new())),
         paresseux("🧩 Décodeur CTF", Cat::Fun, move || Box::new(ctf::Decodeur::new())),
         paresseux("🖼 Stéganographie", Cat::Fun, move || Box::new(ctf::Stegano::new())),
-        paresseux("#️⃣ Labo de hachage", Cat::Fun, move || Box::new(ctf::Hachage::new())),
+        paresseux("🧬 Labo de hachage", Cat::Fun, move || Box::new(ctf::Hachage::new())),
         paresseux("🎓 S'entraîner au hacking (légal)", Cat::Fun, move || Box::new(ctf::Entrainement::new())),
         paresseux("🎲 Dés et tirage", Cat::Fun, move || Box::new(ludique::Des::new())),
         paresseux("❓ Quiz", Cat::Fun, move || Box::new(creatif2::Quiz::new())),

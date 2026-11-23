@@ -161,7 +161,7 @@ impl Outil for Nettoyeur {
                 ui.add(egui::ProgressBar::new(f as f32 / t as f32).text(format!("{f} / {t} photos")));
             }
         }
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.label("Photos des");
             for (m, n) in [(1, "dernier mois"), (3, "3 mois"), (12, "12 mois"), (0, "toutes")] {
                 ui.selectable_value(&mut self.mois, m, n);
@@ -461,7 +461,7 @@ impl Outil for Coffre {
             }
             return;
         }
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.label(RichText::new(format!("🔓 {} élément(s)", self.elements.len())).size(18.0).strong());
             if ui.button("🔒 Verrouiller").clicked() {
                 self.verrouiller();
@@ -488,7 +488,7 @@ impl Outil for Coffre {
             let id = id.clone();
             let w = ui.available_width();
             ui.add(egui::Image::new(tex).max_width(w).maintain_aspect_ratio(true));
-            ui.horizontal(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 if ui.button("⬅ Retour").clicked() {
                     self.vue = None;
                 }

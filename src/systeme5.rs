@@ -341,7 +341,7 @@ impl Outil for Pilotes {
             let c = self.cartes.clone();
             std::thread::spawn(move || *c.lock().unwrap() = Some(ps(PS_CARTES).ok().and_then(|s| serde_json::from_str::<Vec<Carte>>(s.trim()).ok()).unwrap_or_default()));
         }
-        let aujourdhui = crate::minecraft::horodatage().get(..10).unwrap_or("").to_string();
+        let aujourdhui = crate::minecraft::horodatage_iso().get(..10).unwrap_or("").to_string();
         ui.strong("🎮 Carte graphique (le pilote le plus important pour les jeux)");
         for c in self.cartes.lock().unwrap().clone().unwrap_or_default() {
             egui::Frame::group(ui.style()).show(ui, |ui| {
@@ -480,7 +480,7 @@ impl Bilan {
         let r = self.r.clone();
         *r.lock().unwrap() = Some(Err("analyse du PC…".into()));
         std::thread::spawn(move || {
-            let auj = crate::minecraft::horodatage().get(..10).unwrap_or("").to_string();
+            let auj = crate::minecraft::horodatage_iso().get(..10).unwrap_or("").to_string();
             let res = ps(PS_BILAN).and_then(|s| serde_json::from_str::<serde_json::Value>(s.trim()).map_err(|e| e.to_string())).map(|j| noter_bilan(&j, &auj));
             if let Ok(v) = &res {
                 let note: u32 = v.iter().map(|p| p.gagne).sum();

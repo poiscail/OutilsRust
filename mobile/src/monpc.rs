@@ -497,7 +497,7 @@ impl Outil for MonPc {
         }
         if infos.as_ref().is_some_and(|j| j.is_null()) {
             ui.weak("Le PC est éteint, ou Outils n'est pas ouvert dessus (Téléphone › Démarrer).");
-            ui.horizontal(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 if ui.button("⏰ Réveiller le PC").on_hover_text("Wake-on-LAN : à activer dans le BIOS et la carte réseau du PC").clicked() {
                     *self.e.lock().unwrap() = (false, match reveiller(&pc.macs) {
                         Ok(()) => "Signal de réveil envoyé : patiente une trentaine de secondes.".into(),
@@ -515,7 +515,7 @@ impl Outil for MonPc {
         match self.onglet {
             0 => {
                 let g = |ui: &mut egui::Ui, t: &str| ui.add_sized([ui.available_width() / 3.0 - 8.0, 64.0], egui::Button::new(RichText::new(t).size(20.0))).clicked();
-                ui.horizontal(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     if g(ui, "🔉 −") {
                         self.action("/cmd/vol_moins");
                     }
@@ -526,7 +526,7 @@ impl Outil for MonPc {
                         self.action("/cmd/vol_plus");
                     }
                 });
-                ui.horizontal(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     if g(ui, "⏮") {
                         self.action("/cmd/precedent");
                     }
@@ -538,7 +538,7 @@ impl Outil for MonPc {
                     }
                 });
                 ui.add_space(8.0);
-                ui.horizontal(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     if g(ui, "🔒 Verrouiller") {
                         self.action("/cmd/verrouiller");
                     }
@@ -556,7 +556,7 @@ impl Outil for MonPc {
                         if v < 0.0 {
                             return;
                         }
-                        ui.horizontal(|ui| {
+                        ui.horizontal_wrapped(|ui| {
                             ui.add_sized([70.0, 24.0], egui::Label::new(RichText::new(nom).strong()));
                             let c = if v > 85.0 { ROUGE } else if v > 60.0 { ORANGE } else { VERT };
                             ui.add(egui::ProgressBar::new((v / 100.0) as f32).fill(c).desired_width(ui.available_width() - 70.0).text(format!("{v:.0} %")));
@@ -615,7 +615,7 @@ impl Outil for MonPc {
                         let (nom, chemin) = (x["nom"].as_str().unwrap_or(""), x["chemin"].as_str().unwrap_or(""));
                         let dossier = x["dossier"].as_bool().unwrap_or(false);
                         egui::Frame::group(ui.style()).show(ui, |ui| {
-                            ui.horizontal(|ui| {
+                            ui.horizontal_wrapped(|ui| {
                                 ui.label(RichText::new(format!("{} {nom}", icone(nom, dossier))).strong());
                                 if !dossier {
                                     ui.weak(taille(x["taille"].as_u64().unwrap_or(0)));
@@ -697,7 +697,7 @@ impl Outil for MonPc {
                         ui.label(format!("👥 {} : {}", joueurs.len(), joueurs.join(", ")));
                     }
                 }
-                ui.horizontal(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     if ui.button(RichText::new("▶ Démarrer").size(18.0)).clicked() {
                         self.action("/cmd/mc_demarrer");
                     }
@@ -708,7 +708,7 @@ impl Outil for MonPc {
                         self.action("/cmd/mc_sauvegarder");
                     }
                 });
-                ui.horizontal(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     ui.add(egui::TextEdit::singleline(&mut self.message_mc).hint_text("message dans le chat").desired_width(ui.available_width() - 90.0));
                     if ui.button("Envoyer").clicked() && !self.message_mc.trim().is_empty() {
                         let t = std::mem::take(&mut self.message_mc);
@@ -719,7 +719,7 @@ impl Outil for MonPc {
             _ => {
                 ui.weak("Garde les mêmes données sur le PC et le téléphone : la version la plus récente remplace l'autre.");
                 for (nom, titre) in SYNCHRO {
-                    ui.horizontal(|ui| {
+                    ui.horizontal_wrapped(|ui| {
                         ui.label(RichText::new(titre).size(17.0));
                         ui.weak(format!("modifié ici le {}", date(date_fichier(&crate::outil::chemin(nom)))));
                     });

@@ -20,7 +20,7 @@ fn maintenant() -> i64 {
 }
 
 fn heure_locale() -> String {
-    let h = crate::minecraft::horodatage(); // AAAA-MM-JJ_HH-MM-SS
+    let h = crate::minecraft::horodatage_iso(); // AAAA-MM-JJ_HH-MM-SS
     format!("{}/{} {}", h.get(8..10).unwrap_or(""), h.get(5..7).unwrap_or(""), h.get(11..16).unwrap_or("").replace('-', ":"))
 }
 

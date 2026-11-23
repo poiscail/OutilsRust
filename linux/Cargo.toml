@@ -1,0 +1,41 @@
+[package]
+name = "outils-linux"
+version = "0.1.0"
+edition = "2021"
+description = "Outils pour Linux : jeux, outils du quotidien et de sécurité partagés avec la version Windows, et outils système propres à Linux"
+
+# programme à part (pas dans l'espace de travail du programme Windows)
+[workspace]
+
+[[bin]]
+name = "outils"
+path = "src/main.rs"
+
+[dependencies]
+eframe = "0.31"
+egui_extras = { version = "0.31", features = ["image", "http"] }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+ab_glyph = "0.2"
+getrandom = "0.2"
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ureq = { version = "2", features = ["json"] }
+libc = "0.2"
+rfd = "0.15"
+sha1 = "0.10"
+sha2 = "0.10"
+aes-gcm = "0.10"
+argon2 = "0.5"
+base64 = "0.22"
+memchr = "2"
+lopdf = "0.36"
+kamadak-exif = "0.6"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+qrcode = { version = "0.14", default-features = false }
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true
+codegen-units = 1

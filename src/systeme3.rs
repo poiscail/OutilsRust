@@ -915,7 +915,7 @@ pub fn secondes_jusqua(h: u32, maintenant: (u32, u32, u32)) -> u32 {
 }
 
 fn heure_locale() -> (u32, u32, u32) {
-    let h = crate::minecraft::horodatage(); // AAAA-MM-JJ_HH-MM-SS
+    let h = crate::minecraft::horodatage_iso(); // AAAA-MM-JJ_HH-MM-SS
     let n = |a: usize| h.get(a..a + 2).and_then(|x| x.parse().ok()).unwrap_or(0);
     (n(11), n(14), n(17))
 }

@@ -67,10 +67,26 @@ pub enum Pave {
     Chiffres,
 }
 
-/// Ajoute les polices de symboles d'Android (flèches, cartes, pièces d'échecs, idéogrammes…)
-/// derrière celles d'egui, pour que les icônes des outils s'affichent.
+/// Police d'émojis monochrome complète (Noto Emoji, licence OFL) : sans elle, une bonne partie des
+/// émojis des outils s'affichent en carrés vides (la police d'émojis d'Android est en couleur,
+/// illisible pour egui).
+pub const EMOJIS: &[u8] = include_bytes!("../../polices/NotoEmoji-Regular.ttf");
+
+/// Polices : Roboto d'Android pour le texte (plus lisible que la police fine d'egui), puis les émojis
+/// et les symboles d'Android (flèches, cartes, pièces d'échecs, idéogrammes…).
 fn polices_du_telephone(ctx: &egui::Context) {
     let mut f = egui::FontDefinitions::default();
+    for n in ["Roboto-Regular.ttf", "RobotoStatic-Regular.ttf"] {
+        if let Ok(o) = std::fs::read(format!("/system/fonts/{n}")) {
+            f.font_data.insert("texte".into(), std::sync::Arc::new(egui::FontData::from_owned(o)));
+            f.families.entry(egui::FontFamily::Proportional).or_default().insert(0, "texte".into());
+            break;
+        }
+    }
+    f.font_data.insert("emojis".into(), std::sync::Arc::new(egui::FontData::from_static(EMOJIS)));
+    for fam in [egui::FontFamily::Proportional, egui::FontFamily::Monospace] {
+        f.families.entry(fam).or_default().push("emojis".into());
+    }
     for n in ["NotoSansSymbols-Regular-Subsetted.ttf", "NotoSansSymbols-Regular-Subsetted2.ttf", "NotoSansSymbols2-Regular.ttf", "NotoSansMath-Regular.ttf", "DroidSansFallback.ttf", "NotoSansCJK-Regular.ttc"] {
         if let Ok(o) = std::fs::read(format!("/system/fonts/{n}")) {
             f.font_data.insert(n.into(), std::sync::Arc::new(egui::FontData::from_owned(o)));
@@ -392,7 +408,8 @@ impl App {
     fn outil_ajuste(&mut self, ui: &mut egui::Ui, k: usize) {
         let dispo = ui.available_width();
         let mut deborde = 0.0f32;
-        egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
+        egui::ScrollArea::both().auto_shrink([false, false]).show(ui, |ui| {
+            ui.set_max_width(dispo);
             ui.weak(self.fiches[k].aide);
             ui.separator();
             let debut = ui.min_rect().left();
@@ -401,7 +418,7 @@ impl App {
             deborde = ui.min_rect().right() - debut;
         });
         if deborde > dispo + 12.0 {
-            let z = (ui.ctx().zoom_factor() * dispo / deborde).max(0.5);
+            let z = (ui.ctx().zoom_factor() * dispo / deborde).max(0.8); // en dessous, le texte devient illisible : on fait défiler
             if z < ui.ctx().zoom_factor() - 0.01 {
                 ui.ctx().set_zoom_factor(z);
             }

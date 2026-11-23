@@ -110,7 +110,7 @@ impl Navigateur {
         let mut entrer = None;
         for (p, dossier, t, d) in &self.entrees {
             let nom = p.file_name().unwrap_or_default().to_string_lossy().to_string();
-            ui.horizontal(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 if *dossier {
                     if ui.add(egui::Button::new(RichText::new(format!("📁 {nom}")).size(16.0)).frame(false)).clicked() {
                         entrer = Some(p.clone());
@@ -422,7 +422,7 @@ impl FichiersTel {
         if self.plan.len() > 25 {
             ui.weak(format!("… et {} autres", self.plan.len() - 25));
         }
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             if ui.button(RichText::new("✔ Appliquer").size(18.0).strong()).clicked() {
                 self.appliquer_plan();
             }
@@ -487,7 +487,7 @@ impl Outil for FichiersTel {
                 if let Some(a) = a.as_ref() {
                     ui.label(RichText::new("Par type").strong());
                     for (f, t, n) in &a.familles {
-                        ui.horizontal(|ui| {
+                        ui.horizontal_wrapped(|ui| {
                             ui.add_sized([120.0, 22.0], egui::Label::new(format!("{} {f}", icone(&format!("x.{}", match f.as_str() { "Images" => "jpg", "Vidéos" => "mp4", "Musique" => "mp3", "Documents" => "pdf", "Applis (APK)" => "apk", "Archives" => "zip", _ => "x" }), false))));
                             ui.add(egui::ProgressBar::new(*t as f32 / a.total.max(1) as f32).desired_width(ui.available_width() - 110.0).fill(ROSE).text(taille(*t)));
                             ui.weak(format!("{n}"));
@@ -495,7 +495,7 @@ impl Outil for FichiersTel {
                     }
                     ui.label(RichText::new("Plus gros dossiers").strong());
                     for (d, t) in &a.dossiers {
-                        ui.horizontal(|ui| {
+                        ui.horizontal_wrapped(|ui| {
                             ui.label(d.display().to_string().replace(crate::android::STOCKAGE, ""));
                             ui.weak(taille(*t));
                         });
@@ -503,7 +503,7 @@ impl Outil for FichiersTel {
                     ui.label(RichText::new("Plus gros fichiers").strong());
                     for f in &a.gros {
                         let mut c = self.choisis.contains(&f.chemin);
-                        ui.horizontal(|ui| {
+                        ui.horizontal_wrapped(|ui| {
                             let n = f.chemin.file_name().unwrap_or_default().to_string_lossy().to_string();
                             if ui.checkbox(&mut c, format!("{} {n}", icone(&n, false))).changed() {
                                 if c { self.choisis.push(f.chemin.clone()) } else { self.choisis.retain(|x| x != &f.chemin) }
@@ -622,7 +622,7 @@ impl Outil for FichiersTel {
                     }
                     for (a, n, r) in &ap {
                         egui::Frame::group(ui.style()).show(ui, |ui| {
-                            ui.horizontal(|ui| {
+                            ui.horizontal_wrapped(|ui| {
                                 ui.label(RichText::new(&a.nom).strong().size(17.0));
                                 ui.colored_label(if *n >= 6 { ROUGE } else { ORANGE }, if *n >= 6 { "très louche" } else { "à vérifier" });
                             });
@@ -630,7 +630,7 @@ impl Outil for FichiersTel {
                             for x in r {
                                 ui.label(format!("• {x}"));
                             }
-                            ui.horizontal(|ui| {
+                            ui.horizontal_wrapped(|ui| {
                                 if ui.button("ℹ Fiche").clicked() {
                                     crate::android::fiche_appli(&a.paquet);
                                 }
@@ -646,7 +646,7 @@ impl Outil for FichiersTel {
                     }
                     for (p, r) in fl.iter().take(150) {
                         let mut c = self.choisis.contains(p);
-                        ui.horizontal(|ui| {
+                        ui.horizontal_wrapped(|ui| {
                             if ui.checkbox(&mut c, p.display().to_string().replace(crate::android::STOCKAGE, "")).changed() {
                                 if c { self.choisis.push(p.clone()) } else { self.choisis.retain(|x| x != p) }
                             }
@@ -691,7 +691,7 @@ impl Outil for FichiersTel {
                     }
                 }
                 for (p, origine, t) in v.iter().take(200) {
-                    ui.horizontal(|ui| {
+                    ui.horizontal_wrapped(|ui| {
                         ui.label(format!("{} ({})", origine.replace(crate::android::STOCKAGE, ""), taille(*t)));
                         if ui.small_button("↩ Restaurer").clicked() && !origine.is_empty() {
                             let o = PathBuf::from(origine);

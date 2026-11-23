@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Outils
+Comment=Jeux, outils du quotidien, système et sécurité
+Exec=@BIN@
+Icon=outils
+Terminal=false
+Categories=Utility;System;Game;
+StartupWMClass=outils

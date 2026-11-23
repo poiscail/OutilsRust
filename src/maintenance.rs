@@ -112,7 +112,7 @@ pub fn executer(r: &Reglages, etat: &Mutex<String>) -> Bilan {
         });
     }
     unsafe { SetThreadExecutionState(ES_CONTINUOUS) };
-    Bilan { quand: crate::minecraft::horodatage().replace('_', " "), lignes: l }
+    Bilan { quand: crate::minecraft::date_lisible(), lignes: l }
 }
 
 /// Tâche Windows qui sort le PC de veille à l'heure de la maintenance.

@@ -459,7 +459,7 @@ impl Surchauffe {
                     let t = format!("CPU {:.0} °C · GPU {:.0} °C{}", m.cpu_t, m.gpu_t, jeu.map(|j| format!(" (pendant {j})")).unwrap_or_default());
                     crate::systeme::notifier_toujours("🔥 Le PC chauffe trop", &t);
                     let mut jj = j2.lock().unwrap();
-                    jj.push(format!("{} — {t}", crate::minecraft::horodatage().replace('_', " ")));
+                    jj.push(format!("{} — {t}", crate::minecraft::date_lisible()));
                     let n = jj.len();
                     if n > 50 {
                         jj.drain(..n - 50);
@@ -871,7 +871,7 @@ impl Lumiere {
             let mut applique: Option<f32> = None;
             loop {
                 let c = r2.lock().unwrap().clone();
-                let h = crate::minecraft::horodatage().get(11..13).and_then(|x| x.parse().ok()).unwrap_or(12);
+                let h = crate::minecraft::horodatage_iso().get(11..13).and_then(|x| x.parse().ok()).unwrap_or(12);
                 let voulu = match *MANUEL.lock().unwrap() {
                     Some(true) => c.chaleur,
                     Some(false) => 0.0,

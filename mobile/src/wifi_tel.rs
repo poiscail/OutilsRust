@@ -200,7 +200,7 @@ impl Outil for Wifi {
                 }
                 for (ip, ports) in self.appareils.lock().unwrap().iter() {
                     egui::Frame::group(ui.style()).show(ui, |ui| {
-                        ui.horizontal(|ui| {
+                        ui.horizontal_wrapped(|ui| {
                             let t = if *ip == infos.ip { "📱 Ce téléphone" } else { deviner(ports, *ip == infos.passerelle) };
                             ui.label(RichText::new(t).size(17.0).strong());
                             ui.monospace(ip);
@@ -230,7 +230,7 @@ impl Outil for Wifi {
                 }
                 if let Some((d, m, p)) = *self.debit.lock().unwrap() {
                     for (t, v, u) in [("⬇ Téléchargement", d, "Mb/s"), ("⬆ Envoi", m, "Mb/s"), ("⏱ Ping", p as f64, "ms")] {
-                        ui.horizontal(|ui| {
+                        ui.horizontal_wrapped(|ui| {
                             ui.label(RichText::new(t).size(18.0));
                             ui.label(RichText::new(format!("{v:.0} {u}")).size(28.0).strong().color(ROSE));
                         });
@@ -254,7 +254,7 @@ impl Outil for Wifi {
                     });
                 }
                 for (n, ms) in self.pings.lock().unwrap().iter() {
-                    ui.horizontal(|ui| {
+                    ui.horizontal_wrapped(|ui| {
                         ui.add_sized([110.0, 24.0], egui::Label::new(RichText::new(n).size(17.0)));
                         match ms {
                             Some(m) => {

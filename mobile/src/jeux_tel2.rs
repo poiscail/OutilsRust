@@ -145,7 +145,7 @@ impl Outil for Classement {
             ui.ctx().request_repaint_after(Duration::from_millis(500));
             return;
         }
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.label(RichText::new(format!("👤 {}", self.g.pseudo)).strong());
             if ui.button("🔄").clicked() && !occupe {
                 self.synchroniser();
@@ -227,7 +227,7 @@ impl Outil for BoulesDeNeige {
         Cat::Fun
     }
     fn ui(&mut self, ui: &mut egui::Ui) {
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.checkbox(&mut self.ordi, "contre le téléphone");
             if ui.button("Nouvelle partie").clicked() {
                 self.score = [0; 2];
@@ -429,7 +429,7 @@ impl Outil for Rythme {
                 ui.label(RichText::new(&self.jugement.0).size(20.0).strong().color(ROSE));
             }
             ui.label(RichText::new("Touche les couloirs quand les notes arrivent sur la ligne").size(18.0).strong());
-            ui.horizontal(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 ui.label("Tempo");
                 for (b, n) in [(90.0, "Tranquille"), (110.0, "Normal"), (135.0, "Rapide"), (160.0, "Expert")] {
                     ui.selectable_value(&mut self.bpm, b, n);
@@ -459,7 +459,7 @@ impl Outil for Rythme {
             n.2 = Some(false);
             self.combo = 0;
         }
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.label(RichText::new(format!("{}", self.score)).size(26.0).strong().color(ROSE));
             ui.label(format!("combo ×{}", self.combo));
             ui.label(format!("{:.0} s", (DUREE - t).max(0.0)));

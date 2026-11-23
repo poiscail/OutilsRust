@@ -444,7 +444,7 @@ impl Outil for MaBox {
                         let best = meilleur_canal(&v, &infos.ssid, cinq);
                         ui.label(RichText::new(if cinq { "5 GHz" } else { "2,4 GHz" }).size(18.0).strong());
                         for (c, g) in &enc {
-                            ui.horizontal(|ui| {
+                            ui.horizontal_wrapped(|ui| {
                                 let ici = mien.iter().any(|m| m.0 == *c && m.1 == cinq);
                                 ui.add_sized([70.0, 20.0], egui::Label::new(RichText::new(format!("canal {c}")).strong().color(if *c == best { VERT } else if ici { ROSE } else { ui.visuals().text_color() })));
                                 ui.add(egui::ProgressBar::new(g / max).desired_width(ui.available_width() - 90.0).fill(if *g / max > 0.6 { ROUGE } else if *g / max > 0.3 { ORANGE } else { VERT }));
@@ -508,7 +508,7 @@ impl Outil for MaBox {
                 l.sort_by_key(|x| -x.1);
                 for (p, rssi, d, ping) in &l {
                     let (q, mot) = qualite(*rssi);
-                    ui.horizontal(|ui| {
+                    ui.horizontal_wrapped(|ui| {
                         ui.add_sized([110.0, 22.0], egui::Label::new(RichText::new(p).strong()));
                         ui.add(egui::ProgressBar::new(q as f32 / 100.0).desired_width(ui.available_width() - 150.0).fill(if q >= 70 { VERT } else if q >= 40 { ORANGE } else { ROUGE }).text(mot));
                         ui.weak(format!("{d:.0} Mb/s · {ping:.0} ms"));
@@ -568,7 +568,7 @@ impl Outil for MaBox {
                     let (nom, _, prive, pubs) = DNS[*k];
                     egui::Frame::group(ui.style()).show(ui, |ui| {
                         ui.set_min_width(ui.available_width());
-                        ui.horizontal(|ui| {
+                        ui.horizontal_wrapped(|ui| {
                             ui.label(RichText::new(nom).size(17.0).strong());
                             match ms {
                                 Some(m) => ui.colored_label(if *m < 20 { VERT } else if *m < 50 { ORANGE } else { ROUGE }, format!("{m} ms")),
@@ -617,7 +617,7 @@ impl Outil for MaBox {
                 }
                 let connus = self.r.lock().unwrap().connus.clone();
                 for (ip, p) in &liste {
-                    ui.horizontal(|ui| {
+                    ui.horizontal_wrapped(|ui| {
                         let t = if *ip == infos.ip { "📱 Ce téléphone".to_string() } else { connus.get(ip).cloned().unwrap_or_else(|| deviner(p, *ip == infos.passerelle).to_string()) };
                         let nouveau = !connus.contains_key(ip) && *ip != infos.ip;
                         ui.label(RichText::new(t).strong().color(if nouveau { ORANGE } else { ui.visuals().text_color() }));
@@ -806,7 +806,7 @@ impl Outil for Mobile {
                 };
                 let (mot, c) = qualite_mobile(s.dbm, &s.generation);
                 ui.label(RichText::new(format!("{} · {}", s.operateur, s.generation)).size(22.0).strong());
-                ui.horizontal(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     ui.label(RichText::new(format!("{} dBm", s.dbm)).size(40.0).strong().color(c));
                     ui.label(RichText::new(mot).size(22.0).color(c));
                 });
@@ -825,17 +825,17 @@ impl Outil for Mobile {
                     ui.ctx().request_repaint_after(Duration::from_secs(1));
                     return;
                 }
-                ui.horizontal(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     ui.selectable_value(&mut self.mobile, true, "📶 Données mobiles");
                     ui.selectable_value(&mut self.mobile, false, "📡 Wi-Fi");
                 });
-                ui.horizontal(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     for (k, n) in ["Aujourd'hui", "7 jours", "Ce forfait"].iter().enumerate() {
                         ui.selectable_value(&mut self.periode, k, *n);
                     }
                 });
                 let mut f = self.f.lock().unwrap().clone();
-                ui.horizontal(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     ui.label("Forfait :");
                     ui.add(egui::DragValue::new(&mut f.limite_go).range(0.0..=1000.0).speed(1.0).suffix(" Go"));
                     ui.label("renouvelé le");
@@ -871,7 +871,7 @@ impl Outil for Mobile {
                         if rx + tx < 100_000 {
                             continue;
                         }
-                        ui.horizontal(|ui| {
+                        ui.horizontal_wrapped(|ui| {
                             ui.add_sized([130.0, 22.0], egui::Label::new(RichText::new(nom).strong()).truncate());
                             ui.add(egui::ProgressBar::new((rx + tx) as f32 / max as f32).desired_width(ui.available_width() - 80.0).fill(ROSE));
                             ui.label(taille(rx + tx));
@@ -884,7 +884,7 @@ impl Outil for Mobile {
                 ui.weak("Fais le test en Wi-Fi, puis coupe le Wi-Fi et refais-le en 4G/5G : tu sauras lequel est le meilleur ici.");
                 let r = android::reseau_actif();
                 ui.label(RichText::new(format!("Réseau actuel : {r}")).size(18.0).strong());
-                ui.horizontal(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     if ui.button(RichText::new("⚖ Tester ce réseau").size(18.0)).clicked() && !occupe {
                         let (f, nom) = (self.f.clone(), if r == "mobile" { "Données mobiles".to_string() } else { r.to_string() });
                         en_fond(&self.e, "Test (une quinzaine de secondes)…", move || {
@@ -902,7 +902,7 @@ impl Outil for Mobile {
                 });
                 let c = self.f.lock().unwrap().comparaison.clone();
                 for (nom, (d, p)) in &c {
-                    ui.horizontal(|ui| {
+                    ui.horizontal_wrapped(|ui| {
                         ui.add_sized([150.0, 24.0], egui::Label::new(RichText::new(nom).strong()));
                         ui.label(RichText::new(format!("{d:.0} Mb/s")).size(20.0).color(ROSE));
                         ui.label(format!("· {p:.0} ms"));

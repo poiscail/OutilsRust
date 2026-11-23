@@ -215,7 +215,7 @@ fn tour_surveillance(v: &Arc<Mutex<Veille>>) {
     if d.is_empty() {
         return;
     }
-    let h = crate::minecraft::horodatage().replace('_', " ");
+    let h = crate::minecraft::date_lisible();
     for (k, a, b) in &d {
         let genre = if b.is_none() { "retiré" } else if a.is_none() { "ajouté" } else { "modifié" };
         crate::systeme::notifier_toujours(&format!("Réglage sensible {genre}"), &format!("{k} : {}", b.clone().or(a.clone()).unwrap_or_default().chars().take(120).collect::<String>()));
@@ -381,7 +381,7 @@ fn lancer_pieges(m: Arc<Mutex<Miel>>, etat: Arc<Mutex<Vec<String>>>) {
                 let recu: String = String::from_utf8_lossy(&b[..n]).chars().map(|x| if x.is_control() { ' ' } else { x }).collect();
                 let local = ip == "127.0.0.1" || ip == moi2;
                 let mut g = m2.lock().unwrap();
-                g.journal.insert(0, (crate::minecraft::horodatage().replace('_', " "), ip.clone(), p, recu.trim().to_string()));
+                g.journal.insert(0, (crate::minecraft::date_lisible(), ip.clone(), p, recu.trim().to_string()));
                 g.journal.truncate(300);
                 enregistrer("pot_de_miel", &*g);
                 drop(g);

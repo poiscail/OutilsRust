@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 fn heure() -> String {
-    let h = crate::minecraft::horodatage(); // AAAA-MM-JJ_HH-MM-SS
+    let h = crate::minecraft::horodatage_iso(); // AAAA-MM-JJ_HH-MM-SS
     format!("{}/{} {}", h.get(8..10).unwrap_or(""), h.get(5..7).unwrap_or(""), h.get(11..16).unwrap_or("").replace('-', ":"))
 }
 
@@ -146,7 +146,7 @@ pub fn compter(onglet: &str, actif: bool) {
             let s = c.fraction.floor();
             c.fraction -= s;
             c.u.outils.entry(onglet.to_string()).or_default().secondes += s as u64;
-            let jour = crate::minecraft::horodatage().get(..10).unwrap_or("").to_string();
+            let jour = crate::minecraft::horodatage_iso().get(..10).unwrap_or("").to_string();
             *c.u.jours.entry(jour).or_default() += s as u64;
         }
     }

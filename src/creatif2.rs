@@ -534,7 +534,7 @@ impl FondsEcran {
         let r = Arc::new(Mutex::new(r0));
         let r2 = r.clone();
         std::thread::spawn(move || loop {
-            let jour = crate::minecraft::horodatage().get(..10).unwrap_or("").to_string();
+            let jour = crate::minecraft::horodatage_iso().get(..10).unwrap_or("").to_string();
             let x = r2.lock().unwrap().clone();
             if x.chaque_jour && x.jour != jour {
                 let mut n = x.clone();

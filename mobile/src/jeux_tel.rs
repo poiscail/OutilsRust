@@ -166,7 +166,7 @@ impl Outil for Labyrinthe {
                 }
             }
         });
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.label(RichText::new(format!("Niveau {}", self.niveau)).size(20.0).strong());
             let t = self.gagne.unwrap_or(self.debut.elapsed().as_secs_f32());
             ui.label(RichText::new(format!("⏱ {t:.1} s")).size(18.0));
@@ -217,7 +217,7 @@ impl Outil for Labyrinthe {
         p.circle_filled(zone.min + self.bille * case, case * 0.28, ROSE);
         if let Some(t) = self.gagne {
             p.text(zone.center(), Align2::CENTER_CENTER, format!("Bravo ! {t:.1} s"), FontId::proportional(32.0), Color32::WHITE);
-            ui.horizontal(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 if ui.button(RichText::new("Niveau suivant ➜").size(18.0)).clicked() {
                     self.niveau += 1;
                     self.nouveau();
@@ -228,7 +228,7 @@ impl Outil for Labyrinthe {
             });
         } else {
             ui.ctx().request_repaint();
-            ui.horizontal(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 ui.weak("Incline le téléphone pour guider la bille jusqu'à la case verte.");
                 if self.niveau > 1 && ui.small_button("◀ niveau").clicked() {
                     self.niveau -= 1;
@@ -324,7 +324,7 @@ impl Outil for FaceAFace {
         Cat::Fun
     }
     fn ui(&mut self, ui: &mut egui::Ui) {
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             if ui.selectable_label(self.jeu == Duel::Reflexes, RichText::new("⚡ Réflexes").size(17.0)).clicked() {
                 self.jeu = Duel::Reflexes;
                 self.score = [0; 2];
@@ -566,7 +566,7 @@ impl Outil for Badges {
             let quand = self.g.l.get(id);
             egui::Frame::group(ui.style()).show(ui, |ui| {
                 ui.set_min_width(ui.available_width());
-                ui.horizontal(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     let c = if quand.is_some() { ui.visuals().strong_text_color() } else { Color32::GRAY };
                     ui.vertical(|ui| {
                         ui.label(RichText::new(if quand.is_some() { titre.to_string() } else { format!("🔒 {}", titre.split_once(' ').map_or(titre, |x| x.1)) }).size(17.0).strong().color(c));

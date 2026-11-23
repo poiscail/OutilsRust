@@ -285,7 +285,41 @@ pub fn acces_fichiers() -> bool {
     std::path::Path::new(STOCKAGE).exists()
 }
 
-/// Ouvre l'écran d'Android « Accès à tous les fichiers » pour Outils.
+/// Permissions « photos et vidéos » selon la version d'Android.
+pub fn permissions_medias() -> &'static [&'static str] {
+    let v = version_android();
+    if v >= 34 {
+        &["android.permission.READ_MEDIA_IMAGES", "android.permission.READ_MEDIA_VIDEO", "android.permission.READ_MEDIA_AUDIO", "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"]
+    } else if v >= 33 {
+        &["android.permission.READ_MEDIA_IMAGES", "android.permission.READ_MEDIA_VIDEO", "android.permission.READ_MEDIA_AUDIO"]
+    } else if v >= 30 {
+        &["android.permission.READ_EXTERNAL_STORAGE"]
+    } else {
+        &["android.permission.READ_EXTERNAL_STORAGE", "android.permission.WRITE_EXTERNAL_STORAGE"]
+    }
+}
+
+/// Accès en lecture aux photos et vidéos (fenêtre classique d'Android), ou accès complet.
+pub fn acces_photos() -> bool {
+    if acces_fichiers() {
+        return true;
+    }
+    #[cfg(target_os = "android")]
+    {
+        let p = permissions_medias();
+        return a_permission(p[0]) || (p.len() > 3 && a_permission(p[3]));
+    }
+    #[allow(unreachable_code)]
+    true
+}
+
+/// Demande l'accès aux photos (fenêtre d'Android).
+pub fn demander_acces_photos() {
+    demander(permissions_medias());
+}
+
+/// Ouvre l'écran d'Android « Accès à tous les fichiers » pour Outils (avec des écrans de secours :
+/// certains téléphones n'ont pas l'écran direct de l'appli).
 pub fn demander_acces_fichiers() {
     #[cfg(target_os = "android")]
     {
@@ -294,12 +328,27 @@ pub fn demander_acces_fichiers() {
             demander(&["android.permission.READ_EXTERNAL_STORAGE", "android.permission.WRITE_EXTERNAL_STORAGE"]);
             return;
         }
-        let _ = jni_::avec(|env, act| {
-            let p = jni_::paquet(env, act)?;
-            let i = jni_::intention(env, "android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION", Some(&format!("package:{p}")))?;
-            env.call_method(act, "startActivity", "(Landroid/content/Intent;)V", &[JValue::Object(&i)])?;
-            Ok(())
-        });
+        let essais: [(&str, bool); 3] = [
+            ("android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION", true),
+            ("android.settings.MANAGE_ALL_FILES_ACCESS_PERMISSION", false),
+            ("android.settings.APPLICATION_DETAILS_SETTINGS", true),
+        ];
+        for (action, avec_paquet) in essais {
+            let ok = jni_::avec(|env, act| {
+                let p = jni_::paquet(env, act)?;
+                let i = jni_::intention(env, action, avec_paquet.then(|| format!("package:{p}")).as_deref())?;
+                env.call_method(&i, "addFlags", "(I)Landroid/content/Intent;", &[JValue::Int(0x1000_0000)])?;
+                let r = env.call_method(act, "startActivity", "(Landroid/content/Intent;)V", &[JValue::Object(&i)]);
+                if r.is_err() || env.exception_check().unwrap_or(false) {
+                    let _ = env.exception_clear();
+                    return Err(jni::errors::Error::JavaException);
+                }
+                Ok(())
+            });
+            if ok.is_some() {
+                return;
+            }
+        }
     }
 }
 

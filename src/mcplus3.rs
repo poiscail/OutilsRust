@@ -46,7 +46,7 @@ fn sans_serveur(ui: &mut egui::Ui, mc: &Pilote) -> Option<PathBuf> {
 
 /// (heure, minute) locales.
 fn heure_minute() -> (u32, u32) {
-    let h = crate::minecraft::horodatage();
+    let h = crate::minecraft::horodatage_iso();
     let n = |a: usize| h.get(a..a + 2).and_then(|x| x.parse().ok()).unwrap_or(0);
     (n(11), n(14))
 }

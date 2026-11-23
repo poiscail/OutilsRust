@@ -71,7 +71,7 @@ fn dezipper(archive: &Path, dest: &Path) -> Result<(), String> {
 }
 
 pub fn preparer(dossier: &Path, etat: &Mutex<String>) -> Result<String, String> {
-    let d = dossier.join(format!("Outils - déménagement {}", crate::minecraft::horodatage().get(..10).unwrap_or("")));
+    let d = dossier.join(format!("Outils - déménagement {}", crate::minecraft::horodatage_iso().get(..10).unwrap_or("")));
     std::fs::create_dir_all(d.join("jeux")).map_err(|e| e.to_string())?;
     let mut bilan = vec![];
     *etat.lock().unwrap() = "Liste des programmes (winget)…".into();

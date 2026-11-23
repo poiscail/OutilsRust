@@ -161,6 +161,12 @@ fn origine(p: &Path) -> String {
     }
 }
 
+#[cfg(not(windows))]
+fn signature(_p: &Path) -> String {
+    String::new()
+}
+
+#[cfg(windows)]
 fn signature(p: &Path) -> String {
     let s = format!("$s = Get-AuthenticodeSignature -LiteralPath '{}'; $s.Status.ToString() + '|' + $s.SignerCertificate.Subject", p.display().to_string().replace('\'', "''"));
     crate::optimiseur::ps(&s).unwrap_or_default().trim().to_string()
