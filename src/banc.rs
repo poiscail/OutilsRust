@@ -25,21 +25,7 @@ pub struct Resultat {
 
 /// Niveau approximatif d'une carte graphique (100 ≈ RTX 4090), d'après son nom.
 pub fn niveau_gpu(nom: &str) -> Option<u32> {
-    let n = nom.to_lowercase().replace("geforce ", "").replace("radeon ", "").replace("nvidia ", "").replace("amd ", "");
-    const T: &[(&str, u32)] = &[
-        ("rtx 5090", 125), ("rtx 5080", 100), ("rtx 5070 ti", 85), ("rtx 5070", 72), ("rtx 5060 ti", 56), ("rtx 5060", 48),
-        ("rtx 4090", 100), ("rtx 4080", 84), ("rtx 4070 ti", 70), ("rtx 4070", 60), ("rtx 4060 ti", 48), ("rtx 4060", 42),
-        ("rtx 3090", 70), ("rtx 3080", 63), ("rtx 3070 ti", 54), ("rtx 3070", 50), ("rtx 3060 ti", 45), ("rtx 3060", 36), ("rtx 3050", 24),
-        ("rtx 2080 ti", 52), ("rtx 2080", 44), ("rtx 2070", 38), ("rtx 2060", 30), ("gtx 1660", 22), ("gtx 1650", 16),
-        ("gtx 1080 ti", 38), ("gtx 1080", 30), ("gtx 1070", 25), ("gtx 1060", 18), ("gtx 1050", 10), ("gtx 970", 14), ("gtx 960", 9),
-        ("rx 9070 xt", 82), ("rx 9070", 74), ("rx 9060 xt", 50), ("rx 7900 xtx", 86), ("rx 7900 xt", 76), ("rx 7800 xt", 60), ("rx 7700 xt", 52), ("rx 7600", 40),
-        ("rx 6950", 68), ("rx 6900", 65), ("rx 6800 xt", 62), ("rx 6800", 55), ("rx 6750", 49), ("rx 6700", 46), ("rx 6650", 38), ("rx 6600", 35), ("rx 6500", 16),
-        ("rx 5700", 35), ("rx 5600", 28), ("rx 590", 16), ("rx 580", 15), ("rx 570", 13),
-        ("arc b580", 42), ("arc a770", 38), ("arc a750", 34), ("arc a380", 14),
-        ("rtx 4050", 32), ("rtx 3050 laptop", 18),
-        ("uhd", 4), ("iris", 7), ("vega", 7), ("radeon(tm)", 8), ("780m", 14), ("680m", 11),
-    ];
-    T.iter().find(|(k, _)| n.contains(k)).map(|x| x.1)
+    crate::pratique::niveau_gpu(nom)
 }
 
 /// Pièce à changer en premier (titre, explication), d'après le matériel et les mesures.

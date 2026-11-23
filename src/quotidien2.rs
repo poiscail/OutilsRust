@@ -325,6 +325,18 @@ fn previsions(v: &Ville) -> Result<Previsions, String> {
     Ok(Previsions { temp: f(&c["temperature_2m"]), ressenti: f(&c["apparent_temperature"]), vent: f(&c["wind_speed_10m"]), code: c["weather_code"].as_u64().unwrap_or(0) as u32, jours, heures })
 }
 
+/// Météo du jour en une ligne (pour le résumé du matin), d'après la ville choisie dans l'outil Météo.
+pub fn meteo_du_jour() -> Option<String> {
+    let v: Ville = charger("meteo_ville");
+    if v.nom.is_empty() {
+        return None;
+    }
+    let p = previsions(&v).ok()?;
+    let (icone, texte) = code_meteo(p.code);
+    let j = p.jours.first();
+    Some(format!("{icone} {} : {texte}, {:.0}°{}", v.nom, p.temp, j.map(|j| format!(" (de {:.0}° à {:.0}°, pluie {} %)", j.2, j.3, j.4)).unwrap_or_default()))
+}
+
 fn chercher_villes(q: &str) -> Result<Vec<Ville>, String> {
     let j: serde_json::Value = agent().get("https://geocoding-api.open-meteo.com/v1/search").query("name", q).query("count", "6").query("language", "fr")
         .call().map_err(|e| e.to_string())?.into_json().map_err(|e| e.to_string())?;

@@ -39,6 +39,7 @@ mod secu_mdp;
 mod secu_fichiers;
 mod ctf;
 mod secu_pc;
+mod pratique;
 mod listes;
 mod ludique;
 mod macros;

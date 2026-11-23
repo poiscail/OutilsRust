@@ -1,7 +1,7 @@
 //! Liste des outils ajoutés en lot (trait `Outil`), dans l'ordre du menu de chaque catégorie.
 use crate::minecraft::Pilote;
 use crate::outil::{Cat, Outil};
-use crate::{secu_reseau, secu_mdp, secu_fichiers, ctf, secu_pc, moi, jeux7, dns_maison, maintenance, sauvegarde_auto, indesirables, nouveau_pc, banc, bureau, coeur, jeux2, jeux3, creatif, dependances, mcplus, mcplus2, fichiers2, fichiers3, systeme3, quotidien2, micro, creatif2, interface, jeux4, mcplus3, fichiers4, systeme4, reseau3, quotidien3, creatif3, minijeux3, interface2, jeux5, fichiers5, systeme5, creatif4, minijeux4, recherche, jeux6, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
+use crate::{pratique, secu_reseau, secu_mdp, secu_fichiers, ctf, secu_pc, moi, jeux7, dns_maison, maintenance, sauvegarde_auto, indesirables, nouveau_pc, banc, bureau, coeur, jeux2, jeux3, creatif, dependances, mcplus, mcplus2, fichiers2, fichiers3, systeme3, quotidien2, micro, creatif2, interface, jeux4, mcplus3, fichiers4, systeme4, reseau3, quotidien3, creatif3, minijeux3, interface2, jeux5, fichiers5, systeme5, creatif4, minijeux4, recherche, jeux6, images, listes, ludique, minijeux, quotidien, pdf, reseau2, son, speedrun, steam2, systeme2, tests_materiel, video, voix};
 
 pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>> {
     vec![
@@ -61,6 +61,8 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         Box::new(jeux6::ProfilsJeux::new()),
         Box::new(jeux6::AvantApres::new()),
         Box::new(jeux7::ProblemesJeu::new(mesures.clone())),
+        Box::new(pratique::Sorties::new()),
+        paresseux("🎛 Réglages graphiques conseillés", Cat::Jeux, move || Box::new(pratique::ReglagesGraphiques::new())),
         Box::new(jeux5::Journal::new()),
         paresseux("🆚 Comparer avec le PC d'un pote", Cat::Jeux, move || Box::new(jeux5::Comparateur::new())),
         Box::new(jeux5::Expirent::new()),
@@ -189,6 +191,9 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         paresseux("🔑 Solidité d'un mot de passe", Cat::Quotidien, move || Box::new(secu_mdp::Solidite::new())),
         paresseux("🧾 Audit du coffre", Cat::Quotidien, move || Box::new(secu_mdp::AuditCoffre::new())),
         Box::new(secu_mdp::Codes2fa::new()),
+        Box::new(pratique::ResumeJour::new()),
+        Box::new(pratique::Abonnements::new()),
+        paresseux("📑 Traduire un document", Cat::Quotidien, move || Box::new(pratique::TraductionDocs::new())),
         Box::new(secu_mdp::Fuites::new()),
         paresseux("🗂 Tableau Kanban", Cat::Quotidien, move || Box::new(listes::Kanban::new())),
         Box::new(quotidien2::Meteo::new()),

@@ -30,6 +30,8 @@ mod secu_fichiers;
 mod dns_maison;
 #[path = "../../src/ports_risques.rs"]
 mod ports_risques;
+#[path = "../../src/pratique.rs"]
+mod pratique;
 #[path = "../../src/menu.rs"]
 mod menu;
 #[path = "../../src/fiches.rs"]
@@ -63,6 +65,8 @@ fn outils() -> Vec<Box<dyn Outil>> {
         Box::new(lanceur_linux::Lanceur::new()),
         Box::new(moniteur_linux::Moniteur::new()),
         Box::new(mc_linux::ServeurMc::new()),
+        Box::new(pratique::Sorties::new()),
+        Box::new(pratique::ReglagesGraphiques::new()),
         Box::new(pont_linux::Telephone::new()),
         Box::new(capture_linux::Capture::new()),
         // système et fichiers (propres à Linux)
@@ -83,7 +87,10 @@ fn outils() -> Vec<Box<dyn Outil>> {
         Box::new(ctf::CalculReseau::new()),
         Box::new(dns_maison::DnsMaison::new()),
         // quotidien
+        Box::new(pratique::ResumeJour::new()),
         Box::new(quotidien2::Meteo::new()),
+        Box::new(pratique::Abonnements::new()),
+        Box::new(pratique::TraductionDocs::new()),
         Box::new(quotidien2::Agenda::new()),
         Box::new(quotidien3::Ecole::new()),
         Box::new(quotidien3::ComptesRebours::new()),
