@@ -58,6 +58,7 @@ mod detourage;
 mod manette_virtuelle;
 mod webcam_virtuelle;
 mod navigateur;
+mod nav_extensions;
 mod listes;
 mod ludique;
 mod macros;

@@ -3,6 +3,7 @@
 ## Prochaine version
 ### Navigateur
 - 🌐 Navigateur intégré, très léger : il utilise le moteur web déjà dans Windows, onglets, favoris, historique, onglet privé, bloqueur de pubs et de pisteurs, onglets endormis pour libérer la mémoire
+- 🧩 Extensions : installe les extensions du Chrome Web Store (bouton « 🧩 + » sur leur page), et 4 extensions d'Outils : mode sombre partout, vitesse des vidéos, mode lecture, anti-bannières de cookies
 ### Créatif
 - 📖 Créateur de BD : cases, décors, personnages, bulles (parole, pensée, cri, récit), export PNG et PDF
 - 🔤 Créateur de polices : dessine tes lettres, Outils fabrique un vrai fichier .ttf à installer

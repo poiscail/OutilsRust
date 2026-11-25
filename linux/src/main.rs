@@ -54,6 +54,9 @@ mod apprendre;
 mod ia;
 #[path = "../../src/detourage.rs"]
 mod detourage;
+#[path = "../../src/nav_extensions.rs"]
+#[allow(dead_code)]
+mod nav_extensions;
 #[path = "../../src/menu.rs"]
 mod menu;
 #[path = "../../src/fiches.rs"]

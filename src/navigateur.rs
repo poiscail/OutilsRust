@@ -173,11 +173,111 @@ pub struct Navigateur {
     bloques: Arc<AtomicU32>,
     erreur: String,
     derniere_url: Instant,
+    panneau_ext: bool,
+    ext_profil: Rc<RefCell<Vec<(String, String, bool)>>>, // id, nom, active (vu par le moteur)
+    ext_saisie: String,
+    ext_msg: Arc<std::sync::Mutex<String>>,
+    ext_a_ajouter: Arc<std::sync::Mutex<Vec<std::path::PathBuf>>>,
+}
+
+// ---------------------------------------------------------------------------------------------------
+// Extensions (format Chrome) : les dossiers de « extensions » sont chargés par le moteur ;
+// une extension désactivée est rangée dans « extensions_off » et retirée du moteur.
+// ---------------------------------------------------------------------------------------------------
+
+fn dossier_ext() -> std::path::PathBuf {
+    crate::outil::base().join("navigateur").join("extensions")
+}
+
+fn dossier_off() -> std::path::PathBuf {
+    crate::outil::base().join("navigateur").join("extensions_off")
+}
+
+fn profil(v: &WebView) -> windows_core::Result<webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2Profile7> {
+    use webview2_com::Microsoft::Web::WebView2::Win32::*;
+    use windows_core::Interface;
+    unsafe { v.webview().cast::<ICoreWebView2_13>()?.Profile()?.cast::<ICoreWebView2Profile7>() }
+}
+
+/// Liste des extensions vues par le moteur (id, nom, active), rangée dans `liste` quand elle arrive.
+fn lister_ext(v: &WebView, liste: Rc<RefCell<Vec<(String, String, bool)>>>) {
+    let Ok(p) = profil(v) else { return };
+    let h = webview2_com::ProfileGetBrowserExtensionsCompletedHandler::create(Box::new(move |_, l| {
+        let Some(l) = l else { return Ok(()) };
+        let mut n = 0u32;
+        let mut v = Vec::new();
+        unsafe {
+            l.Count(&mut n)?;
+            for i in 0..n {
+                let e = l.GetValueAtIndex(i)?;
+                let (mut a, mut b) = (windows_core::PWSTR::null(), windows_core::PWSTR::null());
+                e.Id(&mut a)?;
+                e.Name(&mut b)?;
+                let mut actif = windows_core::BOOL::default();
+                e.IsEnabled(&mut actif)?;
+                v.push((webview2_com::take_pwstr(a), webview2_com::take_pwstr(b), actif.as_bool()));
+            }
+        }
+        *liste.borrow_mut() = v;
+        Ok(())
+    }));
+    unsafe {
+        let _ = p.GetBrowserExtensions(&h);
+    }
+}
+
+fn ajouter_ext(v: &WebView, dossier: &std::path::Path) {
+    let Ok(p) = profil(v) else { return };
+    let chemin = windows_core::HSTRING::from(dossier.to_string_lossy().as_ref());
+    let h = webview2_com::ProfileAddBrowserExtensionCompletedHandler::create(Box::new(|_, _| Ok(())));
+    unsafe {
+        let _ = p.AddBrowserExtension(&chemin, &h);
+    }
+}
+
+/// Retire du moteur l'extension d'identifiant `id` (ou, à défaut, de ce nom).
+fn retirer_ext(v: &WebView, id: String, nom: String) {
+    let Ok(p) = profil(v) else { return };
+    let h = webview2_com::ProfileGetBrowserExtensionsCompletedHandler::create(Box::new(move |_, l| {
+        let Some(l) = l else { return Ok(()) };
+        let mut n = 0u32;
+        unsafe {
+            l.Count(&mut n)?;
+            for i in 0..n {
+                let e = l.GetValueAtIndex(i)?;
+                let (mut a, mut b) = (windows_core::PWSTR::null(), windows_core::PWSTR::null());
+                e.Id(&mut a)?;
+                e.Name(&mut b)?;
+                let (ei, en) = (webview2_com::take_pwstr(a), webview2_com::take_pwstr(b));
+                if ei == id || en == nom {
+                    let _ = e.Remove(&webview2_com::BrowserExtensionRemoveCompletedHandler::create(Box::new(|_| Ok(()))));
+                }
+            }
+        }
+        Ok(())
+    }));
+    unsafe {
+        let _ = p.GetBrowserExtensions(&h);
+    }
+}
+
+fn copier_dossier(de: &std::path::Path, vers: &std::path::Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(vers)?;
+    for e in std::fs::read_dir(de)? {
+        let e = e?;
+        let p = e.path();
+        if p.is_dir() {
+            copier_dossier(&p, &vers.join(e.file_name()))?;
+        } else {
+            std::fs::copy(&p, vers.join(e.file_name()))?;
+        }
+    }
+    Ok(())
 }
 
 impl Navigateur {
     pub fn new() -> Self {
-        Navigateur { r: charger("navigateur"), onglets: vec![Onglet::nouveau(false)], actif: 0, contexte: None, passe_vue: 0, bloques: Arc::default(), erreur: String::new(), derniere_url: Instant::now() }
+        Navigateur { r: charger("navigateur"), onglets: vec![Onglet::nouveau(false)], actif: 0, contexte: None, passe_vue: 0, bloques: Arc::default(), erreur: String::new(), derniere_url: Instant::now(), panneau_ext: false, ext_profil: Rc::default(), ext_saisie: String::new(), ext_msg: Arc::default(), ext_a_ajouter: Arc::default() }
     }
 
     fn creer_vue(&mut self, k: usize, url: &str, zone: wry::Rect) {
@@ -194,6 +294,8 @@ impl Navigateur {
             .with_incognito(self.onglets[k].prive)
             .with_theme(if self.r.sombre { wry::Theme::Dark } else { wry::Theme::Light })
             // moins de services d'arrière-plan d'Edge : plus léger
+            .with_browser_extensions_enabled(true)
+            .with_extensions_path(dossier_ext())
             .with_additional_browser_args("--disable-background-networking --disable-component-update --disable-features=msSmartScreenProtection,msEdgeShoppingAssistant,msWebOOUI")
             .with_document_title_changed_handler(move |t| i1.borrow_mut().titre = t)
             .with_on_page_load_handler(move |e, u| {
@@ -252,6 +354,145 @@ impl Navigateur {
             self.onglets.push(Onglet::nouveau(false));
         }
         self.actif = self.actif.min(self.onglets.len() - 1);
+    }
+
+    fn une_vue(&self) -> Option<&WebView> {
+        self.onglets.iter().find_map(|o| o.vue.as_ref())
+    }
+
+    /// Panneau des extensions (dessiné par Outils, la page est cachée le temps de l'afficher).
+    fn panneau_extensions(&mut self, ui: &mut egui::Ui) -> Option<String> {
+        use crate::nav_extensions::*;
+        let mut ouvrir = None;
+        let _ = std::fs::create_dir_all(dossier_ext());
+        ui.heading("🧩 Extensions");
+        ui.weak("Les extensions du Chrome Web Store s'installent ici. Celles qui changent les pages (bloqueurs, mode sombre, YouTube…) marchent en général ; celles qui ont besoin de la barre d'outils de Chrome s'ouvrent dans un onglet (bouton 🪟).");
+        // extensions d'Outils
+        ui.add_space(6.0);
+        ui.strong("Extensions d'Outils");
+        for (dos, nom, desc, _) in MAISON {
+            let actif = dossier_ext().join(dos).is_dir();
+            let mut on = actif;
+            ui.horizontal_wrapped(|ui| {
+                if ui.checkbox(&mut on, RichText::new(*nom).strong()).changed() {
+                    let d = dossier_ext().join(dos);
+                    if on {
+                        match ecrire_maison(dos, &d) {
+                            Ok(()) => self.ext_a_ajouter.lock().unwrap().push(d),
+                            Err(e) => *self.ext_msg.lock().unwrap() = e,
+                        }
+                    } else {
+                        let n = Manifeste::lire(&d).map(|m| m.nom).unwrap_or_default();
+                        let _ = std::fs::remove_dir_all(&d);
+                        if let Some(v) = self.une_vue() {
+                            retirer_ext(v, dos.to_string(), n);
+                        }
+                    }
+                }
+                ui.weak(*desc);
+            });
+        }
+        // installer
+        ui.add_space(10.0);
+        ui.strong("Ajouter une extension du Chrome Web Store");
+        ui.horizontal_wrapped(|ui| {
+            ui.add(egui::TextEdit::singleline(&mut self.ext_saisie).hint_text("colle le lien de la page de l'extension").desired_width(380.0));
+            let id = id_extension(&self.ext_saisie);
+            if ui.add_enabled(id.is_some(), egui::Button::new("📥 Installer")).clicked() {
+                let (id, m, q) = (id.unwrap(), self.ext_msg.clone(), self.ext_a_ajouter.clone());
+                *m.lock().unwrap() = "Téléchargement de l'extension…".into();
+                self.ext_saisie.clear();
+                std::thread::spawn(move || {
+                    *m.lock().unwrap() = match telecharger(&id, &dossier_ext()) {
+                        Ok(n) => {
+                            q.lock().unwrap().push(dossier_ext().join(&id));
+                            format!("✔ « {n} » installée")
+                        }
+                        Err(e) => format!("✖ {e}"),
+                    };
+                });
+            }
+            if ui.button("🛒 Ouvrir le Chrome Web Store").clicked() {
+                ouvrir = Some("https://chromewebstore.google.com/".to_string());
+                self.panneau_ext = false;
+            }
+            if ui.button("📂 Extension décompressée…").on_hover_text("Un dossier contenant manifest.json").clicked() {
+                if let Some(d) = rfd::FileDialog::new().pick_folder() {
+                    if d.join("manifest.json").is_file() {
+                        let dest = dossier_ext().join(d.file_name().unwrap_or_default());
+                        match copier_dossier(&d, &dest) {
+                            Ok(()) => self.ext_a_ajouter.lock().unwrap().push(dest),
+                            Err(e) => *self.ext_msg.lock().unwrap() = e.to_string(),
+                        }
+                    } else {
+                        *self.ext_msg.lock().unwrap() = "Ce dossier ne contient pas de manifest.json".into();
+                    }
+                }
+            }
+        });
+        ui.weak("Astuce : sur une page du Chrome Web Store ouverte dans le navigateur, le bouton « 🧩 + » de la barre d'adresse l'installe directement.");
+        let m = self.ext_msg.lock().unwrap().clone();
+        if !m.is_empty() {
+            ui.label(m);
+        }
+        // installées
+        let profil_liste = self.ext_profil.borrow().clone();
+        let maison: Vec<&str> = MAISON.iter().map(|m| m.0).collect();
+        let actives: Vec<(std::path::PathBuf, Manifeste)> = extensions_dans(&dossier_ext()).into_iter().filter(|(p, _)| !maison.iter().any(|n| p.ends_with(n))).collect();
+        let off = extensions_dans(&dossier_off());
+        if !actives.is_empty() || !off.is_empty() {
+            ui.add_space(10.0);
+            ui.strong("Mes extensions");
+        }
+        for (p, m) in actives {
+            let dos = p.file_name().unwrap_or_default().to_string_lossy().to_string();
+            let id_moteur = profil_liste.iter().find(|x| x.0 == dos || x.1 == m.nom).map(|x| x.0.clone());
+            ui.horizontal_wrapped(|ui| {
+                ui.label(RichText::new(format!("🧩 {}", m.nom)).strong());
+                ui.weak(&m.version);
+                if let (Some(id), Some(f)) = (&id_moteur, &m.fenetre) {
+                    if ui.small_button("🪟 Ouvrir").on_hover_text("La fenêtre de l'extension, dans un onglet").clicked() {
+                        ouvrir = Some(format!("chrome-extension://{id}/{}", f.trim_start_matches('/')));
+                    }
+                }
+                if let (Some(id), Some(f)) = (&id_moteur, &m.reglages) {
+                    if ui.small_button("⚙ Réglages").clicked() {
+                        ouvrir = Some(format!("chrome-extension://{id}/{}", f.trim_start_matches('/')));
+                    }
+                }
+                if ui.small_button("⏸ Désactiver").clicked() {
+                    let _ = std::fs::create_dir_all(dossier_off());
+                    let _ = std::fs::rename(&p, dossier_off().join(&dos));
+                    if let Some(v) = self.une_vue() {
+                        retirer_ext(v, id_moteur.clone().unwrap_or(dos.clone()), m.nom.clone());
+                    }
+                }
+                if ui.small_button("🗑").on_hover_text("Désinstaller").clicked() {
+                    let _ = std::fs::remove_dir_all(&p);
+                    if let Some(v) = self.une_vue() {
+                        retirer_ext(v, id_moteur.clone().unwrap_or(dos.clone()), m.nom.clone());
+                    }
+                }
+            });
+        }
+        for (p, m) in off {
+            ui.horizontal_wrapped(|ui| {
+                ui.label(RichText::new(format!("⏸ {}", m.nom)).weak());
+                if ui.small_button("▶ Activer").clicked() {
+                    let dest = dossier_ext().join(p.file_name().unwrap_or_default());
+                    if std::fs::rename(&p, &dest).is_ok() {
+                        self.ext_a_ajouter.lock().unwrap().push(dest);
+                    }
+                }
+                if ui.small_button("🗑").clicked() {
+                    let _ = std::fs::remove_dir_all(&p);
+                }
+            });
+        }
+        if ui.button("✔ Fermer").clicked() {
+            self.panneau_ext = false;
+        }
+        ouvrir
     }
 
     /// Page « nouvel onglet », dessinée par Outils (aucun moteur web).
@@ -464,8 +705,27 @@ impl Outil for Navigateur {
                         self.r.favoris.retain(|f| f.1 != url_actuelle);
                     } else if !url_actuelle.is_empty() {
                         let t = self.onglets[k].infos.borrow().titre.clone();
-                        self.r.favoris.push((if t.is_empty() { url_actuelle.clone() } else { t.chars().take(30).collect() }, url_actuelle));
+                        self.r.favoris.push((if t.is_empty() { url_actuelle.clone() } else { t.chars().take(30).collect() }, url_actuelle.clone()));
                     }
+                }
+                // page du Chrome Web Store : installation directe
+                if let Some(id) = url_actuelle.contains("chromewebstore.google.com").then(|| crate::nav_extensions::id_extension(&url_actuelle)).flatten() {
+                    if ui.button("🧩 +").on_hover_text("Ajouter cette extension au navigateur d'Outils").clicked() {
+                        let (m, q) = (self.ext_msg.clone(), self.ext_a_ajouter.clone());
+                        *m.lock().unwrap() = "Téléchargement de l'extension…".into();
+                        std::thread::spawn(move || {
+                            *m.lock().unwrap() = match crate::nav_extensions::telecharger(&id, &dossier_ext()) {
+                                Ok(n) => {
+                                    q.lock().unwrap().push(dossier_ext().join(&id));
+                                    format!("✔ « {n} » installée")
+                                }
+                                Err(e) => format!("✖ {e}"),
+                            };
+                        });
+                    }
+                }
+                if ui.button("🧩").on_hover_text("Extensions").clicked() {
+                    self.panneau_ext = !self.panneau_ext;
                 }
                 let n = self.bloques.load(Relaxed);
                 if self.r.bloqueur {
@@ -494,8 +754,45 @@ impl Outil for Navigateur {
             let u = self.onglets[k].infos.borrow().url.clone();
             self.creer_vue(k, &u, rect);
         }
+        // extensions installées pendant que des pages sont ouvertes : ajoutées au moteur tout de suite
+        let a_ajouter: Vec<std::path::PathBuf> = std::mem::take(&mut *self.ext_a_ajouter.lock().unwrap());
+        if let Some(v) = self.une_vue() {
+            for d in &a_ajouter {
+                ajouter_ext(v, d);
+            }
+        }
+        let msg_ext = self.ext_msg.lock().unwrap().clone();
+        if !self.panneau_ext && !msg_ext.is_empty() {
+            ui.label(&msg_ext);
+        }
+        if self.panneau_ext {
+            if self.derniere_url.elapsed() > Duration::from_secs(1) {
+                self.derniere_url = Instant::now();
+                if let Some(v) = self.une_vue() {
+                    lister_ext(v, self.ext_profil.clone());
+                }
+            }
+            self.cacher_tout();
+            let ouvrir = egui::ScrollArea::vertical().show(ui, |ui| self.panneau_extensions(ui)).inner;
+            if let Some(u) = ouvrir {
+                self.panneau_ext = false;
+                self.onglets.push(Onglet::nouveau(false));
+                self.actif = self.onglets.len() - 1;
+                let k = self.actif;
+                self.creer_vue(k, &u, rect);
+            }
+            if self.r != avant {
+                enregistrer("navigateur", &self.r);
+            }
+            return;
+        }
         if self.onglets[k].vue.is_none() && aller.is_none() {
-            aller = egui::ScrollArea::vertical().show(ui, |ui| self.page_accueil(ui)).inner;
+            aller = egui::ScrollArea::vertical().show(ui, |ui| {
+                if ui.button("🧩 Extensions").clicked() {
+                    self.panneau_ext = true;
+                }
+                self.page_accueil(ui)
+            }).inner;
         }
         if let Some(u) = aller {
             self.aller(u, rect);
