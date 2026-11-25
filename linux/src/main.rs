@@ -40,6 +40,12 @@ mod vpn;
 mod musique;
 #[path = "../../src/createur.rs"]
 mod createur;
+#[path = "../../src/fete.rs"]
+mod fete;
+#[path = "../../src/atelier.rs"]
+mod atelier;
+#[path = "../../src/scene.rs"]
+mod scene;
 #[path = "../../src/menu.rs"]
 mod menu;
 #[path = "../../src/fiches.rs"]
@@ -104,6 +110,13 @@ fn outils() -> Vec<Box<dyn Outil>> {
         Box::new(createur::Shorts::new()),
         Box::new(createur::Studio::new()),
         Box::new(createur::Skins::new()),
+        Box::new(atelier::CreateurBd::new()),
+        Box::new(atelier::CreateurPolice::new()),
+        Box::new(fete::Roue::new()),
+        Box::new(fete::EscapeGame::new()),
+        Box::new(scene::Visualiseur::new()),
+        Box::new(scene::StopMotion::new()),
+        Box::new(scene::Karaoke::new()),
         Box::new(quotidien2::Agenda::new()),
         Box::new(quotidien3::Ecole::new()),
         Box::new(quotidien3::ComptesRebours::new()),

@@ -35,6 +35,64 @@ fn dossier_sons() -> PathBuf {
     PathBuf::from(std::env::var("USERPROFILE").unwrap_or_default()).join("Music").join("Enregistrements")
 }
 
+/// Capture en continu le son du PC (ou du micro) et passe des blocs mono à `rappel(échantillons, fréquence)`
+/// jusqu'à `stop`. Bloquant : à lancer dans un fil.
+pub fn flux_audio(stop: &AtomicBool, micro: bool, mut rappel: impl FnMut(&[f32], u32)) -> Result<(), String> {
+    use windows::Win32::Media::Audio::*;
+    use windows::Win32::System::Com::*;
+    let e = |x: windows::core::Error| x.message();
+    unsafe {
+        let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
+        let en: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).map_err(e)?;
+        let dev = en.GetDefaultAudioEndpoint(if micro { eCapture } else { eRender }, eConsole).map_err(e)?;
+        let client: IAudioClient = dev.Activate(CLSCTX_ALL, None).map_err(e)?;
+        let fmt = client.GetMixFormat().map_err(e)?;
+        let (canaux, freq, bits, bloc) = ((*fmt).nChannels as usize, (*fmt).nSamplesPerSec, (*fmt).wBitsPerSample, (*fmt).nBlockAlign as usize);
+        let flottant = bits == 32 && ((*fmt).wFormatTag == 3 || (*fmt).wFormatTag == 0xFFFE);
+        client.Initialize(AUDCLNT_SHAREMODE_SHARED, if micro { 0 } else { AUDCLNT_STREAMFLAGS_LOOPBACK }, 2_000_000, 0, fmt, None).map_err(e)?;
+        let capture: IAudioCaptureClient = client.GetService().map_err(e)?;
+        client.Start().map_err(e)?;
+        let mut mono: Vec<f32> = Vec::new();
+        while !stop.load(Relaxed) {
+            std::thread::sleep(Duration::from_millis(10));
+            let mut paquet = capture.GetNextPacketSize().map_err(e)?;
+            if paquet == 0 && !micro {
+                // rien ne joue : Windows n'envoie rien, on passe du silence pour que l'affichage retombe
+                mono.clear();
+                mono.resize(freq as usize / 100, 0.0);
+                rappel(&mono, freq);
+            }
+            while paquet > 0 {
+                let (mut data, mut n, mut drapeaux) = (std::ptr::null_mut(), 0u32, 0u32);
+                capture.GetBuffer(&mut data, &mut n, &mut drapeaux, None, None).map_err(e)?;
+                let octets = std::slice::from_raw_parts(data, n as usize * bloc);
+                mono.clear();
+                if drapeaux & AUDCLNT_BUFFERFLAGS_SILENT.0 as u32 != 0 {
+                    mono.resize(n as usize, 0.0);
+                } else if flottant {
+                    for t in octets.chunks_exact(bloc) {
+                        let s: f32 = t.chunks_exact(4).take(canaux).map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]])).sum();
+                        mono.push(s / canaux as f32);
+                    }
+                } else if bits == 16 {
+                    for t in octets.chunks_exact(bloc) {
+                        let s: f32 = t.chunks_exact(2).take(canaux).map(|c| i16::from_le_bytes([c[0], c[1]]) as f32 / 32768.0).sum();
+                        mono.push(s / canaux as f32);
+                    }
+                }
+                capture.ReleaseBuffer(n).map_err(e)?;
+                if !mono.is_empty() {
+                    rappel(&mono, freq);
+                }
+                paquet = capture.GetNextPacketSize().map_err(e)?;
+            }
+        }
+        let _ = client.Stop();
+        CoTaskMemFree(Some(fmt as *const _));
+        Ok(())
+    }
+}
+
 /// Enregistre le son du PC jusqu'à `stop` ; écrit un WAV 16 bits. Renvoie la durée en secondes.
 /// `micro` : enregistre le micro par défaut au lieu de ce qui sort des haut-parleurs.
 pub fn enregistrer_boucle(dest: &Path, stop: &AtomicBool, niveau: &Mutex<f32>, micro: bool) -> Result<f64, String> {
