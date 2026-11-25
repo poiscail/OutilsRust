@@ -59,6 +59,7 @@ mod manette_virtuelle;
 mod webcam_virtuelle;
 mod navigateur;
 mod nav_extensions;
+mod physique;
 mod listes;
 mod ludique;
 mod macros;

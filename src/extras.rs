@@ -262,6 +262,7 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         paresseux("🎓 S'entraîner au hacking (légal)", Cat::Fun, move || Box::new(ctf::Entrainement::new())),
         Box::new(crate::compagnon::Compagnon::new()),
         paresseux("🎤 Karaoké", Cat::Fun, move || Box::new(crate::scene::Karaoke::new())),
+        paresseux("🧪 Simulateur de physique", Cat::Fun, move || Box::new(crate::physique::Physique::new())),
         paresseux("🎡 Roue de la fortune", Cat::Fun, move || Box::new(crate::fete::Roue::new())),
         paresseux("🔐 Escape game", Cat::Fun, move || Box::new(crate::fete::EscapeGame::new())),
         paresseux("🎲 Dés et tirage", Cat::Fun, move || Box::new(ludique::Des::new())),

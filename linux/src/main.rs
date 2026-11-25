@@ -57,6 +57,8 @@ mod detourage;
 #[path = "../../src/nav_extensions.rs"]
 #[allow(dead_code)]
 mod nav_extensions;
+#[path = "../../src/physique.rs"]
+mod physique;
 #[path = "../../src/menu.rs"]
 mod menu;
 #[path = "../../src/fiches.rs"]
@@ -131,6 +133,7 @@ fn outils() -> Vec<Box<dyn Outil>> {
         Box::new(ia::RecherchePhotos::new()),
         Box::new(atelier::CreateurBd::new()),
         Box::new(atelier::CreateurPolice::new()),
+        Box::new(physique::Physique::new()),
         Box::new(fete::Roue::new()),
         Box::new(fete::EscapeGame::new()),
         Box::new(scene::Visualiseur::new()),

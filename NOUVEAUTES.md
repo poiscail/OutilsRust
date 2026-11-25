@@ -12,6 +12,7 @@
 - ✂ Détourage automatique : enlève le fond d'une photo en un clic (IA sur le PC)
 - 🗣 Voix réaliste : une voix naturelle lit tes textes, export MP3
 ### Fun
+- 🧪 Simulateur de physique : balles, caisses, dominos, cordes, ressorts et rampes, avec des scènes toutes prêtes (dominos, pendule de Newton, pyramide…)
 - 🎤 Karaoké : la voix du chanteur enlevée, les paroles qui défilent, un score au micro
 - 🎡 Roue de la fortune personnalisable et 🔐 escape game (3 aventures)
 - 🐾 Animal de bureau : un chat, un chien ou un slime qui se promène sur la barre des tâches
