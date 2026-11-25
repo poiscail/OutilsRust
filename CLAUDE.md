@@ -15,3 +15,6 @@
      - `Outils-linux-<version Linux>.tar.gz`.
   4. Donner les liens et les étapes de publication.
 - Le tag de la release GitHub est la version PC.
+
+## Idées
+- Quand je choisis des numéros dans une liste d'idées, ne pas me reproposer ensuite les idées que je n'ai pas choisies.
