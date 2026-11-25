@@ -373,7 +373,8 @@ pub const DICO: &[(&str, &str)] = &[
 /// Mots cherchés (avec leur traduction anglaise).
 pub fn mots_recherche(q: &str) -> Vec<String> {
     let mut v = Vec::new();
-    for m in q.to_lowercase().split(|c: char| !c.is_alphanumeric() && c != '\'').filter(|m| m.len() > 1) {
+    const VIDES: [&str; 22] = ["le", "la", "les", "un", "une", "des", "de", "du", "au", "aux", "et", "ou", "en", "sur", "sous", "avec", "pour", "dans", "the", "a", "of", "on"];
+    for m in q.to_lowercase().split(|c: char| !c.is_alphanumeric()).filter(|m| m.chars().count() > 1 && !VIDES.contains(m)) {
         let s = m.trim_end_matches('s').trim_end_matches('x');
         v.push(m.to_string());
         for (fr, en) in DICO {
@@ -390,7 +391,15 @@ pub fn mots_recherche(q: &str) -> Vec<String> {
 /// Score d'une description pour une recherche.
 pub fn score(description: &str, mots: &[String]) -> usize {
     let d = description.to_lowercase();
-    mots.iter().filter(|m| d.contains(m.as_str()) || d.contains(m.trim_end_matches('s'))).count()
+    // mots entiers de la description, au singulier
+    let mots_desc: Vec<&str> = d.split(|c: char| !c.is_alphanumeric()).filter(|w| !w.is_empty()).map(|w| w.strip_suffix('s').filter(|r| r.len() > 2).unwrap_or(w)).collect();
+    mots.iter()
+        .filter(|m| {
+            let m1 = m.strip_suffix('s').filter(|r| r.len() > 2).unwrap_or(m);
+            // expressions de plusieurs mots (« christmas tree ») : simple recherche dans le texte
+            if m1.contains(' ') { d.contains(m1) } else { mots_desc.contains(&m1) }
+        })
+        .count()
 }
 
 #[derive(Serialize, Deserialize, Clone, Default)]
@@ -609,9 +618,10 @@ pub fn synthese(texte: &str, voix: usize, vitesse: f32, sortie: &Path, msg: &Arc
     let exe = piper(msg)?;
     let chemin = VOIX[voix.min(VOIX.len() - 1)].1;
     let nom = chemin.rsplit('/').next().unwrap_or("voix");
-    let base = "https://huggingface.co/rhasspy/piper-voices/resolve/main/";
-    let modele = fichier(&format!("{base}{chemin}.onnx"), &format!("{nom}.onnx"), msg, "la voix (une seule fois)")?;
-    fichier(&format!("{base}{chemin}.onnx.json"), &format!("{nom}.onnx.json"), msg, "la voix")?;
+    // version figée des voix : les plus récentes ne marchent pas avec le programme Piper de 2023
+    let base = "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/";
+    let modele = fichier(&format!("{base}{chemin}.onnx"), &format!("{nom}-v1.onnx"), msg, "la voix (une seule fois)")?;
+    fichier(&format!("{base}{chemin}.onnx.json"), &format!("{nom}-v1.onnx.json"), msg, "la voix")?;
     *msg.lock().unwrap() = "Lecture du texte…".into();
     let mut c = Command::new(&exe);
     c.arg("--model").arg(&modele).arg("--output_file").arg(sortie).args(["--length_scale", &format!("{:.2}", 1.0 / vitesse.clamp(0.5, 2.0))]);

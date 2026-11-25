@@ -26,6 +26,7 @@ rfd = "0.15"
 sha1 = "0.10"
 sha2 = "0.10"
 x25519-dalek = { version = "2", features = ["static_secrets"] }
+tract-onnx = "0.23"
 aes-gcm = "0.10"
 argon2 = "0.5"
 base64 = "0.22"

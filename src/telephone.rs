@@ -738,7 +738,7 @@ impl Telephone {
                 });
                 ui.horizontal_wrapped(|ui| {
                     if ui.button("🔔 Faire sonner le téléphone").on_hover_text("Il sonne fort, même en silencieux (dans les 10 secondes)").clicked() {
-                        crate::pont::faire_sonner();
+                        crate::pont::faire_sonner(&r.cle);
                         noter_ui(&self.journal, "🔔 Le téléphone va sonner".into());
                     }
                     if ui.button("📤 Envoyer des fichiers au téléphone…").clicked() {
@@ -774,6 +774,31 @@ impl Telephone {
                     }
                     ui.ctx().request_repaint_after(Duration::from_millis(80));
                 }
+                ui.horizontal_wrapped(|ui| {
+                    let mut webcam = crate::webcam_virtuelle::ACTIVE.load(std::sync::atomic::Ordering::Relaxed);
+                    if ui.checkbox(&mut webcam, "📹 Vraie webcam pour Windows (Discord, Zoom, Teams, OBS)").on_hover_text("La caméra du téléphone devient la webcam « DirectShow Softcam ». Ouvre « Webcam et micro pour le PC » dans l'appli du téléphone.").changed() {
+                        crate::webcam_virtuelle::activer(webcam);
+                    }
+                    let e = crate::webcam_virtuelle::ETAT.lock().unwrap().clone();
+                    if !e.is_empty() {
+                        ui.label(e);
+                    }
+                });
+                ui.horizontal_wrapped(|ui| {
+                    ui.label("🎮 Vraie manette Xbox :");
+                    let e = crate::manette_virtuelle::ETAT.lock().unwrap().clone();
+                    ui.weak(if e.is_empty() { "dans l'appli, Manette pour le PC › profil « Vraie manette Xbox »".to_string() } else { e });
+                    if ui.small_button("Installer le pilote ViGEmBus").on_hover_text("Nécessaire une seule fois pour que Windows voie la manette").clicked() {
+                        let j = self.journal.clone();
+                        std::thread::spawn(move || {
+                            let m = match crate::manette_virtuelle::installer_pilote() {
+                                Ok(_) => "✔ Pilote de manette installé".to_string(),
+                                Err(e) => format!("✖ Pilote de manette : {e}"),
+                            };
+                            noter_ui(&j, m);
+                        });
+                    }
+                });
                 if crate::pont::MICRO_ACTIF.lock().unwrap().is_some() {
                     ui.colored_label(Color32::LIGHT_GREEN, "🎙 Le micro du téléphone est envoyé dans le câble virtuel : choisis « CABLE Output » comme micro dans Discord ou OBS.");
                 }

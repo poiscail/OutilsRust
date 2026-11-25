@@ -241,6 +241,7 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         paresseux("🎬 Stop motion", Cat::Creatif, move || Box::new(crate::scene::StopMotion::new())),
         paresseux("📖 Créateur de BD", Cat::Creatif, move || Box::new(crate::atelier::CreateurBd::new())),
         paresseux("🔤 Créateur de polices", Cat::Creatif, move || Box::new(crate::atelier::CreateurPolice::new())),
+        paresseux("✂ Détourage automatique", Cat::Creatif, move || Box::new(crate::detourage::Detourage::new())),
         paresseux("🗣 Voix réaliste", Cat::Creatif, move || Box::new(crate::ia::VoixRealiste::new())),
         paresseux("🎹 Éditeur de musique", Cat::Creatif, move || Box::new(crate::musique::Musique::new())),
         paresseux("📱 Vidéo verticale (TikTok, Shorts)", Cat::Creatif, move || Box::new(crate::createur::Shorts::new())),

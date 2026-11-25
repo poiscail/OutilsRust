@@ -1,5 +1,31 @@
 # Nouveautés d'Outils
 
+## Prochaine version
+### Créatif
+- 📖 Créateur de BD : cases, décors, personnages, bulles (parole, pensée, cri, récit), export PNG et PDF
+- 🔤 Créateur de polices : dessine tes lettres, Outils fabrique un vrai fichier .ttf à installer
+- 🎬 Stop motion à la webcam, avec l'image d'avant en transparence, export MP4 ou GIF
+- 🌈 Visualiseur musical (barres, cercle, onde, miroir)
+- ✂ Détourage automatique : enlève le fond d'une photo en un clic (IA sur le PC)
+- 🗣 Voix réaliste : une voix naturelle lit tes textes, export MP3
+### Fun
+- 🎤 Karaoké : la voix du chanteur enlevée, les paroles qui défilent, un score au micro
+- 🎡 Roue de la fortune personnalisable et 🔐 escape game (3 aventures)
+- 🐾 Animal de bureau : un chat, un chien ou un slime qui se promène sur la barre des tâches
+### Jeux et Minecraft
+- 🧭 Guide en jeu : tes notes ou une carte par-dessus le jeu (Ctrl+Alt+G)
+- 🧱 Image en blocs Minecraft et 🏰 générateur de structures, avec export .schem ou construction directe sur ton serveur
+### Apprendre
+- 🧮 Aide aux maths : équations pas à pas, courbes, fractions, PGCD
+- 🧪 Tableau périodique interactif, masse molaire et quiz
+- 🤖 Assistant IA hors ligne : questions, aide aux devoirs, résumés, corrections
+- 🔎 Retrouve tes photos en décrivant ce qu'elles montrent
+### Téléphone
+- 🎮 La manette du téléphone devient une vraie manette Xbox pour Windows
+- 📹 La caméra du téléphone devient une vraie webcam (Discord, Zoom, OBS)
+- 🖥 L'écran du PC en grand sur le téléphone, avec zoom et clic au doigt
+- 🔔 « Faire sonner le téléphone » marche aussi appli fermée (avec la veille activée)
+
 ## 0.16.0 — Créatif, VPN maison, profils et Linux 0.2
 ### Jeux
 - 📅 Sorties à venir : la date de sortie des jeux que tu attends, et une notification le jour J

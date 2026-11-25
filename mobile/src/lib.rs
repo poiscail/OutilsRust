@@ -121,6 +121,7 @@ pub fn catalogue() -> Vec<Fiche> {
         f(Box::new(monpc::MonPc::new()), "PC et réseau", Aucun, "Télécommande, état, jeux, fichiers, presse-papiers et Minecraft de ton PC (Outils ouvert sur le PC, même Wi-Fi)."),
         f(Box::new(pc_tel::SourisClavier::new()), "PC et réseau", Aucun, "Le téléphone devient pavé tactile et clavier du PC, et montre son écran."),
         f(Box::new(pc_tel::Manette::new()), "PC et réseau", Aucun, "Le téléphone devient une manette pour les jeux du PC."),
+        f(Box::new(pc_tel::EcranPc::new()), "PC et réseau", Aucun, "L'écran du PC en grand sur le téléphone : zoom à deux doigts, toucher pour cliquer."),
         f(Box::new(pc_tel::TeleTv::new()), "PC et réseau", Aucun, "Le PC branché à la télé : Netflix, YouTube, lecture, volume, depuis le canapé."),
         f(Box::new(pc_tel::WebcamMicro::new()), "PC et réseau", Aucun, "La caméra et le micro du téléphone pour le PC (OBS, Discord)."),
         f(Box::new(pc_tel::TraductionPhoto::new()), "PC et réseau", Aucun, "Vise un texte : il est lu par le PC et traduit."),
@@ -457,7 +458,7 @@ impl App {
         });
         ui.separator();
         ui.label(RichText::new("🔔 Rester actif quand l'appli est fermée").size(19.0).strong());
-        if ui.checkbox(&mut self.reglages.veille, "Garder Outils en veille (rappels, coupures, intrus, forfait)").changed() {
+        if ui.checkbox(&mut self.reglages.veille, "Garder Outils en veille (rappels, coupures, intrus, forfait, « faire sonner » depuis le PC)").changed() {
             android::veille(self.reglages.veille);
             change = true;
         }

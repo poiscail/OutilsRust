@@ -75,6 +75,9 @@ pub const BOUTONS: [(&str, &str, &str); 12] = [
     ("L", "q", "q"), ("R", "f", "f"), ("Start", "echap", "echap"), ("Select", "m", "m"),
 ];
 
+/// Profil « vraie manette Xbox » : le PC crée une manette Xbox 360 reconnue par Windows et les jeux.
+pub const XBOX: [&str; 12] = ["xbox:stick_haut", "xbox:stick_bas", "xbox:stick_gauche", "xbox:stick_droite", "xbox:a", "xbox:b", "xbox:x", "xbox:y", "xbox:lb", "xbox:rb", "xbox:start", "xbox:back"];
+
 /// Emplacement de chaque bouton (en fraction de la zone).
 fn place(k: usize) -> (f32, f32, f32) {
     match k {
@@ -116,7 +119,11 @@ fn profil_de_base(nom: &str, colonne: usize) -> ProfilManette {
     ProfilManette {
         nom: nom.into(),
         jeu: String::new(),
-        touches: BOUTONS.iter().map(|b| if colonne == 1 { b.1 } else { b.2 }.to_string()).collect(),
+        touches: BOUTONS.iter().enumerate().map(|(k, b)| match colonne {
+            1 => b.1,
+            2 => b.2,
+            _ => XBOX[k],
+        }.to_string()).collect(),
         places: (0..BOUTONS.len()).map(place).collect(),
         vibration: 1,
     }
@@ -127,6 +134,9 @@ pub fn profils_manette() -> Vec<ProfilManette> {
     let mut v: Vec<ProfilManette> = charger("manette_profils");
     if v.is_empty() {
         v = vec![profil_de_base("Jeux PC (ZQSD, Espace…)", 1), profil_de_base("Flèches, Entrée", 2)];
+    }
+    if !v.iter().any(|p| p.touches.iter().any(|t| t.starts_with("xbox:"))) {
+        v.push(profil_de_base("🎮 Vraie manette Xbox", 3));
     }
     for p in &mut v {
         let base = profil_de_base("", 1);
@@ -151,11 +161,25 @@ pub fn profil_pour(profils: &[ProfilManette], jeu: &str) -> Option<usize> {
 pub const TOUCHES: &[&str] = &[
     "espace", "entree", "echap", "tab", "maj", "ctrl", "alt", "retour", "haut", "bas", "gauche", "droite", "w", "a", "s", "d", "q", "e", "r", "f", "z", "x", "c", "v",
     "t", "g", "b", "y", "h", "n", "u", "j", "m", "i", "k", "o", "l", "p", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "f1", "f2", "f3", "f4", "f5", "f6",
-    "f7", "f8", "f9", "f10", "f11", "f12",
+    "f7", "f8", "f9", "f10", "f11", "f12", "xbox:a", "xbox:b", "xbox:x", "xbox:y", "xbox:lb", "xbox:rb", "xbox:lt", "xbox:rt", "xbox:start", "xbox:back",
+    "xbox:l3", "xbox:r3", "xbox:haut", "xbox:bas", "xbox:gauche", "xbox:droite", "xbox:stick_haut", "xbox:stick_bas", "xbox:stick_gauche", "xbox:stick_droite",
 ];
 
 /// Nom lisible d'une touche (« w » est la touche Z d'un clavier AZERTY : même position).
 pub fn libelle_touche(t: &str) -> String {
+    if let Some(x) = t.strip_prefix("xbox:") {
+        return format!("🎮 {}", match x {
+            "stick_haut" => "stick ↑",
+            "stick_bas" => "stick ↓",
+            "stick_gauche" => "stick ←",
+            "stick_droite" => "stick →",
+            "haut" => "croix ↑",
+            "bas" => "croix ↓",
+            "gauche" => "croix ←",
+            "droite" => "croix →",
+            autre => autre,
+        }.to_uppercase());
+    }
     match t {
         "w" => "Z".into(),
         "a" => "Q".into(),
@@ -399,11 +423,15 @@ impl Outil for Manette {
                     }
                 }
             }
+            let mut axe = None;
             if self.volant {
                 let c = self.capteurs.get_or_insert_with(|| Capteurs::demarrer(true, false, false));
                 let a = c.m.lock().unwrap().acc;
                 let pente = if zone.width() > zone.height() { a[1] } else { -a[0] };
-                if pente > 2.0 {
+                if self.touche(2).starts_with("xbox:") {
+                    // vraie manette : le volant pilote le stick gauche, en douceur
+                    axe = Some((pente / 6.0).clamp(-1.0, 1.0));
+                } else if pente > 2.0 {
                     maintenant.insert(3);
                 } else if pente < -2.0 {
                     maintenant.insert(2);
@@ -425,6 +453,9 @@ impl Outil for Manette {
             }
             for k in self.appuyes.difference(&maintenant) {
                 cmds.push(format!("k {} up", self.touche(*k)));
+            }
+            if let Some(v) = axe {
+                cmds.push(format!("x lx {v:.3}"));
             }
             // rappel régulier des touches tenues (le PC les relâche sinon au bout de 3 s)
             if self.rappel.elapsed() > Duration::from_millis(800) {
@@ -1014,5 +1045,177 @@ impl Outil for TeleTv {
         });
         etat_ui(ui, &self.e);
         ui.weak("⛶ = plein écran (touche F) · ⏪ ⏩ = reculer / avancer de quelques secondes. Pour taper une recherche : outil Souris et clavier.");
+    }
+}
+
+// ===================================================================================================
+// 33 · Écran du PC en grand (second écran)
+// ===================================================================================================
+
+/// Position (0..1) sur l'écran du PC d'un point de l'image affichée, avec zoom et décalage.
+pub fn point_pc(pos: Pos2, zone: egui::Rect, zoom: f32, decalage: Vec2) -> (f32, f32) {
+    // l'image fait zone × zoom, décalée de `decalage` (en pixels d'écran)
+    let x = (pos.x - zone.min.x - decalage.x) / (zone.width() * zoom);
+    let y = (pos.y - zone.min.y - decalage.y) / (zone.height() * zoom);
+    (x.clamp(0.0, 1.0), y.clamp(0.0, 1.0))
+}
+
+pub struct EcranPc {
+    envoi: Option<Envoi>,
+    image: Arc<Mutex<Option<(u64, image::RgbImage)>>>,
+    texture: Option<(u64, egui::TextureHandle)>,
+    fil: Arc<AtomicBool>,
+    vu: Instant,
+    zoom: f32,
+    decalage: Vec2,
+    appui: Option<(Instant, Pos2)>,
+    long_fait: bool,
+    qualite: u32,
+}
+
+impl EcranPc {
+    pub fn new() -> Self {
+        EcranPc { envoi: None, image: Arc::default(), texture: None, fil: Arc::default(), vu: Instant::now(), zoom: 1.0, decalage: Vec2::ZERO, appui: None, long_fait: false, qualite: 1280 }
+    }
+
+    fn lancer(&self, p: Pc) {
+        if self.fil.swap(true, Relaxed) {
+            return;
+        }
+        let (img, fil, l) = (self.image.clone(), self.fil.clone(), self.qualite);
+        std::thread::spawn(move || {
+            let mut n = 0u64;
+            while fil.load(Relaxed) {
+                let debut = Instant::now();
+                if let Ok(r) = ureq::get(&p.url(&format!("/api/ecran?l={l}"))).timeout(Duration::from_secs(5)).call() {
+                    let mut b = vec![];
+                    if std::io::Read::read_to_end(&mut r.into_reader(), &mut b).is_ok() {
+                        if let Ok(i) = image::load_from_memory(&b) {
+                            n += 1;
+                            *img.lock().unwrap() = Some((n, i.to_rgb8()));
+                        }
+                    }
+                }
+                // jusqu'à ~8 images par seconde
+                std::thread::sleep(Duration::from_millis(125).saturating_sub(debut.elapsed()));
+            }
+        });
+    }
+}
+
+impl Outil for EcranPc {
+    fn nom(&self) -> &'static str {
+        "🖥 Écran du PC en grand"
+    }
+    fn cat(&self) -> Cat {
+        Cat::Reseau
+    }
+    fn tic(&mut self, _: &egui::Context) {
+        if self.vu.elapsed() > Duration::from_secs(1) {
+            self.fil.store(false, Relaxed);
+        }
+    }
+    fn ui(&mut self, ui: &mut egui::Ui) {
+        self.vu = Instant::now();
+        let Some(p) = pc() else {
+            sans_pc(ui);
+            return;
+        };
+        if self.envoi.as_ref().is_none_or(|e| e.ip != p.ip) {
+            self.envoi = Envoi::new(&p);
+        }
+        self.lancer(p);
+        ui.horizontal_wrapped(|ui| {
+            ui.weak("Touche = clic · appui long = clic droit · deux doigts = zoom et déplacement");
+            if ui.small_button("🔍 1:1").clicked() {
+                self.zoom = 1.0;
+                self.decalage = Vec2::ZERO;
+            }
+        });
+        if let Some((n, i)) = self.image.lock().unwrap().clone() {
+            if self.texture.as_ref().is_none_or(|(m, _)| *m != n) {
+                let c = egui::ColorImage::from_rgb([i.width() as usize, i.height() as usize], i.as_raw());
+                match &mut self.texture {
+                    Some((m, t)) => {
+                        t.set(c, egui::TextureOptions::LINEAR);
+                        *m = n;
+                    }
+                    None => self.texture = Some((n, ui.ctx().load_texture("ecran_pc", c, egui::TextureOptions::LINEAR))),
+                }
+            }
+        }
+        let Some((_, t)) = &self.texture else {
+            ui.spinner();
+            ui.ctx().request_repaint_after(Duration::from_millis(100));
+            return;
+        };
+        let s = t.size_vec2();
+        let l = ui.available_width();
+        let h = (l * s.y / s.x).min(ui.available_height());
+        let (zone, rep) = ui.allocate_exact_size(Vec2::new(h * s.x / s.y, h), egui::Sense::click_and_drag());
+        // zoom et déplacement à deux doigts
+        if let Some(mt) = ui.input(|i| i.multi_touch()) {
+            let avant = self.zoom;
+            self.zoom = (self.zoom * mt.zoom_delta).clamp(1.0, 5.0);
+            let c = mt.center_pos - zone.min;
+            // garder le point sous les doigts au même endroit
+            self.decalage = c - (c - self.decalage) * (self.zoom / avant) + mt.translation_delta;
+            self.appui = None;
+            self.long_fait = true;
+        }
+        let max = Vec2::new(zone.width() * (self.zoom - 1.0), zone.height() * (self.zoom - 1.0));
+        self.decalage = Vec2::new(self.decalage.x.clamp(-max.x, 0.0), self.decalage.y.clamp(-max.y, 0.0));
+        let peint = ui.painter_at(zone);
+        let img = egui::Rect::from_min_size(zone.min + self.decalage, zone.size() * self.zoom);
+        peint.image(t.id(), img, egui::Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)), Color32::WHITE);
+        let envoyer = |e: &Option<Envoi>, c: Vec<String>| {
+            if let Some(e) = e {
+                e.envoyer(&c);
+            }
+        };
+        // un doigt : clic (court) ou clic droit (long)
+        if rep.is_pointer_button_down_on() && ui.input(|i| i.multi_touch().is_none()) {
+            if let Some(pos) = rep.interact_pointer_pos() {
+                if self.appui.is_none() && !self.long_fait {
+                    self.appui = Some((Instant::now(), pos));
+                }
+                if let Some((t0, p0)) = self.appui {
+                    if !self.long_fait && t0.elapsed() > Duration::from_millis(600) && p0.distance(pos) < 20.0 {
+                        let (x, y) = point_pc(p0, zone, self.zoom, self.decalage);
+                        envoyer(&self.envoi, vec![format!("a {x:.4} {y:.4}"), "c d".into()]);
+                        android::vibrer(30);
+                        self.long_fait = true;
+                    }
+                }
+            }
+        } else {
+            if let Some((t0, p0)) = self.appui.take() {
+                if !self.long_fait && t0.elapsed() < Duration::from_millis(600) {
+                    let (x, y) = point_pc(p0, zone, self.zoom, self.decalage);
+                    envoyer(&self.envoi, vec![format!("a {x:.4} {y:.4}"), "c g".into()]);
+                    android::vibrer(10);
+                }
+            }
+            if !ui.input(|i| i.any_touches()) {
+                self.long_fait = false;
+            }
+        }
+        ui.ctx().request_repaint_after(Duration::from_millis(60));
+    }
+}
+
+#[cfg(test)]
+mod tests_ecran {
+    use super::*;
+
+    #[test]
+    fn point_sur_le_pc() {
+        let zone = egui::Rect::from_min_size(Pos2::new(10.0, 20.0), Vec2::new(200.0, 100.0));
+        assert_eq!(point_pc(Pos2::new(110.0, 70.0), zone, 1.0, Vec2::ZERO), (0.5, 0.5));
+        // zoom ×2 sur le coin en haut à gauche : le centre de la zone montre le point (0,25 ; 0,25)
+        let (x, y) = point_pc(Pos2::new(110.0, 70.0), zone, 2.0, Vec2::ZERO);
+        assert!((x - 0.25).abs() < 1e-5 && (y - 0.25).abs() < 1e-5);
+        let (x, _) = point_pc(Pos2::new(110.0, 70.0), zone, 2.0, Vec2::new(-200.0, 0.0));
+        assert!((x - 0.75).abs() < 1e-5);
     }
 }

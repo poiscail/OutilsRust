@@ -16,6 +16,8 @@ use std::time::{Duration, Instant};
 
 pub const PORT_ENTREES: u16 = 8644;
 pub const PORT_SON: u16 = 8645;
+/// le téléphone écoute ici « faire sonner », même appli fermée
+pub const PORT_SONNER: u16 = 8646;
 
 // ===================================================================================================
 // Commandes de souris et de clavier
@@ -31,6 +33,10 @@ pub enum Entree {
     Texte(String),
     Touche(u16, bool), // code de position (scan code), appuyée ?
     ToucheTap(u16),
+    /// bouton de la manette Xbox virtuelle (« xbox:a »…), appuyé ?
+    Xbox(String, bool),
+    /// axe de la manette Xbox virtuelle (lx ly rx ry lt rt)
+    Axe(String, f32),
 }
 
 /// Code de position (scan code) d'une touche nommée.
@@ -97,8 +103,13 @@ pub fn lire_entree(c: &str) -> Option<Entree> {
         "b" => Entree::Bouton(bouton(p.next()), p.next()? == "down"),
         "w" => Entree::Molette(p.next()?.parse().ok()?),
         "t" => Entree::Texte(reste.to_string()),
+        "x" => Entree::Axe(p.next()?.to_string(), p.next()?.parse().ok()?),
         "k" => {
-            let sc = scan(p.next()?)?;
+            let nom = p.next()?;
+            if let Some(b) = nom.strip_prefix("xbox:") {
+                return Some(Entree::Xbox(b.to_string(), p.next() != Some("up")));
+            }
+            let sc = scan(nom)?;
             match p.next() {
                 Some("down") => Entree::Touche(sc, true),
                 Some("up") => Entree::Touche(sc, false),
@@ -167,6 +178,7 @@ pub fn executer(e: &Entree) {
         }
         Entree::Touche(sc, appuyee) => envoyer(&[clavier(*sc, 0, !appuyee)]),
         Entree::ToucheTap(sc) => envoyer(&[clavier(*sc, 0, false), clavier(*sc, 0, true)]),
+        Entree::Xbox(..) | Entree::Axe(..) => {}
     }
 }
 
@@ -179,6 +191,8 @@ pub fn ecouter_entrees(cle: Arc<Mutex<String>>, marche: Arc<AtomicBool>) {
         // touches restées appuyées si le téléphone se déconnecte : relâchées après 3 s sans nouvelles
         let mut appuyees: Vec<u16> = vec![];
         let mut dernier = Instant::now();
+        #[cfg(windows)]
+        let mut manette = crate::manette_virtuelle::Manette::new();
         while marche.load(Relaxed) {
             match s.recv_from(&mut b) {
                 Ok((n, _)) => {
@@ -196,11 +210,19 @@ pub fn ecouter_entrees(cle: Arc<Mutex<String>>, marche: Arc<AtomicBool>) {
                                 _ => {}
                             }
                             #[cfg(windows)]
-                            executer(&e);
+                            match &e {
+                                Entree::Xbox(n, d) => manette.bouton(n, *d),
+                                Entree::Axe(n, v) => manette.axe(n, *v),
+                                _ => executer(&e),
+                            }
                         }
                     }
                 }
                 Err(_) => {
+                    #[cfg(windows)]
+                    if dernier.elapsed() > Duration::from_secs(3) {
+                        manette.relacher();
+                    }
                     if !appuyees.is_empty() && dernier.elapsed() > Duration::from_secs(3) {
                         for sc in appuyees.drain(..) {
                             #[cfg(windows)]
@@ -287,8 +309,19 @@ pub fn envoyer_au_tel(chemin: &std::path::Path) {
     POUR_TEL.lock().unwrap().push(serde_json::json!({ "type": "fichier", "chemin": chemin.display().to_string(), "nom": chemin.file_name().unwrap_or_default().to_string_lossy(), "taille": t }));
 }
 
-pub fn faire_sonner() {
+pub fn faire_sonner(cle: &str) {
     POUR_TEL.lock().unwrap().push(serde_json::json!({ "type": "sonner" }));
+    // le téléphone écoute aussi en arrière-plan (appli fermée) : message UDP sur tout le réseau local
+    if let Ok(s) = UdpSocket::bind("0.0.0.0:0") {
+        let _ = s.set_broadcast(true);
+        let m = format!("OUTILS-SONNE|{cle}");
+        let _ = s.send_to(m.as_bytes(), ("255.255.255.255", PORT_SONNER));
+        if let Some(ip) = crate::telephone::ip_locale() {
+            if let Some((debut, _)) = ip.rsplit_once('.') {
+                let _ = s.send_to(m.as_bytes(), (format!("{debut}.255").as_str(), PORT_SONNER));
+            }
+        }
+    }
 }
 
 // ===================================================================================================

@@ -52,6 +52,8 @@ mod blocs;
 mod apprendre;
 #[path = "../../src/ia.rs"]
 mod ia;
+#[path = "../../src/detourage.rs"]
+mod detourage;
 #[path = "../../src/menu.rs"]
 mod menu;
 #[path = "../../src/fiches.rs"]
@@ -122,6 +124,7 @@ fn outils() -> Vec<Box<dyn Outil>> {
         Box::new(blocs::PixelArtMc::new(None)),
         Box::new(blocs::Structures::new(None)),
         Box::new(ia::VoixRealiste::new()),
+        Box::new(detourage::Detourage::new()),
         Box::new(ia::RecherchePhotos::new()),
         Box::new(atelier::CreateurBd::new()),
         Box::new(atelier::CreateurPolice::new()),
