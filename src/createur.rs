@@ -45,7 +45,7 @@ fn texture_pixels(ctx: &egui::Context, nom: &str, img: &RgbaImage) -> egui::Text
 }
 
 /// Téléchargement vers un fichier en indiquant la progression.
-fn telecharger(url: &str, dest: &Path, msg: &Arc<Mutex<String>>, quoi: &str) -> Result<(), String> {
+pub fn telecharger(url: &str, dest: &Path, msg: &Arc<Mutex<String>>, quoi: &str) -> Result<(), String> {
     let r = ureq::get(url).set("User-Agent", "Outils").call().map_err(|e| e.to_string())?;
     let total: u64 = r.header("Content-Length").and_then(|v| v.parse().ok()).unwrap_or(0);
     let tmp = dest.with_extension("part");
@@ -74,7 +74,7 @@ fn dossier_whisper() -> PathBuf {
     crate::outil::racine().join("whisper")
 }
 
-fn chercher(d: &Path, noms: &[&str]) -> Option<PathBuf> {
+pub fn chercher(d: &Path, noms: &[&str]) -> Option<PathBuf> {
     for e in std::fs::read_dir(d).ok()?.flatten() {
         let p = e.path();
         if p.is_dir() {

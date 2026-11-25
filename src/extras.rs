@@ -73,6 +73,7 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         // fichiers
         Box::new(recherche::RechercheFichiers::new()),
         Box::new(sauvegarde_auto::SauvegardeAuto::new()),
+        paresseux("🔎 Photos par leur contenu", Cat::Fichiers, move || Box::new(crate::ia::RecherchePhotos::new())),
         paresseux("🧪 Fichier suspect ?", Cat::Fichiers, move || Box::new(secu_fichiers::FichierSuspect::new())),
         paresseux("🔬 Visionneuse hexadécimale", Cat::Fichiers, move || Box::new(secu_fichiers::Hexa::new())),
         paresseux("🧹 Métadonnées cachées", Cat::Fichiers, move || Box::new(secu_fichiers::Metadonnees::new())),
@@ -200,6 +201,7 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         Box::new(crate::profils::SauvegardeCloud::new()),
         paresseux("👥 Profils", Cat::Systeme, move || Box::new(crate::profils::Profils::new())),
         paresseux("🔐 VPN maison", Cat::Reseau, move || Box::new(crate::vpn::Vpn::new())),
+        paresseux("🤖 Assistant IA (hors ligne)", Cat::Quotidien, move || Box::new(crate::ia::Assistant::new())),
         paresseux("🧮 Aide aux maths", Cat::Quotidien, move || Box::new(crate::apprendre::Maths::new())),
         paresseux("🧪 Tableau périodique", Cat::Quotidien, move || Box::new(crate::apprendre::Periodique::new())),
         paresseux("📑 Traduire un document", Cat::Quotidien, move || Box::new(pratique::TraductionDocs::new())),
@@ -239,6 +241,7 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         paresseux("🎬 Stop motion", Cat::Creatif, move || Box::new(crate::scene::StopMotion::new())),
         paresseux("📖 Créateur de BD", Cat::Creatif, move || Box::new(crate::atelier::CreateurBd::new())),
         paresseux("🔤 Créateur de polices", Cat::Creatif, move || Box::new(crate::atelier::CreateurPolice::new())),
+        paresseux("🗣 Voix réaliste", Cat::Creatif, move || Box::new(crate::ia::VoixRealiste::new())),
         paresseux("🎹 Éditeur de musique", Cat::Creatif, move || Box::new(crate::musique::Musique::new())),
         paresseux("📱 Vidéo verticale (TikTok, Shorts)", Cat::Creatif, move || Box::new(crate::createur::Shorts::new())),
         paresseux("🎨 Studio miniatures et bannières", Cat::Creatif, move || Box::new(crate::createur::Studio::new())),

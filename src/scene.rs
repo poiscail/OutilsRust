@@ -372,7 +372,7 @@ impl Karaoke {
         self.arreter();
         self.stop = Arc::new(AtomicBool::new(false));
         let st = self.stop.clone();
-        jouer_fichier(w, st.clone());
+        jouer_wav(w, st.clone());
         let (m, mf) = (self.micro.clone(), self.micro_freq.clone());
         m.lock().unwrap().clear();
         std::thread::spawn(move || {
@@ -398,7 +398,7 @@ impl Karaoke {
 }
 
 /// Joue un fichier WAV jusqu'à `stop`.
-fn jouer_fichier(f: PathBuf, stop: Arc<AtomicBool>) {
+pub fn jouer_wav(f: PathBuf, stop: Arc<AtomicBool>) {
     std::thread::spawn(move || {
         #[cfg(windows)]
         {

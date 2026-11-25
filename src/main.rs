@@ -53,6 +53,7 @@ mod scene;
 mod guide_jeu;
 mod blocs;
 mod apprendre;
+mod ia;
 mod listes;
 mod ludique;
 mod macros;
