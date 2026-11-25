@@ -315,4 +315,5 @@ pub const FICHES: &[Fiche] = &[
     Fiche { nom: "🔎 Photos par leur contenu", en: "Find photos by content", mots: "photos recherche ia chien plage image", fr: "Retrouve une photo en décrivant ce qu'elle montre : chien, plage, anniversaire…", en_desc: "Find a photo by describing what it shows: dog, beach, birthday…" },
     Fiche { nom: "🗣 Voix réaliste", en: "Realistic voice", mots: "voix lecture texte tts mp3", fr: "Une voix naturelle lit ton texte et l'enregistre en MP3.", en_desc: "A natural voice reads your text and saves it as MP3." },
     Fiche { nom: "✂ Détourage automatique", en: "Background remover", mots: "detourer fond photo transparent png", fr: "Enlève le fond d'une photo en un clic, pour une image ou tout un lot.", en_desc: "Removes a photo's background in one click, for one image or a batch." },
+    Fiche { nom: "🌐 Navigateur", en: "Browser", mots: "navigateur internet web site onglets chrome edge", fr: "Un navigateur léger dans Outils : onglets, favoris, bloqueur de pubs, onglets qui s'endorment pour économiser la mémoire.", en_desc: "A light browser inside Outils: tabs, bookmarks, ad blocker, tabs that sleep to save memory." },
 ];

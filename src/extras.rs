@@ -200,6 +200,7 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         Box::new(pratique::Abonnements::new()),
         Box::new(crate::profils::SauvegardeCloud::new()),
         paresseux("👥 Profils", Cat::Systeme, move || Box::new(crate::profils::Profils::new())),
+        paresseux("🌐 Navigateur", Cat::Reseau, move || Box::new(crate::navigateur::Navigateur::new())),
         paresseux("🔐 VPN maison", Cat::Reseau, move || Box::new(crate::vpn::Vpn::new())),
         paresseux("🤖 Assistant IA (hors ligne)", Cat::Quotidien, move || Box::new(crate::ia::Assistant::new())),
         paresseux("🧮 Aide aux maths", Cat::Quotidien, move || Box::new(crate::apprendre::Maths::new())),

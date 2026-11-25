@@ -1,6 +1,8 @@
 # Nouveautés d'Outils
 
 ## Prochaine version
+### Navigateur
+- 🌐 Navigateur intégré, très léger : il utilise le moteur web déjà dans Windows, onglets, favoris, historique, onglet privé, bloqueur de pubs et de pisteurs, onglets endormis pour libérer la mémoire
 ### Créatif
 - 📖 Créateur de BD : cases, décors, personnages, bulles (parole, pensée, cri, récit), export PNG et PDF
 - 🔤 Créateur de polices : dessine tes lettres, Outils fabrique un vrai fichier .ttf à installer

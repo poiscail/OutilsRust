@@ -57,6 +57,7 @@ mod ia;
 mod detourage;
 mod manette_virtuelle;
 mod webcam_virtuelle;
+mod navigateur;
 mod listes;
 mod ludique;
 mod macros;
