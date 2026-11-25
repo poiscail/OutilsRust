@@ -63,6 +63,8 @@ mod physique;
 mod espace;
 #[path = "../../src/jeux_plus.rs"]
 mod jeux_plus;
+#[path = "../../src/creatif_plus.rs"]
+mod creatif_plus;
 #[path = "../../src/menu.rs"]
 mod menu;
 #[path = "../../src/fiches.rs"]
@@ -137,6 +139,10 @@ fn outils() -> Vec<Box<dyn Outil>> {
         Box::new(ia::VoixRealiste::new()),
         Box::new(detourage::Detourage::new()),
         Box::new(ia::RecherchePhotos::new()),
+        Box::new(creatif_plus::Piano::new()),
+        Box::new(creatif_plus::Symetrie::new()),
+        Box::new(creatif_plus::ArtAscii::new()),
+        Box::new(creatif_plus::QrCodes::new()),
         Box::new(atelier::CreateurBd::new()),
         Box::new(atelier::CreateurPolice::new()),
         Box::new(physique::Physique::new()),

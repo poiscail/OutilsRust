@@ -62,6 +62,7 @@ mod nav_extensions;
 mod physique;
 mod espace;
 mod jeux_plus;
+mod creatif_plus;
 mod listes;
 mod ludique;
 mod macros;

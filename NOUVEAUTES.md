@@ -1,6 +1,14 @@
 # Nouveautés d'Outils
 
 ## Prochaine version
+### Jeux
+- 🎯 Entraînement à la visée (flick, grille, suivi, précision) et 🕹 testeur de manette (boutons, sticks, dérive, vibrations)
+- 🥁 Jeu de rythme sur tes propres musiques, 🧩 puzzle photo, 📊 tier lists à partager
+### Espace
+- 🌌 Planétarium : le ciel de ce soir au-dessus de chez toi, et 🪐 système solaire en 3D
+### Créatif et pratique
+- 🎹 Piano sur le clavier (5 instruments, enregistrement), 🌸 dessin symétrique, 🔤 art ASCII
+- 🔳 Générateur de QR codes (Wi-Fi, contact, lien…, avec logo)
 ### Navigateur
 - 🌐 Navigateur intégré, très léger : il utilise le moteur web déjà dans Windows, onglets, favoris, historique, onglet privé, bloqueur de pubs et de pisteurs, onglets endormis pour libérer la mémoire
 - 🧩 Extensions : installe les extensions du Chrome Web Store (bouton « 🧩 + » sur leur page), et 4 extensions d'Outils : mode sombre partout, vitesse des vidéos, mode lecture, anti-bannières de cookies
