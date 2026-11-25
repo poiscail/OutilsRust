@@ -59,6 +59,10 @@ mod detourage;
 mod nav_extensions;
 #[path = "../../src/physique.rs"]
 mod physique;
+#[path = "../../src/espace.rs"]
+mod espace;
+#[path = "../../src/jeux_plus.rs"]
+mod jeux_plus;
 #[path = "../../src/menu.rs"]
 mod menu;
 #[path = "../../src/fiches.rs"]
@@ -119,6 +123,8 @@ fn outils() -> Vec<Box<dyn Outil>> {
         Box::new(pratique::Abonnements::new()),
         Box::new(pratique::TraductionDocs::new()),
         Box::new(ia::Assistant::new()),
+        Box::new(espace::Planetarium::new()),
+        Box::new(espace::SystemeSolaire::new()),
         Box::new(apprendre::Maths::new()),
         Box::new(apprendre::Periodique::new()),
         Box::new(vpn::Vpn::new()),
@@ -134,6 +140,11 @@ fn outils() -> Vec<Box<dyn Outil>> {
         Box::new(atelier::CreateurBd::new()),
         Box::new(atelier::CreateurPolice::new()),
         Box::new(physique::Physique::new()),
+        Box::new(jeux_plus::Visee::new()),
+        Box::new(jeux_plus::TestManette::new()),
+        Box::new(jeux_plus::TierLists::new()),
+        Box::new(jeux_plus::Rythme::new()),
+        Box::new(jeux_plus::Puzzle::new()),
         Box::new(fete::Roue::new()),
         Box::new(fete::EscapeGame::new()),
         Box::new(scene::Visualiseur::new()),

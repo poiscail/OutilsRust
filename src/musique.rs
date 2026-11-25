@@ -475,3 +475,35 @@ mod tests {
         }
     }
 }
+
+/// Joue tout de suite un court son (échantillons mono à 44,1 kHz), sans bloquer.
+pub fn jouer_court(e: Vec<f32>) {
+    #[cfg(windows)]
+    {
+        thread_local! {
+            static SORTIE: std::cell::RefCell<Option<(rodio::OutputStream, rodio::OutputStreamHandle)>> = const { std::cell::RefCell::new(None) };
+        }
+        SORTIE.with(|s| {
+            let mut s = s.borrow_mut();
+            if s.is_none() {
+                *s = rodio::OutputStream::try_default().ok();
+            }
+            if let Some((_, h)) = &*s {
+                if let Ok(k) = rodio::Sink::try_new(h) {
+                    k.append(rodio::buffer::SamplesBuffer::new(1, TAUX, e));
+                    k.detach();
+                }
+            }
+        });
+    }
+    #[cfg(not(windows))]
+    std::thread::spawn(move || {
+        static N: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+        let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let f = std::env::temp_dir().join(format!("outils_son_{}_{n}.wav", std::process::id()));
+        if std::fs::write(&f, wav(&e)).is_ok() {
+            let _ = std::process::Command::new("paplay").arg(&f).status().or_else(|_| std::process::Command::new("aplay").arg("-q").arg(&f).status());
+            let _ = std::fs::remove_file(&f);
+        }
+    });
+}
