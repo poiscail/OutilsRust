@@ -893,6 +893,12 @@ impl CreateurPolice {
         if p.nom.is_empty() {
             p.nom = "Ma police".into();
         }
+        // première fois : on part d'une police installée plutôt que d'une page blanche
+        if p.glyphes.is_empty() {
+            if let Some(f) = crate::creatif::police(&["arialbd.ttf", "DejaVuSans-Bold.ttf", "LiberationSans-Bold.ttf"]) {
+                p.glyphes = CARACTERES.chars().map(|c| (c, depuis_police(&f, c))).collect();
+            }
+        }
         CreateurPolice { p, lettre: 'A', essai: "Bonjour le monde !".into(), apercu: None, message: String::new(), dessin: None }
     }
 

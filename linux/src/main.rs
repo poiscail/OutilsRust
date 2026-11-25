@@ -46,6 +46,10 @@ mod fete;
 mod atelier;
 #[path = "../../src/scene.rs"]
 mod scene;
+#[path = "../../src/blocs.rs"]
+mod blocs;
+#[path = "../../src/apprendre.rs"]
+mod apprendre;
 #[path = "../../src/menu.rs"]
 mod menu;
 #[path = "../../src/fiches.rs"]
@@ -105,11 +109,15 @@ fn outils() -> Vec<Box<dyn Outil>> {
         Box::new(quotidien2::Meteo::new()),
         Box::new(pratique::Abonnements::new()),
         Box::new(pratique::TraductionDocs::new()),
+        Box::new(apprendre::Maths::new()),
+        Box::new(apprendre::Periodique::new()),
         Box::new(vpn::Vpn::new()),
         Box::new(musique::Musique::new()),
         Box::new(createur::Shorts::new()),
         Box::new(createur::Studio::new()),
         Box::new(createur::Skins::new()),
+        Box::new(blocs::PixelArtMc::new(None)),
+        Box::new(blocs::Structures::new(None)),
         Box::new(atelier::CreateurBd::new()),
         Box::new(atelier::CreateurPolice::new()),
         Box::new(fete::Roue::new()),

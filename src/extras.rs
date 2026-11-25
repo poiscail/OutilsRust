@@ -6,6 +6,8 @@ use crate::{pratique, secu_reseau, secu_mdp, secu_fichiers, ctf, secu_pc, moi, j
 pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>> {
     vec![
         // minecraft
+        paresseux("🧱 Image en blocs Minecraft", Cat::Minecraft, { let mc = mc.clone(); move || Box::new(crate::blocs::PixelArtMc::new(Some(std::sync::Arc::new(move |c: &str| mc.commande(c))))) }),
+        paresseux("🏰 Générateur de structures", Cat::Minecraft, { let mc = mc.clone(); move || Box::new(crate::blocs::Structures::new(Some(std::sync::Arc::new(move |c: &str| mc.commande(c))))) }),
         paresseux("🧑‍🎨 Skins Minecraft", Cat::Minecraft, move || Box::new(crate::createur::Skins::new())),
         paresseux("📥 Installer un serveur", Cat::Minecraft, { let mc = mc.clone(); move || Box::new(mcplus::Installateur::new(mc)) }),
         paresseux("⚙ Réglages du serveur", Cat::Minecraft, { let mc = mc.clone(); move || Box::new(mcplus::Proprietes::new(mc)) }),
@@ -63,6 +65,7 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         Box::new(jeux6::AvantApres::new()),
         Box::new(jeux7::ProblemesJeu::new(mesures.clone())),
         Box::new(pratique::Sorties::new()),
+        Box::new(crate::guide_jeu::GuideJeu::new()),
         paresseux("🎛 Réglages graphiques conseillés", Cat::Jeux, move || Box::new(pratique::ReglagesGraphiques::new())),
         Box::new(jeux5::Journal::new()),
         paresseux("🆚 Comparer avec le PC d'un pote", Cat::Jeux, move || Box::new(jeux5::Comparateur::new())),
@@ -197,6 +200,8 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         Box::new(crate::profils::SauvegardeCloud::new()),
         paresseux("👥 Profils", Cat::Systeme, move || Box::new(crate::profils::Profils::new())),
         paresseux("🔐 VPN maison", Cat::Reseau, move || Box::new(crate::vpn::Vpn::new())),
+        paresseux("🧮 Aide aux maths", Cat::Quotidien, move || Box::new(crate::apprendre::Maths::new())),
+        paresseux("🧪 Tableau périodique", Cat::Quotidien, move || Box::new(crate::apprendre::Periodique::new())),
         paresseux("📑 Traduire un document", Cat::Quotidien, move || Box::new(pratique::TraductionDocs::new())),
         Box::new(secu_mdp::Fuites::new()),
         paresseux("🗂 Tableau Kanban", Cat::Quotidien, move || Box::new(listes::Kanban::new())),

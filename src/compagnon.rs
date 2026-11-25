@@ -216,7 +216,7 @@ fn aleatoire(a: u64, b: u64) -> u64 {
 }
 
 fn boucle(r: Arc<Mutex<Reglages>>, vivant: Arc<AtomicBool>) {
-    let calque = Calque::new("OutilsCompagnon", false, None);
+    let calque = Calque::new("OutilsCompagnon", false, &[]);
     let police = crate::creatif::police(&["segoeuib.ttf", "arialbd.ttf", "DejaVuSans-Bold.ttf"]);
     let (g, _, d, _) = zone_travail();
     let mut a = Animal { x: (g + d) as f32 / 2.0, y: 0.0, dir: -1.0, etat: Etat::Marche, jusque: Instant::now() + Duration::from_secs(5), message: None, coeur: None, souris_avant: souris(), immobile: Instant::now(), derniere_heure: heure().0, session: Instant::now() };

@@ -31,16 +31,17 @@ pub struct Calque {
     h: Arc<AtomicIsize>,
     image: Arc<Mutex<Option<(RgbaImage, i32, i32)>>>,
     clics: Arc<AtomicU32>,
-    /// basculé par le raccourci clavier
-    pub bascule: Arc<AtomicBool>,
+    /// appuis sur chaque raccourci clavier (dans l'ordre donné à `new`)
+    appuis: Arc<Vec<AtomicU32>>,
     pub raccourci_pris: Arc<AtomicBool>,
 }
 
 impl Calque {
-    /// `raccourci` : (modificateurs, touche) qui inverse `bascule`.
-    pub fn new(classe: &str, traversant: bool, raccourci: Option<(u32, u32)>) -> Self {
-        let c = Calque { h: Arc::default(), image: Arc::default(), clics: Arc::default(), bascule: Arc::default(), raccourci_pris: Arc::default() };
-        let (h, image, clics, bascule, pris) = (c.h.clone(), c.image.clone(), c.clics.clone(), c.bascule.clone(), c.raccourci_pris.clone());
+    /// `raccourcis` : (modificateurs, touche) comptés par `appuis(k)`.
+    pub fn new(classe: &str, traversant: bool, raccourcis: &[(u32, u32)]) -> Self {
+        let c = Calque { h: Arc::default(), image: Arc::default(), clics: Arc::default(), appuis: Arc::new(raccourcis.iter().map(|_| AtomicU32::new(0)).collect()), raccourci_pris: Arc::default() };
+        let (h, image, clics, appuis, pris) = (c.h.clone(), c.image.clone(), c.clics.clone(), c.appuis.clone(), c.raccourci_pris.clone());
+        let raccourcis = raccourcis.to_vec();
         let classe: Vec<u16> = classe.encode_utf16().chain([0]).collect();
         std::thread::spawn(move || unsafe {
             let inst = GetModuleHandleW(null());
@@ -56,15 +57,19 @@ impl Calque {
             }
             h.store(w as isize, Relaxed);
             CLICS.lock().unwrap().push((w as isize, clics));
-            if let Some((m, t)) = raccourci {
-                pris.store(crate::outil::raccourci(w, 1, m, t) == 0, Relaxed);
+            for (k, (m, t)) in raccourcis.iter().enumerate() {
+                if crate::outil::raccourci(w, k as i32 + 1, *m, *t) == 0 {
+                    pris.store(true, Relaxed);
+                }
             }
             SetTimer(w, 1, 2000, None);
             let mut msg: MSG = std::mem::zeroed();
             while GetMessageW(&mut msg, null_mut(), 0, 0) > 0 {
                 match msg.message {
                     WM_HOTKEY => {
-                        bascule.fetch_xor(true, Relaxed);
+                        if let Some(a) = appuis.get((msg.wParam as usize).wrapping_sub(1)) {
+                            a.fetch_add(1, Relaxed);
+                        }
                     }
                     WM_TIMER if IsWindowVisible(w) != 0 => {
                         // certains jeux repassent devant
@@ -105,6 +110,11 @@ impl Calque {
         if h != 0 {
             unsafe { PostMessageW(h as HWND, WM_MAJ, 0, 0) };
         }
+    }
+
+    /// Appuis sur le raccourci `k` depuis le dernier appel.
+    pub fn appuis(&self, k: usize) -> u32 {
+        self.appuis.get(k).map(|a| a.swap(0, Relaxed)).unwrap_or(0)
     }
 
     /// Nombre de clics depuis le dernier appel.
