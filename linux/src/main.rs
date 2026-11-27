@@ -69,6 +69,10 @@ mod creatif_plus;
 mod logique;
 #[path = "../../src/multiroom.rs"]
 mod multiroom;
+#[path = "../../src/vie.rs"]
+mod vie;
+#[path = "../../src/robots.rs"]
+mod robots;
 #[path = "../../src/menu.rs"]
 mod menu;
 #[path = "../../src/fiches.rs"]
@@ -150,6 +154,9 @@ fn outils() -> Vec<Box<dyn Outil>> {
         Box::new(atelier::CreateurBd::new()),
         Box::new(atelier::CreateurPolice::new()),
         Box::new(physique::Physique::new()),
+        Box::new(vie::EcosystemeOutil::new()),
+        Box::new(vie::Evolution::new()),
+        Box::new(robots::CombatRobots::new()),
         Box::new(logique::Labyrinthes::new()),
         Box::new(logique::Tortue::new()),
         Box::new(jeux_plus::Visee::new()),

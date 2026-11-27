@@ -1,6 +1,12 @@
 # Nouveautés d'Outils
 
 ## Prochaine version
+### Pour tout le monde
+- ✍ Dessiner sur l'écran : stylo, surligneur, flèches et formes par-dessus n'importe quelle fenêtre, avec loupe et projecteur (Ctrl+Alt+D)
+### Simulations et jeux
+- 🐇 Simulateur d'écosystème : herbe, lapins et renards dont les gènes évoluent
+- 🧬 Évolution en direct : des créatures apprennent toutes seules à avancer
+- 🤖 Combat de robots codés : programme ton robot avec des règles « Si… alors… » et affronte ceux de tes amis
 ### Encore plus
 - 🌀 Labyrinthes à jouer ou à imprimer (avec solution)
 - 🐢 Coder avec des blocs : une tortue qui dessine, et le même programme en Python
