@@ -148,6 +148,15 @@ impl Llama {
         &self.modele
     }
 
+    /// Réponse forcée au format JSON (la grammaire de llama.cpp suit le schéma donné).
+    pub fn json(&self, messages: serde_json::Value, schema: serde_json::Value, max: u32) -> Result<serde_json::Value, String> {
+        let corps = serde_json::json!({ "messages": messages, "temperature": 0.2, "max_tokens": max, "response_format": { "type": "json_object", "schema": schema } });
+        let r = ureq::post(&format!("http://127.0.0.1:{}/v1/chat/completions", self.port)).timeout(Duration::from_secs(600)).send_json(corps).map_err(|e| e.to_string())?;
+        let v: serde_json::Value = r.into_json().map_err(|e| e.to_string())?;
+        let t = v["choices"][0]["message"]["content"].as_str().ok_or("réponse vide de l'IA")?;
+        serde_json::from_str(t).map_err(|e| format!("réponse illisible de l'IA : {e}"))
+    }
+
     /// Envoie la conversation ; chaque morceau de réponse passe par `morceau`. Renvoie la réponse entière.
     pub fn discuter(&self, messages: serde_json::Value, max: u32, stop: &AtomicBool, mut morceau: impl FnMut(&str)) -> Result<String, String> {
         let corps = serde_json::json!({ "messages": messages, "stream": true, "temperature": 0.6, "max_tokens": max });

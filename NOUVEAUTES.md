@@ -1,6 +1,11 @@
 # Nouveautés d'Outils
 
 ## Prochaine version
+### Réinventer le PC
+- 🗂 Fichiers sans dossiers : retrouve un fichier en disant ce que c'est (« photos de la plage cet été », « pdf reçu sur discord »)
+- 🤖 Agent : écris ce que tu veux, Outils prépare un plan et enchaîne les actions (ranger, compresser, chercher, prévenir…), avec un bouton pour tout remettre comme avant
+- ⚔ Donjon du ménage : les fichiers inutiles deviennent des monstres à combattre pour libérer de la place
+- 🪟 Bureau infini : notes, listes, fichiers, liens et fenêtres posés sur une table géante, rangés en coins
 ### Pour tout le monde
 - ✉ Lettres toutes prêtes : résiliation, produit en panne, annulation d'un achat en ligne, remboursement, relance, changement d'adresse, en PDF
 - 📝 CV et lettre de motivation : 3 modèles de CV avec photo, et une lettre de motivation qui s'écrit toute seule

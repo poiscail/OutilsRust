@@ -75,6 +75,14 @@ mod vie;
 mod robots;
 #[path = "../../src/papiers.rs"]
 mod papiers;
+#[path = "../../src/sans_dossiers.rs"]
+mod sans_dossiers;
+#[path = "../../src/donjon.rs"]
+mod donjon;
+#[path = "../../src/agent.rs"]
+mod agent;
+#[path = "../../src/bureau_infini.rs"]
+mod bureau_infini;
 #[path = "../../src/menu.rs"]
 mod menu;
 #[path = "../../src/fiches.rs"]
@@ -159,6 +167,10 @@ fn outils() -> Vec<Box<dyn Outil>> {
         Box::new(vie::EcosystemeOutil::new()),
         Box::new(vie::Evolution::new()),
         Box::new(robots::CombatRobots::new()),
+        Box::new(bureau_infini::Bureau::new()),
+        Box::new(agent::Agent::new()),
+        Box::new(sans_dossiers::SansDossiers::new()),
+        Box::new(donjon::Donjon::new()),
         Box::new(papiers::Lettres::new()),
         Box::new(papiers::CvOutil::new()),
         Box::new(logique::Labyrinthes::new()),
