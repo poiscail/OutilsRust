@@ -63,6 +63,8 @@ mod physique;
 mod espace;
 mod jeux_plus;
 mod creatif_plus;
+mod logique;
+mod multiroom;
 mod listes;
 mod ludique;
 mod macros;

@@ -1,6 +1,10 @@
 # Nouveautés d'Outils
 
 ## Prochaine version
+### Encore plus
+- 🌀 Labyrinthes à jouer ou à imprimer (avec solution)
+- 🐢 Coder avec des blocs : une tortue qui dessine, et le même programme en Python
+- 🎶 Musique dans toute la maison : la même musique en même temps sur plusieurs PC
 ### Jeux
 - 🎯 Entraînement à la visée (flick, grille, suivi, précision) et 🕹 testeur de manette (boutons, sticks, dérive, vibrations)
 - 🥁 Jeu de rythme sur tes propres musiques, 🧩 puzzle photo, 📊 tier lists à partager

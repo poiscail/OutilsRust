@@ -65,6 +65,10 @@ mod espace;
 mod jeux_plus;
 #[path = "../../src/creatif_plus.rs"]
 mod creatif_plus;
+#[path = "../../src/logique.rs"]
+mod logique;
+#[path = "../../src/multiroom.rs"]
+mod multiroom;
 #[path = "../../src/menu.rs"]
 mod menu;
 #[path = "../../src/fiches.rs"]
@@ -146,6 +150,8 @@ fn outils() -> Vec<Box<dyn Outil>> {
         Box::new(atelier::CreateurBd::new()),
         Box::new(atelier::CreateurPolice::new()),
         Box::new(physique::Physique::new()),
+        Box::new(logique::Labyrinthes::new()),
+        Box::new(logique::Tortue::new()),
         Box::new(jeux_plus::Visee::new()),
         Box::new(jeux_plus::TestManette::new()),
         Box::new(jeux_plus::TierLists::new()),
@@ -153,6 +159,7 @@ fn outils() -> Vec<Box<dyn Outil>> {
         Box::new(jeux_plus::Puzzle::new()),
         Box::new(fete::Roue::new()),
         Box::new(fete::EscapeGame::new()),
+        Box::new(multiroom::MusiqueMaison::new()),
         Box::new(scene::Visualiseur::new()),
         Box::new(scene::StopMotion::new()),
         Box::new(scene::Karaoke::new()),
