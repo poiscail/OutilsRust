@@ -68,6 +68,7 @@ mod multiroom;
 mod vie;
 mod robots;
 mod annotation;
+mod papiers;
 mod listes;
 mod ludique;
 mod macros;

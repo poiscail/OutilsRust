@@ -2,6 +2,8 @@
 
 ## Prochaine version
 ### Pour tout le monde
+- ✉ Lettres toutes prêtes : résiliation, produit en panne, annulation d'un achat en ligne, remboursement, relance, changement d'adresse, en PDF
+- 📝 CV et lettre de motivation : 3 modèles de CV avec photo, et une lettre de motivation qui s'écrit toute seule
 - ✍ Dessiner sur l'écran : stylo, surligneur, flèches et formes par-dessus n'importe quelle fenêtre, avec loupe et projecteur (Ctrl+Alt+D)
 ### Simulations et jeux
 - 🐇 Simulateur d'écosystème : herbe, lapins et renards dont les gènes évoluent

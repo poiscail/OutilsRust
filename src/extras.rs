@@ -208,6 +208,8 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         paresseux("🌌 Planétarium", Cat::Quotidien, move || Box::new(crate::espace::Planetarium::new())),
         paresseux("🪐 Système solaire en 3D", Cat::Quotidien, move || Box::new(crate::espace::SystemeSolaire::new())),
         paresseux("🔳 Générateur de QR codes", Cat::Quotidien, move || Box::new(crate::creatif_plus::QrCodes::new())),
+        paresseux("✉ Lettres toutes prêtes", Cat::Quotidien, move || Box::new(crate::papiers::Lettres::new())),
+        paresseux("📝 CV et lettre de motivation", Cat::Quotidien, move || Box::new(crate::papiers::CvOutil::new())),
         paresseux("🐢 Coder avec des blocs", Cat::Quotidien, move || Box::new(crate::logique::Tortue::new())),
         paresseux("🧮 Aide aux maths", Cat::Quotidien, move || Box::new(crate::apprendre::Maths::new())),
         paresseux("🧪 Tableau périodique", Cat::Quotidien, move || Box::new(crate::apprendre::Periodique::new())),

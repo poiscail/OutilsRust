@@ -73,6 +73,8 @@ mod multiroom;
 mod vie;
 #[path = "../../src/robots.rs"]
 mod robots;
+#[path = "../../src/papiers.rs"]
+mod papiers;
 #[path = "../../src/menu.rs"]
 mod menu;
 #[path = "../../src/fiches.rs"]
@@ -157,6 +159,8 @@ fn outils() -> Vec<Box<dyn Outil>> {
         Box::new(vie::EcosystemeOutil::new()),
         Box::new(vie::Evolution::new()),
         Box::new(robots::CombatRobots::new()),
+        Box::new(papiers::Lettres::new()),
+        Box::new(papiers::CvOutil::new()),
         Box::new(logique::Labyrinthes::new()),
         Box::new(logique::Tortue::new()),
         Box::new(jeux_plus::Visee::new()),
