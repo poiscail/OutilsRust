@@ -1759,13 +1759,10 @@ pub const PAYS: [(&str, &str, &str); 100] = [
 ];
 
 /// Question : (pays visé, 4 propositions d'indices de pays mélangées).
+/// Le pays visé est tiré parmi ceux qui ne sont pas dans `deja` (s'il en reste).
 pub fn question(r: &mut impl FnMut(usize) -> usize, deja: &[usize]) -> (usize, [usize; 4]) {
-    let mut bonne = r(PAYS.len());
-    let mut essais = 0;
-    while deja.contains(&bonne) && essais < 200 {
-        bonne = r(PAYS.len());
-        essais += 1;
-    }
+    let libres: Vec<usize> = (0..PAYS.len()).filter(|i| !deja.contains(i)).collect();
+    let bonne = if libres.is_empty() { r(PAYS.len()) } else { libres[r(libres.len())] };
     let mut v = vec![bonne];
     while v.len() < 4 {
         let x = r(PAYS.len());
@@ -1788,6 +1785,8 @@ enum ModeQuiz {
 struct RecordsQuiz {
     drapeaux: u32,
     capitales: u32,
+    /// Pays déjà demandés (codes), d'une partie à l'autre : on les fait tous passer avant d'en revoir un.
+    recents: Vec<String>,
 }
 
 pub struct QuizDrapeaux {
@@ -1816,8 +1815,22 @@ impl QuizDrapeaux {
         self.points = 0;
         self.repondu = None;
         self.serie_finie = false;
-        self.q = question(&mut h, &self.vus);
+        self.nouvelle_question();
+    }
+
+    /// Tire un pays pas encore vu (ni dans cette série, ni dans les parties d'avant) et le retient.
+    fn nouvelle_question(&mut self) {
+        let mut deja: Vec<usize> = self.records.recents.iter().filter_map(|c| PAYS.iter().position(|p| p.0 == c)).collect();
+        deja.extend(self.vus.iter().copied());
+        if (0..PAYS.len()).all(|i| deja.contains(&i)) {
+            // tous les pays sont passés : on recommence le tour (sans redemander ceux de cette série)
+            self.records.recents.clear();
+            deja = self.vus.clone();
+        }
+        self.q = question(&mut h, &deja);
         self.vus.push(self.q.0);
+        self.records.recents.push(PAYS[self.q.0].0.to_string());
+        enregistrer("quiz_drapeaux", &self.records);
     }
 
     fn suivante(&mut self) {
@@ -1832,8 +1845,7 @@ impl QuizDrapeaux {
         }
         self.numero += 1;
         self.repondu = None;
-        self.q = question(&mut h, &self.vus);
-        self.vus.push(self.q.0);
+        self.nouvelle_question();
     }
 }
 
@@ -2245,6 +2257,13 @@ mod tests {
             x.sort();
             x.dedup();
             assert_eq!(x.len(), 4);
+        }
+        // en retenant les pays déjà demandés, les 100 passent avant qu'un seul revienne
+        let mut deja = vec![];
+        for _ in 0..PAYS.len() {
+            let (b, _) = question(&mut r, &deja);
+            assert!(!deja.contains(&b));
+            deja.push(b);
         }
         let mut codes: Vec<&str> = PAYS.iter().map(|p| p.0).collect();
         codes.sort();

@@ -7,6 +7,8 @@
 - 🐇 Simulateur d'écosystème : herbe, lapins et renards dont les gènes évoluent
 - 🧬 Évolution en direct : des créatures apprennent toutes seules à avancer
 - 🤖 Combat de robots codés : programme ton robot avec des règles « Si… alors… » et affronte ceux de tes amis
+
+## 0.17.0 — Navigateur intégré, IA locale, physique et Linux 0.3
 ### Encore plus
 - 🌀 Labyrinthes à jouer ou à imprimer (avec solution)
 - 🐢 Coder avec des blocs : une tortue qui dessine, et le même programme en Python
@@ -34,6 +36,7 @@
 - 🎤 Karaoké : la voix du chanteur enlevée, les paroles qui défilent, un score au micro
 - 🎡 Roue de la fortune personnalisable et 🔐 escape game (3 aventures)
 - 🐾 Animal de bureau : un chat, un chien ou un slime qui se promène sur la barre des tâches
+- 🏳 Quiz des drapeaux et capitales : plus de pays qui reviennent tout le temps, les 100 passent avant d'en revoir un
 ### Jeux et Minecraft
 - 🧭 Guide en jeu : tes notes ou une carte par-dessus le jeu (Ctrl+Alt+G)
 - 🧱 Image en blocs Minecraft et 🏰 générateur de structures, avec export .schem ou construction directe sur ton serveur
