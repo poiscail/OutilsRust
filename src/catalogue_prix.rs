@@ -818,6 +818,21 @@ impl CataloguePrix {
         }
     }
 
+    fn faire_excel(&mut self) {
+        let c = self.c.lock().unwrap().clone();
+        let octets = excel(&c, &crate::papiers::date_du_jour());
+        let nom = format!("{}.xlsx", c.titre.chars().map(|x| if x.is_alphanumeric() || x == ' ' || x == '-' { x } else { '_' }).collect::<String>().trim());
+        if let Some(p) = rfd::FileDialog::new().add_filter("Classeur Excel", &["xlsx"]).set_file_name(nom).save_file() {
+            *self.message.lock().unwrap() = match std::fs::write(&p, octets) {
+                Ok(_) => {
+                    crate::outil::ouvrir(&p);
+                    format!("✔ Tableau Excel enregistré : {}", p.display())
+                }
+                Err(e) => format!("✖ {e}"),
+            };
+        }
+    }
+
     fn vignette(&mut self, ctx: &egui::Context, f: &PathBuf) -> Option<egui::TextureHandle> {
         self.vignettes
             .entry(f.clone())
@@ -984,6 +999,9 @@ impl Outil for CataloguePrix {
         ui.horizontal_wrapped(|ui| {
             if ui.add_enabled(n_total > 0, egui::Button::new(RichText::new("📄 Faire le PDF").strong())).clicked() {
                 self.faire_pdf();
+            }
+            if ui.add_enabled(n_total > 0, egui::Button::new(RichText::new("📊 Tableau Excel").strong())).on_hover_text("Un onglet « Promos » et un onglet « Tous les produits », triés, avec des filtres sur chaque colonne").clicked() {
+                self.faire_excel();
             }
             ui.toggle_value(&mut self.apercu, "👁 Aperçu");
             let sans_photo = self.c.lock().unwrap().produits.iter().filter(|p| !p.image_url.is_empty() && p.image.is_none()).count();
@@ -1234,12 +1252,21 @@ mod tests {
         }
         let (pages, _) = mise_en_page(&c, "x");
         assert!(pages.len() >= 4);
+        // Excel : un vrai classeur zip avec les deux onglets
+        let x = excel(&c, "x");
+        let mut z = zip::ZipArchive::new(std::io::Cursor::new(x)).unwrap();
+        let mut f = String::new();
+        std::io::Read::read_to_string(&mut z.by_name("xl/workbook.xml").unwrap(), &mut f).unwrap();
+        assert!(f.contains("Promos (3)") && f.contains("Tous les produits (80)"));
+        assert_eq!(colonne(0), "A");
+        assert_eq!(colonne(27), "AB");
         // vrai catalogue enregistré → PDF : CATALOGUE_JSON=fichier.json PAPIERS_TEST=dossier
         if let (Ok(j), Ok(d)) = (std::env::var("CATALOGUE_JSON"), std::env::var("PAPIERS_TEST")) {
             let c: Catalogue = serde_json::from_str(&std::fs::read_to_string(j).unwrap()).unwrap();
             let (pages, ordre) = mise_en_page(&c, "28 novembre 2026");
             let imgs: Vec<RgbaImage> = ordre.iter().map(|&k| image::open(c.produits[k].image.as_ref().unwrap()).unwrap().to_rgba8()).collect();
             std::fs::write(format!("{d}/catalogue_reel.pdf"), pdf_complet(&pages, None, &imgs)).unwrap();
+            std::fs::write(format!("{d}/catalogue_reel.xlsx"), excel(&c, "28 novembre 2026")).unwrap();
         }
         if let Ok(d) = std::env::var("PAPIERS_TEST") {
             c.produits.truncate(14);
@@ -1337,4 +1364,135 @@ pub fn rayon_de_titre(titre: &str) -> String {
     let t = titre.split(['|', '–', '—']).next().unwrap_or(titre);
     let t = t.split(" - ").next().unwrap_or(t).trim();
     t.chars().take(60).collect()
+}
+
+// ---------------------------------------------------------------------------------------------------
+// Export Excel (.xlsx) : un onglet « Promos » et un onglet « Tous les produits », triés, filtrables
+// ---------------------------------------------------------------------------------------------------
+
+fn xml(s: &str) -> String {
+    s.chars().filter(|c| !c.is_control() || *c == '\t').collect::<String>().replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;")
+}
+
+/// Nom de colonne Excel : 0 → A, 26 → AA.
+fn colonne(mut k: usize) -> String {
+    let mut s = String::new();
+    loop {
+        s.insert(0, (b'A' + (k % 26) as u8) as char);
+        if k < 26 {
+            break;
+        }
+        k = k / 26 - 1;
+    }
+    s
+}
+
+#[derive(Clone)]
+enum Cellule {
+    Texte(String, u32),
+    Nombre(f64, u32),
+    Lien(String),
+    Vide(u32),
+}
+
+fn feuille(entetes: &[(&str, f32)], lignes: &[Vec<Cellule>]) -> String {
+    let n = lignes.len() + 1;
+    let derniere = colonne(entetes.len() - 1);
+    let mut s = String::from(r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">"#);
+    s += r#"<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="18"/><cols>"#;
+    for (k, (_, l)) in entetes.iter().enumerate() {
+        s += &format!(r#"<col min="{0}" max="{0}" width="{l}" customWidth="1"/>"#, k + 1);
+    }
+    s += "</cols><sheetData>";
+    s += r#"<row r="1" ht="24" customHeight="1">"#;
+    for (k, (t, _)) in entetes.iter().enumerate() {
+        s += &format!(r#"<c r="{}1" t="inlineStr" s="1"><is><t>{}</t></is></c>"#, colonne(k), xml(t));
+    }
+    s += "</row>";
+    for (i, l) in lignes.iter().enumerate() {
+        let r = i + 2;
+        s += &format!(r#"<row r="{r}">"#);
+        for (k, c) in l.iter().enumerate() {
+            let a = format!("{}{r}", colonne(k));
+            s += &match c {
+                Cellule::Texte(t, st) => format!(r#"<c r="{a}" t="inlineStr" s="{st}"><is><t xml:space="preserve">{}</t></is></c>"#, xml(t)),
+                Cellule::Nombre(v, st) => format!(r#"<c r="{a}" s="{st}"><v>{v}</v></c>"#),
+                Cellule::Lien(u) => format!(r#"<c r="{a}" t="str" s="7"><f>HYPERLINK("{}","Voir")</f><v>Voir</v></c>"#, xml(&u.replace('"', "%22"))),
+                Cellule::Vide(st) => format!(r#"<c r="{a}" s="{st}"/>"#),
+            };
+        }
+        s += "</row>";
+    }
+    s += &format!(r#"</sheetData><autoFilter ref="A1:{derniere}{n}"/><pageMargins left="0.4" right="0.4" top="0.5" bottom="0.5" header="0.3" footer="0.3"/><pageSetup orientation="landscape" fitToWidth="1" fitToHeight="0"/></worksheet>"#);
+    s
+}
+
+const STYLES_XLSX: &str = r##"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<numFmts count="2"><numFmt numFmtId="164" formatCode="#,##0.00\ &quot;€&quot;"/><numFmt numFmtId="165" formatCode="\-0%"/></numFmts>
+<fonts count="6"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFDC2626"/><name val="Calibri"/></font><font><strike/><sz val="10"/><color rgb="FF888888"/><name val="Calibri"/></font><font><u/><sz val="11"/><color rgb="FF2563EB"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>
+<fills count="5"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD63378"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFEE2E2"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFF5F5F7"/><bgColor indexed="64"/></patternFill></fill></fills>
+<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left/><right/><top/><bottom style="thin"><color rgb="FFE5E5EA"/></bottom><diagonal/></border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="12">
+<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"><alignment vertical="center"/></xf>
+<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"><alignment horizontal="center" vertical="center"/></xf>
+<xf numFmtId="164" fontId="5" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1"><alignment vertical="center"/></xf>
+<xf numFmtId="164" fontId="2" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"><alignment vertical="center"/></xf>
+<xf numFmtId="165" fontId="2" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
+<xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1"><alignment vertical="center"/></xf>
+<xf numFmtId="164" fontId="3" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1"><alignment vertical="center"/></xf>
+<xf numFmtId="0" fontId="4" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
+<xf numFmtId="164" fontId="0" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1"><alignment vertical="center"/></xf>
+<xf numFmtId="164" fontId="3" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"><alignment vertical="center"/></xf>
+<xf numFmtId="0" fontId="5" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment vertical="center"/></xf>
+<xf numFmtId="0" fontId="5" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"><alignment vertical="center"/></xf>
+</cellXfs>
+<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>"##;
+
+/// Classeur Excel : « Promos » (les plus grosses remises d'abord) et « Tous les produits »
+/// (par magasin, rayon puis prix). En-tête figé, filtres sur chaque colonne, promos surlignées.
+pub fn excel(c: &Catalogue, date: &str) -> Vec<u8> {
+    let ligne = |p: &Produit| -> Vec<Cellule> {
+        let promo = p.remise().is_some();
+        let (t, nb) = if promo { (5, 10) } else { (0, 11) };
+        vec![
+            Cellule::Texte(p.magasin.clone(), t),
+            Cellule::Texte(p.categorie.clone(), t),
+            Cellule::Texte(p.nom.clone(), nb),
+            p.prix.map_or(Cellule::Vide(t), |v| Cellule::Nombre((v * 100.0).round() / 100.0, if promo { 3 } else { 2 })),
+            p.avant().map_or(Cellule::Vide(t), |v| Cellule::Nombre((v * 100.0).round() / 100.0, if promo { 9 } else { 6 })),
+            p.remise().map_or(Cellule::Vide(t), |r| Cellule::Nombre((r / 100.0 * 1000.0).round() / 1000.0, 4)),
+            match (p.avant(), p.prix) {
+                (Some(a), Some(v)) => Cellule::Nombre(((a - v) * 100.0).round() / 100.0, 8),
+                _ => Cellule::Vide(t),
+            },
+            Cellule::Texte(match p.dispo { Some(false) => "indisponible".into(), Some(true) => "oui".into(), None => String::new() }, t),
+            if p.url.is_empty() { Cellule::Vide(0) } else { Cellule::Lien(p.url.clone()) },
+        ]
+    };
+    let entetes = [("Magasin", 14.0), ("Rayon", 22.0), ("Produit", 60.0), ("Prix", 12.0), ("Prix avant", 12.0), ("Remise", 10.0), ("Économie", 12.0), ("Dispo", 12.0), ("Lien", 8.0)];
+    let mut promos: Vec<&Produit> = c.produits.iter().filter(|p| p.remise().is_some()).collect();
+    promos.sort_by(|a, b| b.remise().unwrap_or(0.0).total_cmp(&a.remise().unwrap_or(0.0)));
+    let mut tous: Vec<&Produit> = c.produits.iter().collect();
+    tous.sort_by(|a, b| a.magasin.to_lowercase().cmp(&b.magasin.to_lowercase()).then(a.categorie.to_lowercase().cmp(&b.categorie.to_lowercase())).then(a.prix.unwrap_or(f64::MAX).total_cmp(&b.prix.unwrap_or(f64::MAX))));
+    let f1 = feuille(&entetes, &promos.iter().map(|p| ligne(p)).collect::<Vec<_>>());
+    let f2 = feuille(&entetes, &tous.iter().map(|p| ligne(p)).collect::<Vec<_>>());
+    let titre = format!("{} — {date}", c.titre);
+    let fichiers: Vec<(&str, String)> = vec![
+        ("[Content_Types].xml", r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>"#.into()),
+        ("_rels/.rels", r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>"#.into()),
+        ("docProps/core.xml", format!(r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>{}</dc:title><dc:creator>Outils</dc:creator></cp:coreProperties>"#, xml(&titre))),
+        ("xl/workbook.xml", format!(r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Promos ({})" sheetId="1" r:id="rId1"/><sheet name="Tous les produits ({})" sheetId="2" r:id="rId2"/></sheets><definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">'Promos ({0})'!$A$1:$I${2}</definedName><definedName name="_xlnm._FilterDatabase" localSheetId="1" hidden="1">'Tous les produits ({1})'!$A$1:$I${3}</definedName></definedNames></workbook>"#, promos.len(), tous.len(), promos.len() + 1, tous.len() + 1)),
+        ("xl/_rels/workbook.xml.rels", r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>"#.into()),
+        ("xl/styles.xml", STYLES_XLSX.into()),
+        ("xl/worksheets/sheet1.xml", f1),
+        ("xl/worksheets/sheet2.xml", f2),
+    ];
+    let mut z = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    let opt = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+    for (nom, contenu) in fichiers {
+        let _ = z.start_file(nom, opt);
+        let _ = std::io::Write::write_all(&mut z, contenu.as_bytes());
+    }
+    z.finish().map(|c| c.into_inner()).unwrap_or_default()
 }
