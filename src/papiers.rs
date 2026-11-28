@@ -19,6 +19,8 @@ pub enum Op {
     Rect { x: f32, y: f32, l: f32, h: f32, c: [u8; 3] },
     Ligne { x1: f32, y1: f32, x2: f32, y2: f32, e: f32, c: [u8; 3] },
     Photo { x: f32, y: f32, d: f32 },
+    /// image numéro `k` de la liste donnée à `pdf_complet`, dans le rectangle (proportions gardées)
+    Image { x: f32, y: f32, l: f32, h: f32, k: usize },
 }
 
 /// Caractère → octet WinAnsi (les accents français, œ, €, « », …).
@@ -152,6 +154,26 @@ fn rgb(c: [u8; 3]) -> String {
 
 /// Fabrique le PDF (A4). `photo` : image carrée affichée en rond par les `Op::Photo`.
 pub fn pdf(pages: &[Vec<Op>], photo: Option<&RgbaImage>) -> Vec<u8> {
+    pdf_complet(pages, photo, &[])
+}
+
+fn objet_image(p: &RgbaImage) -> Vec<u8> {
+    // fond blanc sous la transparence (logos, détourages)
+    let rgb = image::RgbImage::from_fn(p.width(), p.height(), |x, y| {
+        let q = p.get_pixel(x, y);
+        let a = q[3] as u32;
+        image::Rgb([0, 1, 2].map(|k| ((q[k] as u32 * a + 255 * (255 - a)) / 255) as u8))
+    });
+    let mut jpg = Vec::new();
+    let _ = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut jpg, 88).encode_image(&rgb);
+    let mut o = format!("<< /Type /XObject /Subtype /Image /Width {} /Height {} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length {} >>\nstream\n", p.width(), p.height(), jpg.len()).into_bytes();
+    o.extend_from_slice(&jpg);
+    o.extend_from_slice(b"\nendstream");
+    o
+}
+
+/// PDF avec, en plus de la photo, une liste d'images utilisées par les `Op::Image`.
+pub fn pdf_complet(pages: &[Vec<Op>], photo: Option<&RgbaImage>, images: &[RgbaImage]) -> Vec<u8> {
     let h = A4.1;
     let mut objets: Vec<Vec<u8>> = vec![
         Vec::new(), // catalogue (rempli à la fin)
@@ -168,7 +190,21 @@ pub fn pdf(pages: &[Vec<Op>], photo: Option<&RgbaImage>) -> Vec<u8> {
         o.extend_from_slice(&jpg);
         o.extend_from_slice(b"\nendstream");
         objets.push(o);
-        ressources += " /XObject << /Im1 5 0 R >>";
+    }
+    // images numérotées : objets à la suite
+    let premiere = objets.len() + 1;
+    for i in images {
+        objets.push(objet_image(i));
+    }
+    let mut xo: Vec<String> = Vec::new();
+    if photo.is_some() {
+        xo.push("/Im1 5 0 R".into());
+    }
+    for k in 0..images.len() {
+        xo.push(format!("/Img{k} {} 0 R", premiere + k));
+    }
+    if !xo.is_empty() {
+        ressources += &format!(" /XObject << {} >>", xo.join(" "));
     }
     let mut kids = Vec::new();
     for page in pages {
@@ -196,6 +232,15 @@ pub fn pdf(pages: &[Vec<Op>], photo: Option<&RgbaImage>) -> Vec<u8> {
                     ).bytes());
                 }
                 Op::Photo { .. } => {}
+                Op::Image { x, y, l, h: ht, k } => {
+                    if let Some(i) = images.get(*k) {
+                        // centrée dans le rectangle, proportions gardées
+                        let e = (l / i.width() as f32).min(ht / i.height() as f32);
+                        let (w, hh) = (i.width() as f32 * e, i.height() as f32 * e);
+                        let (x0, y0) = (x + (l - w) / 2.0, y + (ht - hh) / 2.0);
+                        f.extend(format!("q {w:.2} 0 0 {hh:.2} {x0:.2} {:.2} cm /Img{k} Do Q\n", h - y0 - hh).bytes());
+                    }
+                }
             }
         }
         let n = objets.len();
@@ -248,6 +293,9 @@ fn apercu(ui: &mut egui::Ui, page: &[Op], largeur_px: f32, photo: Option<&egui::
                 }
                 let _ = t;
             }
+            Op::Image { x, y, l, h, .. } => {
+                p.rect_filled(egui::Rect::from_min_size(pt(*x, *y), egui::vec2(l * e, h * e)), 2.0, Color32::from_gray(225));
+            }
             Op::Photo { x, y, d } => {
                 let r = egui::Rect::from_min_size(pt(*x, *y), egui::vec2(d * e, d * e));
                 match photo {
@@ -262,7 +310,7 @@ fn apercu(ui: &mut egui::Ui, page: &[Op], largeur_px: f32, photo: Option<&egui::
 }
 
 /// Aperçu de toutes les pages, côte à côte si la place le permet.
-fn apercu_pages(ui: &mut egui::Ui, pages: &[Vec<Op>], photo: Option<&egui::TextureHandle>) {
+pub fn apercu_pages(ui: &mut egui::Ui, pages: &[Vec<Op>], photo: Option<&egui::TextureHandle>) {
     let l = (ui.available_width() - 10.0).clamp(240.0, 520.0);
     ui.horizontal_wrapped(|ui| {
         for p in pages {

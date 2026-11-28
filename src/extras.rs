@@ -211,6 +211,7 @@ pub fn tous(mc: Pilote, mesures: crate::moniteur::Lecteur) -> Vec<Box<dyn Outil>
         paresseux("🪟 Bureau infini", Cat::Quotidien, move || Box::new(crate::bureau_infini::Bureau::new())),
         paresseux("🤖 Agent : dis-lui quoi faire", Cat::Quotidien, move || Box::new(crate::agent::Agent::new())),
         paresseux("🗂 Fichiers sans dossiers", Cat::Fichiers, move || Box::new(crate::sans_dossiers::SansDossiers::new())),
+        paresseux("🛒 Catalogue de prix", Cat::Quotidien, move || Box::new(crate::catalogue_prix::CataloguePrix::new())),
         paresseux("✉ Lettres toutes prêtes", Cat::Quotidien, move || Box::new(crate::papiers::Lettres::new())),
         paresseux("📝 CV et lettre de motivation", Cat::Quotidien, move || Box::new(crate::papiers::CvOutil::new())),
         paresseux("🐢 Coder avec des blocs", Cat::Quotidien, move || Box::new(crate::logique::Tortue::new())),

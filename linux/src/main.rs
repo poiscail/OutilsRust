@@ -83,6 +83,8 @@ mod donjon;
 mod agent;
 #[path = "../../src/bureau_infini.rs"]
 mod bureau_infini;
+#[path = "../../src/catalogue_prix.rs"]
+mod catalogue_prix;
 #[path = "../../src/menu.rs"]
 mod menu;
 #[path = "../../src/fiches.rs"]
@@ -171,6 +173,7 @@ fn outils() -> Vec<Box<dyn Outil>> {
         Box::new(agent::Agent::new()),
         Box::new(sans_dossiers::SansDossiers::new()),
         Box::new(donjon::Donjon::new()),
+        Box::new(catalogue_prix::CataloguePrix::new()),
         Box::new(papiers::Lettres::new()),
         Box::new(papiers::CvOutil::new()),
         Box::new(logique::Labyrinthes::new()),

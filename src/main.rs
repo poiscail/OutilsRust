@@ -73,6 +73,7 @@ mod sans_dossiers;
 mod donjon;
 mod agent;
 mod bureau_infini;
+mod catalogue_prix;
 mod listes;
 mod ludique;
 mod macros;

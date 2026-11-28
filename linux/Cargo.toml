@@ -14,7 +14,7 @@ path = "src/main.rs"
 [dependencies]
 eframe = "0.31"
 egui_extras = { version = "0.31", features = ["image", "http"] }
-image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
 ab_glyph = "0.2"
 getrandom = "0.2"
 regex = "1"

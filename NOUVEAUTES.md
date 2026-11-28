@@ -15,6 +15,7 @@
 - Fichiers sans dossiers : recherche plus rapide sur les gros disques
 - Dessiner sur l'écran : presque plus de processeur utilisé quand on ne dessine pas
 ### Réinventer le PC
+- 🛒 Catalogue de prix : colle les liens de produits (n'importe quel magasin), Outils relève nom, prix et photo, signale les baisses et fait un PDF rangé par catégorie ou par magasin, avec les totaux. Bouton 🛒 dans le navigateur d'Outils pour les sites qui bloquent
 - 🗂 Fichiers sans dossiers : retrouve un fichier en disant ce que c'est (« photos de la plage cet été », « pdf reçu sur discord »)
 - 🤖 Agent : écris ce que tu veux, Outils prépare un plan et enchaîne les actions (ranger, compresser, chercher, prévenir…), avec un bouton pour tout remettre comme avant
 - ⚔ Donjon du ménage : les fichiers inutiles deviennent des monstres à combattre pour libérer de la place

@@ -677,7 +677,7 @@ impl Outil for Navigateur {
                 }
                 let url_actuelle = self.onglets[k].infos.borrow().url.clone();
                 let favori = self.r.favoris.iter().any(|f| f.1 == url_actuelle);
-                let largeur = ui.available_width() - 130.0;
+                let largeur = ui.available_width() - 170.0;
                 let r = ui.add(egui::TextEdit::singleline(&mut self.onglets[k].adresse).desired_width(largeur.max(120.0)));
                 if r.gained_focus() || r.clicked() {
                     // le clavier revient à Outils (sinon la page garde les touches)
@@ -706,6 +706,19 @@ impl Outil for Navigateur {
                     } else if !url_actuelle.is_empty() {
                         let t = self.onglets[k].infos.borrow().titre.clone();
                         self.r.favoris.push((if t.is_empty() { url_actuelle.clone() } else { t.chars().take(30).collect() }, url_actuelle.clone()));
+                    }
+                }
+                // page d'un produit : l'envoyer au catalogue de prix (marche même sur les sites qui bloquent les robots)
+                if url_actuelle.starts_with("http") && ui.button("🛒").on_hover_text("Ajouter ce produit au catalogue de prix").clicked() {
+                    if let Some(v) = vue {
+                        let u = url_actuelle.clone();
+                        let _ = v.evaluate_script_with_callback("document.documentElement.outerHTML", move |json| {
+                            let html: String = serde_json::from_str(&json).unwrap_or_default();
+                            if !html.is_empty() {
+                                crate::catalogue_prix::recevoir(&u, html);
+                            }
+                        });
+                        *self.ext_msg.lock().unwrap() = "🛒 Produit envoyé au « Catalogue de prix »".into();
                     }
                 }
                 // page du Chrome Web Store : installation directe
