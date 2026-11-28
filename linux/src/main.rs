@@ -85,6 +85,8 @@ mod agent;
 mod bureau_infini;
 #[path = "../../src/catalogue_prix.rs"]
 mod catalogue_prix;
+#[path = "../../src/magasins.rs"]
+mod magasins;
 #[path = "../../src/menu.rs"]
 mod menu;
 #[path = "../../src/fiches.rs"]
