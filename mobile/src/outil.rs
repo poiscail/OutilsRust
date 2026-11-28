@@ -75,3 +75,6 @@ pub fn a_recharger(nom: &str) -> bool {
     v.retain(|x| x != nom);
     v.len() != avant
 }
+
+/// Ouvrir un dossier : pas d'explorateur de fichiers à piloter sur téléphone (le bouton est caché).
+pub fn ouvrir(_p: &std::path::Path) {}

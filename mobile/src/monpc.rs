@@ -599,18 +599,30 @@ impl Outil for MonPc {
                 }
             }
             3 => {
-                ui.weak("Cherche dans tous les fichiers du PC (comme Ctrl+Alt+F), puis télécharge-les sur le téléphone.");
-                let r = ui.add(egui::TextEdit::singleline(&mut self.q).hint_text("nom du fichier, ext:pdf, type:image…").desired_width(f32::INFINITY));
+                ui.weak("Dis ce que tu cherches, comme à une personne : « pdf reçu sur discord », « photos de la plage cet été », « musique téléchargée hier ». Puis télécharge-le sur le téléphone.");
+                let r = ui.add(egui::TextEdit::singleline(&mut self.q).hint_text("ex. : pdf reçu sur discord ce mois-ci").desired_width(f32::INFINITY));
                 if (r.lost_focus() || ui.button("🔎 Chercher").clicked()) && !self.q.trim().is_empty() && !occupe {
                     let (p, q, res) = (pc.clone(), self.q.clone(), self.resultats.clone());
                     en_fond(&self.e, "Recherche sur le PC…", move || {
-                        let j = p.get_json(&format!("/api/chercher?q={}", encoder(&q)))?;
+                        // la recherche « en français » (Fichiers sans dossiers), sinon celle par nom (PC plus ancien)
+                        let j = match p.get_json(&format!("/api/trouver?q={}", encoder(&q))) {
+                            Ok(j) if j["liste"].as_array().is_some_and(|l| !l.is_empty()) => j,
+                            _ => p.get_json(&format!("/api/chercher?q={}", encoder(&q)))?,
+                        };
                         let t = j["total"].as_u64().unwrap_or(0);
                         *res.lock().unwrap() = Some(j);
                         Ok(format!("{t} résultat(s)"))
                     });
                 }
                 if let Some(j) = self.resultats.lock().unwrap().clone() {
+                    if let Some(c) = j["compris"].as_array().filter(|c| !c.is_empty()) {
+                        ui.horizontal_wrapped(|ui| {
+                            ui.weak("Compris :");
+                            for x in c {
+                                ui.label(RichText::new(x.as_str().unwrap_or("")).background_color(ui.visuals().faint_bg_color));
+                            }
+                        });
+                    }
                     for x in j["liste"].as_array().into_iter().flatten() {
                         let (nom, chemin) = (x["nom"].as_str().unwrap_or(""), x["chemin"].as_str().unwrap_or(""));
                         let dossier = x["dossier"].as_bool().unwrap_or(false);
@@ -619,6 +631,9 @@ impl Outil for MonPc {
                                 ui.label(RichText::new(format!("{} {nom}", icone(nom, dossier))).strong());
                                 if !dossier {
                                     ui.weak(taille(x["taille"].as_u64().unwrap_or(0)));
+                                }
+                                if let Some(src) = x["source"].as_str().filter(|s| !s.is_empty()) {
+                                    ui.weak(format!("🌐 {src}"));
                                 }
                             });
                             ui.weak(chemin);

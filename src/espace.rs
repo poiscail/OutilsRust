@@ -117,7 +117,7 @@ pub fn horizontal(ra: f64, dec: f64, jd: f64, lat: f64, lon: f64) -> (f64, f64) 
 }
 
 /// Couleur d'une étoile d'après son indice B-V.
-fn couleur_etoile(bv: f32) -> Color32 {
+pub fn couleur_etoile(bv: f32) -> Color32 {
     let t = ((bv + 0.3) / 2.0).clamp(0.0, 1.0);
     let (r, g, b) = if t < 0.4 { (170.0 + t * 200.0, 200.0 + t * 120.0, 255.0) } else { (255.0, 250.0 - (t - 0.4) * 170.0, 240.0 - (t - 0.4) * 300.0) };
     Color32::from_rgb(r.min(255.0) as u8, g.min(255.0) as u8, b.clamp(60.0, 255.0) as u8)

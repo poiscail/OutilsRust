@@ -123,7 +123,7 @@ pub fn detecter(fichiers: &[(PathBuf, u64, i64)], vides: &[PathBuf], maintenant:
         let vieux = maintenant - m;
         let (espece, detail) = if (matches!(e.as_str(), "tmp" | "temp" | "crdownload" | "part" | "partial" | "download" | "!ut" | "dmp") || nom.ends_with(".old") || nom.starts_with("~")) && vieux > 2 * 86400 {
             (Espece::Rat, "fichier temporaire ou téléchargement interrompu".to_string())
-        } else if matches!(e.as_str(), "exe" | "msi" | "msix") && p.parent() == Some(telechargements) && vieux > 30 * 86400 {
+        } else if matches!(e.as_str(), "exe" | "msi" | "msix" | "apk") && p.parent() == Some(telechargements) && vieux > 30 * 86400 {
             (Espece::Gobelin, format!("installateur téléchargé il y a {} jours", vieux / 86400))
         } else if matches!(e.as_str(), "zip" | "rar" | "7z") && p.with_extension("").is_dir() && vieux > 7 * 86400 {
             (Espece::Mimic, "déjà décompressée juste à côté".to_string())
@@ -548,6 +548,7 @@ impl Outil for Donjon {
                                 self.monstres.lock().unwrap().retain(|x| x.chemin != m.chemin);
                                 self.choisi = None;
                             }
+                            #[cfg(not(target_os = "android"))]
                             if ui.button("👁 Voir").clicked() {
                                 crate::outil::ouvrir(if m.espece == Espece::Fantome { &m.chemin } else { m.chemin.parent().unwrap_or(&m.chemin) });
                             }
@@ -599,8 +600,9 @@ mod tests {
         assert!(!m2.iter().any(|x| x.chemin.ends_with("setup.exe")));
         // la corbeille marche (Linux : ~/.local/share/Trash)
         #[cfg(not(windows))]
-        {
-            std::env::set_var("HOME", &d);
+        std::env::set_var("HOME", &d);
+        // corbeille freedesktop (PC Linux ; le téléphone a sa propre corbeille)
+        if cfg!(not(windows)) && dossiers_perso()[0].2.starts_with(&d) {
             assert!(corbeille(&dl.join("setup.exe")));
             assert!(d.join(".local/share/Trash/files/setup.exe").exists());
         }

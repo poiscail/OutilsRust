@@ -326,6 +326,14 @@ fn chercher(q: &str) -> Vec<(String, u64, u64, bool)> {
 fn api(s: &mut TcpStream, req: &Requete, lecteur: &mut BufReader<TcpStream>) -> bool {
     match (req.methode.as_str(), req.chemin.as_str()) {
         ("GET", "/api/etat") => json(s, etat_json()),
+        ("GET", "/api/trouver") => json(s, crate::sans_dossiers::trouver_json(req.param("q").unwrap_or(""))),
+        ("GET", "/api/agent/plan") => json(s, crate::agent::plan_json(req.param("texte").unwrap_or(""))),
+        ("POST", "/api/agent/lancer") => match crate::agent::lancer_distance(req.param("plan").unwrap_or("")) {
+            Ok(t) => repondre(s, "200 OK", "text/plain; charset=utf-8", t.as_bytes()),
+            Err(t) => repondre(s, "400 Bad Request", "text/plain; charset=utf-8", t.as_bytes()),
+        },
+        ("GET", "/api/agent/suivi") => json(s, crate::agent::suivi_json()),
+        ("POST", "/api/agent/annuler") => repondre(s, "200 OK", "text/plain; charset=utf-8", crate::agent::annuler_distance().as_bytes()),
         ("GET", "/api/jeux") => {
             let v: Vec<serde_json::Value> = crate::lanceur_linux::jeux_installes().iter().map(|j| serde_json::json!({ "id": j.id, "nom": j.nom })).collect();
             json(s, serde_json::Value::Array(v));

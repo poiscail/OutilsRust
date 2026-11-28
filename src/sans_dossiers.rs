@@ -1002,3 +1002,30 @@ mod tests {
         std::fs::remove_dir_all(&d).unwrap();
     }
 }
+
+/// Recherche demandée par le téléphone : ce qui a été compris et les fichiers trouvés.
+pub fn trouver_json(q: &str) -> serde_json::Value {
+    let ix = index();
+    if ix.lock().unwrap().fiches.is_empty() {
+        static EN_COURS: AtomicBool = AtomicBool::new(false);
+        if !EN_COURS.swap(true, Relaxed) {
+            let ix2 = ix.clone();
+            std::thread::spawn(move || {
+                mettre_a_jour(&ix2, &Arc::default(), &AtomicBool::new(false));
+                EN_COURS.store(false, Relaxed);
+            });
+        }
+        return serde_json::json!({ "total": 0, "liste": [], "compris": ["⏳ Outils découvre les fichiers du PC, réessaie dans une minute"] });
+    }
+    let r = comprendre(q, maintenant());
+    let i = ix.lock().unwrap();
+    let mut v: Vec<(usize, &Fiche)> = i.fiches.iter().filter_map(|f| note(f, &r).map(|s| (s, f))).collect();
+    v.sort_by(|a, b| b.0.cmp(&a.0).then(b.1.date.cmp(&a.1.date)));
+    let liste: Vec<serde_json::Value> = v.iter().take(80).map(|(_, f)| serde_json::json!({
+        "chemin": f.chemin.display().to_string(),
+        "nom": f.chemin.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default(),
+        "taille": f.taille, "date": f.date, "dossier": false,
+        "icone": f.genre.icone(), "source": f.source,
+    })).collect();
+    serde_json::json!({ "total": v.len(), "liste": liste, "compris": r.compris })
+}

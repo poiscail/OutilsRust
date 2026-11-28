@@ -28,6 +28,7 @@ log = "0.4"
 rfd = { path = "shims/rfd" }
 
 sha1_smol = "1"
+sha2 = "0.10"
 aes-gcm = "0.10"
 base64 = "0.22"
 argon2 = "0.5"

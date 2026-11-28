@@ -2,6 +2,11 @@
 
 ## Prochaine version
 ### Téléphone
+- 🔭 Ciel en réalité augmentée : pointe le téléphone vers le ciel, les étoiles, planètes et constellations apparaissent par-dessus la caméra
+- 🔎 Mon PC › Fichiers : cherche sur le PC en français (« pdf reçu sur discord », « photos de cet été »)
+- 🤖 Dire au PC quoi faire : le PC prépare un plan, tu valides sur le téléphone, il le fait et te prévient à la fin
+- ⚔ Donjon du ménage sur le téléphone : doublons, vieux APK, téléchargements ratés, dossiers vides
+- 🧭 Widget enrichi : température et mémoire du PC, boutons verrouiller, pause et volume
 - 10 nouveautés venues du PC : 🤖 combat de robots codés, 🎡 roue de la fortune, 🔐 escape game, et une nouvelle rubrique 🔭 Sciences (planétarium, système solaire en 3D, simulateur de physique, écosystème, évolution en direct, aide aux maths, tableau périodique)
 - Démarrage plus rapide : ces outils ne se chargent qu'à leur première ouverture
 ### Corrections

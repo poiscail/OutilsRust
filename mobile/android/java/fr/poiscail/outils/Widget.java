@@ -18,8 +18,55 @@ import java.util.Locale;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-/** Widget d'écran d'accueil : état du PC, prochain rendez-vous du jour, batterie. Un appui ouvre Outils. */
+/**
+ * Widget d'écran d'accueil : état du PC (processeur, température, jeu, mémoire), prochain rendez-vous
+ * du jour, batterie, et des boutons pour le PC (verrouiller, pause, volume). Un appui ailleurs ouvre Outils.
+ */
 public class Widget extends AppWidgetProvider {
+    static final String ACTION = "fr.poiscail.outils.WIDGET";
+
+    @Override
+    public void onReceive(Context c, Intent i) {
+        if (!ACTION.equals(i.getAction())) {
+            super.onReceive(c, i);
+            return;
+        }
+        final String cmd = i.getStringExtra("cmd");
+        final PendingResult attente = goAsync();
+        final Context ctx = c.getApplicationContext();
+        new Thread(() -> {
+            try {
+                if (cmd != null && !cmd.equals("maj")) commandePc(ctx, cmd);
+                AppWidgetManager m = AppWidgetManager.getInstance(ctx);
+                int[] ids = m.getAppWidgetIds(new android.content.ComponentName(ctx, Widget.class));
+                RemoteViews v = vue(ctx);
+                for (int id : ids) m.updateAppWidget(id, v);
+            } catch (Exception e) {
+                // PC injoignable : rien à faire
+            } finally {
+                attente.finish();
+            }
+        }).start();
+    }
+
+    /** Envoie une commande au PC (même adresse et même clé que l'appli). */
+    static void commandePc(Context c, String cmd) throws Exception {
+        JSONObject p = new JSONObject(lire(new File(c.getFilesDir(), "pc.json")).trim());
+        URL u = new URL("http://" + p.getString("ip") + ":" + p.getInt("port") + "/cmd/" + cmd + "?k=" + p.getString("cle"));
+        HttpURLConnection h = (HttpURLConnection) u.openConnection();
+        h.setRequestMethod("POST");
+        h.setDoOutput(true);
+        h.setConnectTimeout(2500);
+        h.setReadTimeout(3000);
+        h.getOutputStream().close();
+        h.getResponseCode();
+        h.disconnect();
+    }
+
+    static PendingIntent bouton(Context c, String cmd, int n) {
+        Intent i = new Intent(c, Widget.class).setAction(ACTION).putExtra("cmd", cmd);
+        return PendingIntent.getBroadcast(c, 100 + n, i, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+    }
     @Override
     public void onUpdate(Context c, AppWidgetManager m, int[] ids) {
         final PendingResult attente = goAsync();
@@ -65,6 +112,10 @@ public class Widget extends AppWidgetProvider {
             String s = "🖥 " + e.optString("nom", "PC") + " allumé";
             double cpu = e.optDouble("cpu", -1);
             if (cpu >= 0) s += " · " + Math.round(cpu) + " %";
+            double temp = e.optDouble("cpu_t", -1);
+            if (temp > 0) s += " · 🌡 " + Math.round(temp) + "°C";
+            double ram = e.optDouble("ram", -1);
+            if (ram >= 0) s += " · RAM " + Math.round(ram) + " %";
             String jeu = e.isNull("jeu") ? "" : e.optString("jeu", "");
             if (!jeu.isEmpty()) s += " · 🎮 " + jeu;
             if (e.optString("mc", "").equals("en ligne")) s += " · ⛏ serveur en ligne";
@@ -117,6 +168,10 @@ public class Widget extends AppWidgetProvider {
         v.setTextViewText(res(c, "ligne_pc", "id"), etatPc(c));
         v.setTextViewText(res(c, "ligne_agenda", "id"), agenda(c));
         v.setTextViewText(res(c, "ligne_batterie", "id"), bat + "   · " + new SimpleDateFormat("HH:mm", Locale.FRANCE).format(new Date()));
+        String[][] boutons = {{"b_verrou", "verrouiller"}, {"b_pause", "lecture"}, {"b_moins", "vol_moins"}, {"b_plus", "vol_plus"}, {"b_maj", "maj"}};
+        for (int k = 0; k < boutons.length; k++) {
+            v.setOnClickPendingIntent(res(c, boutons[k][0], "id"), bouton(c, boutons[k][1], k));
+        }
         Intent ouvrir = c.getPackageManager().getLaunchIntentForPackage(c.getPackageName());
         if (ouvrir != null) {
             v.setOnClickPendingIntent(res(c, "racine", "id"), PendingIntent.getActivity(c, 0, ouvrir, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));

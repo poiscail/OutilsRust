@@ -655,6 +655,80 @@ pub fn annuler(j: &Journal) -> usize {
 }
 
 // ---------------------------------------------------------------------------------------------------
+// Depuis le téléphone
+// ---------------------------------------------------------------------------------------------------
+
+/// Ce que l'agent fait pour le téléphone : (en cours, lignes du compte rendu).
+static DISTANCE: Mutex<(bool, Vec<String>)> = Mutex::new((false, Vec::new()));
+static JOURNAL_DISTANCE: std::sync::LazyLock<Journal> = std::sync::LazyLock::new(Journal::default);
+
+/// Plan préparé pour le téléphone (sans IA : réponse immédiate).
+pub fn plan_json(texte: &str) -> serde_json::Value {
+    let (plan, incompris) = planifier(texte);
+    let etapes: Vec<serde_json::Value> = plan.iter().map(|e| {
+        let mut v = serde_json::to_value(e).unwrap_or_default();
+        v["description"] = format!("{} {}", e.action.icone(), e.decrire()).into();
+        v["dangereuse"] = e.action.dangereuse().into();
+        v
+    }).collect();
+    serde_json::json!({ "etapes": etapes, "incompris": incompris })
+}
+
+fn prevenir(titre: &str, texte: &str) {
+    #[cfg(windows)]
+    crate::telephone::pousser_notif(titre, texte);
+    #[cfg(not(windows))]
+    crate::pont_linux::pousser_notif(titre, texte);
+    crate::systeme::notifier(titre, texte);
+}
+
+/// Lance un plan envoyé par le téléphone (déjà accepté par la personne, étapes dangereuses comprises).
+pub fn lancer_distance(plan: &str) -> Result<String, String> {
+    let v: Vec<Etape> = serde_json::from_str(plan).map_err(|e| format!("plan illisible : {e}"))?;
+    if v.is_empty() || v.len() > 12 {
+        return Err("plan vide ou trop long".into());
+    }
+    {
+        let mut d = DISTANCE.lock().unwrap();
+        if d.0 {
+            return Err("l'agent est déjà en train de travailler".into());
+        }
+        *d = (true, vec![]);
+    }
+    std::thread::spawn(move || {
+        let dire = |s: String| DISTANCE.lock().unwrap().1.push(s);
+        let stop = AtomicBool::new(false);
+        let mut fin = Vec::new();
+        for e in &v {
+            dire(format!("{} {}…", e.action.icone(), e.decrire()));
+            match faire(e, &JOURNAL_DISTANCE, &stop, &dire) {
+                Ok(r) => {
+                    dire(format!("✔ {r}"));
+                    fin.push(r);
+                }
+                Err(r) => {
+                    dire(format!("✖ {r}"));
+                    fin.push(format!("✖ {r}"));
+                }
+            }
+        }
+        DISTANCE.lock().unwrap().0 = false;
+        prevenir("🤖 Agent : c'est fini", &fin.join(" · "));
+    });
+    Ok("C'est parti sur le PC".into())
+}
+
+pub fn suivi_json() -> serde_json::Value {
+    let d = DISTANCE.lock().unwrap();
+    serde_json::json!({ "en_cours": d.0, "lignes": d.1, "annulable": JOURNAL_DISTANCE.lock().unwrap().len() })
+}
+
+/// « Tout remettre comme avant » depuis le téléphone.
+pub fn annuler_distance() -> String {
+    format!("{} fichier(s) remis à leur place", annuler(&JOURNAL_DISTANCE))
+}
+
+// ---------------------------------------------------------------------------------------------------
 // L'outil
 // ---------------------------------------------------------------------------------------------------
 

@@ -39,6 +39,11 @@ mod fete;
 mod apprendre;
 #[path = "../../src/espace.rs"]
 mod espace;
+#[path = "../../src/donjon.rs"]
+mod donjon;
+mod sans_dossiers;
+mod ciel_ar;
+mod agent_tel;
 
 mod android;
 mod appli;
@@ -171,6 +176,7 @@ pub fn catalogue() -> Vec<Fiche> {
     vec![
         // PC et réseau
         f(Box::new(monpc::MonPc::new()), "PC et réseau", Aucun, "Télécommande, état, jeux, fichiers, presse-papiers et Minecraft de ton PC (Outils ouvert sur le PC, même Wi-Fi)."),
+        f(paresseux("🤖 Dire au PC quoi faire", outil::Cat::Reseau, || Box::new(agent_tel::AgentTel::new())), "PC et réseau", Aucun, "« Range mes téléchargements et préviens-moi » : le PC prépare un plan, tu valides, il le fait et te prévient à la fin."),
         f(Box::new(pc_tel::SourisClavier::new()), "PC et réseau", Aucun, "Le téléphone devient pavé tactile et clavier du PC, et montre son écran."),
         f(Box::new(pc_tel::Manette::new()), "PC et réseau", Aucun, "Le téléphone devient une manette pour les jeux du PC."),
         f(Box::new(pc_tel::EcranPc::new()), "PC et réseau", Aucun, "L'écran du PC en grand sur le téléphone : zoom à deux doigts, toucher pour cliquer."),
@@ -211,6 +217,7 @@ pub fn catalogue() -> Vec<Fiche> {
         f(Box::new(minijeux3::Reseau::new()), "Jeux", Aucun, "4 en ligne et morpion contre un PC ou un téléphone du même Wi-Fi."),
         f(Box::new(minijeux3::Clicker::new()), "Jeux", Aucun, "Tape sur le dango !"),
         f(Box::new(ludique::Reflexes::new()), "Jeux", Aucun, "Touche l'écran dès que la couleur change."),
+        f(paresseux("⚔ Donjon du ménage", outil::Cat::Fun, || Box::new(sans_dossiers::DonjonTel(donjon::Donjon::new()))), "Téléphone", Aucun, "Les fichiers inutiles du téléphone (doublons, vieux APK, téléchargements ratés, dossiers vides…) deviennent des monstres. Les vaincre les met dans la corbeille d'Outils."),
         f(paresseux("🤖 Combat de robots codés", outil::Cat::Fun, || Box::new(robots::CombatRobots::new())), "Jeux", Aucun, "Programme ton robot avec des règles « Si… alors… » et fais-le combattre. Partage-le avec un code."),
         f(paresseux("🎡 Roue de la fortune", outil::Cat::Fun, || Box::new(fete::Roue::new())), "Jeux", Aucun, "Une roue à faire tourner : qui fait la vaisselle, quel jeu, quel film…"),
         f(paresseux("🔐 Escape game", outil::Cat::Fun, || Box::new(fete::EscapeGame::new())), "Jeux", Aucun, "Crée des énigmes à résoudre entre amis."),
@@ -223,6 +230,7 @@ pub fn catalogue() -> Vec<Fiche> {
         f(Box::new(minijeux3::MotsMeles::new()), "Réflexion", Aucun, "Glisse le doigt sur les lettres d'un mot."),
         f(Box::new(minijeux3::Frappe::new()), "Réflexion", Aucun, "Vitesse de frappe (clavier ⌨ en haut)."),
         // Sciences
+        f(paresseux("🔭 Ciel en réalité augmentée", outil::Cat::Fun, || Box::new(ciel_ar::CielAr::new())), "Sciences", Aucun, "Pointe le téléphone vers le ciel : les étoiles, planètes et constellations apparaissent là où elles sont vraiment."),
         f(paresseux("🌌 Planétarium", outil::Cat::Fun, || Box::new(espace::Planetarium::new())), "Sciences", Aucun, "Le ciel de ce soir au-dessus de chez toi : étoiles, planètes, constellations."),
         f(paresseux("🪐 Système solaire en 3D", outil::Cat::Fun, || Box::new(espace::SystemeSolaire::new())), "Sciences", Aucun, "Les planètes qui tournent ; glisse pour tourner, accélère le temps."),
         f(paresseux("🧪 Simulateur de physique", outil::Cat::Fun, || Box::new(physique::Physique::new())), "Sciences", Aucun, "Balles, ressorts et dominos : touche pour lancer, glisse pour tirer."),

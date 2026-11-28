@@ -14,4 +14,17 @@
         android:textColor="#FFE0E0E0" android:textSize="14sp" android:maxLines="2" android:text="📅 …" />
     <TextView android:id="@+id/ligne_batterie" android:layout_width="match_parent" android:layout_height="wrap_content"
         android:textColor="#FFB0B0B0" android:textSize="13sp" android:text="🔋 …" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:layout_marginTop="6dp">
+        <TextView android:id="@+id/b_verrou" android:layout_width="0dp" android:layout_weight="1" android:layout_height="34dp"
+            android:gravity="center" android:textSize="18sp" android:text="🔒" />
+        <TextView android:id="@+id/b_pause" android:layout_width="0dp" android:layout_weight="1" android:layout_height="34dp"
+            android:gravity="center" android:textSize="18sp" android:text="⏯" />
+        <TextView android:id="@+id/b_moins" android:layout_width="0dp" android:layout_weight="1" android:layout_height="34dp"
+            android:gravity="center" android:textSize="18sp" android:text="🔉" />
+        <TextView android:id="@+id/b_plus" android:layout_width="0dp" android:layout_weight="1" android:layout_height="34dp"
+            android:gravity="center" android:textSize="18sp" android:text="🔊" />
+        <TextView android:id="@+id/b_maj" android:layout_width="0dp" android:layout_weight="1" android:layout_height="34dp"
+            android:gravity="center" android:textSize="18sp" android:text="🔄" />
+    </LinearLayout>
 </LinearLayout>
