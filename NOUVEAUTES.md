@@ -15,7 +15,7 @@
 - Fichiers sans dossiers : recherche plus rapide sur les gros disques
 - Dessiner sur l'écran : presque plus de processeur utilisé quand on ne dessine pas
 ### Réinventer le PC
-- 🛒 Catalogue de prix : donne les sites de tes magasins, Outils fait le tour de leurs produits (boutiques Shopify, WooCommerce et sites avec plan du site), relève tous les prix, repère les promos (prix barrés, baisses) et fait un PDF rangé avec les promos en tête (badge « -40 % », ancien prix barré). On peut aussi ajouter des produits précis, ou une page du navigateur d'Outils avec le bouton 🛒
+- 🛒 Catalogue de prix : donne les sites de tes magasins, Outils fait le tour de leurs produits (boutiques Shopify, WooCommerce et sites avec plan du site), relève tous les prix, repère les promos (prix barrés, baisses) et fait un PDF rangé avec les promos en tête (badge « -40 % », ancien prix barré). On peut aussi ajouter des produits précis. Pour Leclerc, Carrefour, Intermarché, Auchan, Lidl… : bouton « 🛒 Tout le rayon » dans le navigateur d'Outils, qui relève tout le rayon page après page (avec pause pour faire les vérifications anti-robot)
 - 🗂 Fichiers sans dossiers : retrouve un fichier en disant ce que c'est (« photos de la plage cet été », « pdf reçu sur discord »)
 - 🤖 Agent : écris ce que tu veux, Outils prépare un plan et enchaîne les actions (ranger, compresser, chercher, prévenir…), avec un bouton pour tout remettre comme avant
 - ⚔ Donjon du ménage : les fichiers inutiles deviennent des monstres à combattre pour libérer de la place

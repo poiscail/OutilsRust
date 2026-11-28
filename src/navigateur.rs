@@ -178,6 +178,30 @@ pub struct Navigateur {
     ext_saisie: String,
     ext_msg: Arc<std::sync::Mutex<String>>,
     ext_a_ajouter: Arc<std::sync::Mutex<Vec<std::path::PathBuf>>>,
+    /// relevé automatique des produits d'un rayon (pour le catalogue de prix)
+    releve: Option<Releve>,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum EtapeReleve {
+    Defiler,
+    Lire,
+    Suivant,
+}
+
+/// Relevé d'un rayon : on descend la page, on lit les produits, on passe à la page suivante.
+struct Releve {
+    etape: EtapeReleve,
+    pages: usize,
+    max_pages: usize,
+    defilements: usize,
+    attendre: Instant,
+    reponse: Arc<std::sync::Mutex<Option<String>>>,
+    attente: Option<Instant>,
+    urls: std::collections::HashSet<String>,
+    vides: usize,
+    pause: bool,
+    magasin: String,
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -277,7 +301,82 @@ fn copier_dossier(de: &std::path::Path, vers: &std::path::Path) -> std::io::Resu
 
 impl Navigateur {
     pub fn new() -> Self {
-        Navigateur { r: charger("navigateur"), onglets: vec![Onglet::nouveau(false)], actif: 0, contexte: None, passe_vue: 0, bloques: Arc::default(), erreur: String::new(), derniere_url: Instant::now(), panneau_ext: false, ext_profil: Rc::default(), ext_saisie: String::new(), ext_msg: Arc::default(), ext_a_ajouter: Arc::default() }
+        Navigateur { r: charger("navigateur"), onglets: vec![Onglet::nouveau(false)], actif: 0, contexte: None, passe_vue: 0, bloques: Arc::default(), erreur: String::new(), derniere_url: Instant::now(), panneau_ext: false, ext_profil: Rc::default(), ext_saisie: String::new(), ext_msg: Arc::default(), ext_a_ajouter: Arc::default(), releve: None }
+    }
+
+    /// Une étape du relevé automatique, à chaque image.
+    fn avancer_releve(&mut self, ctx: &egui::Context) {
+        use crate::catalogue_prix::{lire_releve, rayon_de_titre, recevoir_releve, JS_DEFILER, JS_LIRE, JS_SUIVANT};
+        let Some(r) = &mut self.releve else { return };
+        ctx.request_repaint_after(Duration::from_millis(250));
+        if r.pause || Instant::now() < r.attendre {
+            return;
+        }
+        let Some(v) = self.onglets[self.actif].vue.as_ref() else { return };
+        let mut fin: Option<String> = None;
+        if let Some(depuis) = r.attente {
+            let rep = r.reponse.lock().unwrap().take();
+            let Some(j) = rep else {
+                if depuis.elapsed() > Duration::from_secs(20) {
+                    r.attente = None; // la page a changé pendant le script : on recommence l'étape
+                }
+                return;
+            };
+            r.attente = None;
+            match r.etape {
+                EtapeReleve::Defiler => {
+                    r.defilements += 1;
+                    if j.trim() == "true" || r.defilements >= 40 {
+                        r.etape = EtapeReleve::Lire;
+                    }
+                    r.attendre = Instant::now() + Duration::from_millis(900);
+                }
+                EtapeReleve::Lire => {
+                    let (t, verif) = lire_releve(&j);
+                    if t.is_empty() && verif {
+                        r.pause = true;
+                        return;
+                    }
+                    let titre = serde_json::from_str::<serde_json::Value>(&j).ok().and_then(|x| x["titre"].as_str().map(String::from)).unwrap_or_default();
+                    let nouveaux: Vec<_> = t.into_iter().filter(|x| r.urls.insert(x.url.clone())).collect();
+                    if nouveaux.is_empty() {
+                        r.vides += 1;
+                    } else {
+                        r.vides = 0;
+                        recevoir_releve(&r.magasin, &rayon_de_titre(&titre), nouveaux);
+                    }
+                    if r.pages + 1 >= r.max_pages || r.vides >= 2 {
+                        fin = Some(format!("✔ Relevé fini : {} produits envoyés au « Catalogue de prix »", r.urls.len()));
+                    } else {
+                        r.etape = EtapeReleve::Suivant;
+                        r.attendre = Instant::now() + Duration::from_millis(800);
+                    }
+                }
+                EtapeReleve::Suivant => {
+                    if j.trim() == "true" {
+                        r.pages += 1;
+                        r.etape = EtapeReleve::Defiler;
+                        r.defilements = 0;
+                        r.attendre = Instant::now() + Duration::from_millis(3500);
+                    } else {
+                        fin = Some(format!("✔ Relevé fini ({} page(s)) : {} produits envoyés au « Catalogue de prix »", r.pages + 1, r.urls.len()));
+                    }
+                }
+            }
+        } else {
+            let js = match r.etape {
+                EtapeReleve::Defiler => JS_DEFILER,
+                EtapeReleve::Lire => JS_LIRE,
+                EtapeReleve::Suivant => JS_SUIVANT,
+            };
+            let rep = r.reponse.clone();
+            r.attente = Some(Instant::now());
+            let _ = v.evaluate_script_with_callback(js, move |s| *rep.lock().unwrap() = Some(s));
+        }
+        if let Some(m) = fin {
+            *self.ext_msg.lock().unwrap() = m;
+            self.releve = None;
+        }
     }
 
     fn creer_vue(&mut self, k: usize, url: &str, zone: wry::Rect) {
@@ -601,6 +700,9 @@ impl Outil for Navigateur {
                 i.fini.clear();
             }
         }
+        if let Some(u) = crate::catalogue_prix::OUVRIR_DANS_NAVIGATEUR.lock().unwrap().take() {
+            nouveaux.push(u);
+        }
         if self.r.historique.len() > 300 {
             let n = self.r.historique.len() - 300;
             self.r.historique.drain(..n);
@@ -709,6 +811,21 @@ impl Outil for Navigateur {
                     }
                 }
                 // page d'un produit : l'envoyer au catalogue de prix (marche même sur les sites qui bloquent les robots)
+                if url_actuelle.starts_with("http") && self.releve.is_none() && ui.button("🛒 Tout le rayon").on_hover_text("Relève tous les produits de ce rayon (page après page) pour le catalogue de prix").clicked() {
+                    self.releve = Some(Releve {
+                        etape: EtapeReleve::Defiler,
+                        pages: 0,
+                        max_pages: 40,
+                        defilements: 0,
+                        attendre: Instant::now(),
+                        reponse: Arc::default(),
+                        attente: None,
+                        urls: Default::default(),
+                        vides: 0,
+                        pause: false,
+                        magasin: crate::catalogue_prix::magasin_de(&url_actuelle),
+                    });
+                }
                 if url_actuelle.starts_with("http") && ui.button("🛒").on_hover_text("Ajouter ce produit au catalogue de prix").clicked() {
                     if let Some(v) = vue {
                         let u = url_actuelle.clone();
@@ -755,6 +872,36 @@ impl Outil for Navigateur {
                 let _ = std::process::Command::new("explorer").arg("https://go.microsoft.com/fwlink/p/?LinkId=2124703").spawn();
             }
         }
+        // relevé automatique en cours
+        let mut arreter = false;
+        if let Some(r) = &mut self.releve {
+            ui.horizontal_wrapped(|ui| {
+                if r.pause {
+                    ui.colored_label(Color32::from_rgb(250, 190, 80), "🧩 Vérification « je ne suis pas un robot » : fais-la dans la page, puis");
+                    if ui.button(RichText::new("▶ Continuer").strong()).clicked() {
+                        r.pause = false;
+                        r.vides = 0;
+                    }
+                } else {
+                    ui.spinner();
+                    let quoi = match r.etape {
+                        EtapeReleve::Defiler => "je descends la page",
+                        EtapeReleve::Lire => "je relève les produits",
+                        EtapeReleve::Suivant => "page suivante",
+                    };
+                    ui.label(format!("🛒 Relevé : page {} · {} produits · {quoi}…", r.pages + 1, r.urls.len()));
+                }
+                if ui.button("⏹ Arrêter").clicked() {
+                    arreter = true;
+                }
+            });
+        }
+        if arreter {
+            let n = self.releve.as_ref().map_or(0, |r| r.urls.len());
+            *self.ext_msg.lock().unwrap() = format!("⏹ Relevé arrêté : {n} produits envoyés au « Catalogue de prix »");
+            self.releve = None;
+        }
+        self.avancer_releve(&ui.ctx().clone());
         // zone de la page, en pixels de la fenêtre
         let zone = ui.available_rect_before_wrap();
         let ppp = ui.ctx().pixels_per_point();

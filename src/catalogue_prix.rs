@@ -366,8 +366,13 @@ impl Produit {
 /// « www.boulanger.com » → « Boulanger ».
 pub fn magasin_de(url: &str) -> String {
     let hote = url.split("://").nth(1).unwrap_or(url).split(['/', '?', ':']).next().unwrap_or("");
-    let parties: Vec<&str> = hote.split('.').filter(|p| !matches!(*p, "www" | "m" | "fr" | "shop" | "boutique")).collect();
-    let nom = if parties.len() >= 2 { parties[parties.len() - 2] } else { parties.first().copied().unwrap_or("") };
+    const TLD: [&str; 16] = ["fr", "com", "net", "org", "eu", "de", "be", "ch", "it", "es", "co", "uk", "io", "shop", "store", "info"];
+    let parties: Vec<&str> = hote.split('.').filter(|p| !matches!(*p, "www" | "m" | "shop" | "boutique" | "courses" | "drive")).collect();
+    let nom = match parties.last() {
+        Some(d) if !TLD.contains(d) => d,
+        _ if parties.len() >= 2 => parties[parties.len() - 2],
+        _ => parties.first().copied().unwrap_or(""),
+    };
     let mut c = nom.chars();
     c.next().map(|p| p.to_uppercase().collect::<String>() + c.as_str()).unwrap_or_default()
 }
@@ -706,7 +711,7 @@ impl CataloguePrix {
     }
 
     /// Travail de fond : magasins entiers, liens, pages reçues du navigateur ; puis les photos.
-    fn travailler(&self, magasins: Vec<(String, usize)>, liens: Vec<String>, pages: Vec<(String, String)>) {
+    fn travailler(&self, magasins: Vec<(String, usize)>, liens: Vec<String>, pages: Vec<(String, String)>, photos_manquantes: bool) {
         use std::sync::atomic::Ordering::Relaxed;
         if self.occupe.swap(true, Relaxed) {
             *self.message.lock().unwrap() = "Attends la fin du travail en cours (ou ⏹ Arrêter).".into();
@@ -764,6 +769,10 @@ impl CataloguePrix {
                     }
                 }
                 std::thread::sleep(std::time::Duration::from_millis(600));
+            }
+            if photos_manquantes {
+                let g = c.lock().unwrap();
+                images.extend(g.produits.iter().filter(|p| !p.image_url.is_empty() && p.image.as_ref().is_none_or(|f| !f.exists())).map(|p| (p.id, p.image_url.clone())));
             }
             let n_img = images.len();
             for (k, (id, u)) in images.into_iter().enumerate() {
@@ -833,7 +842,19 @@ impl Outil for CataloguePrix {
         use std::sync::atomic::Ordering::Relaxed;
         let recus: Vec<(String, String)> = std::mem::take(&mut *RECUS.lock().unwrap());
         if !recus.is_empty() {
-            self.travailler(vec![], vec![], recus);
+            self.travailler(vec![], vec![], recus, false);
+        }
+        let releves: Vec<(String, String, crate::magasins::Trouve)> = std::mem::take(&mut *RELEVES.lock().unwrap());
+        if !releves.is_empty() {
+            let mut g = self.c.lock().unwrap();
+            let n = releves.len();
+            for (m, rayon, mut t) in releves {
+                if t.infos.categorie.is_empty() {
+                    t.infos.categorie = rayon;
+                }
+                integrer(&mut g, &t.url, Some(&m), t.infos);
+            }
+            *self.message.lock().unwrap() = format!("🌐 {n} produits reçus du navigateur (les photos se chargent quand tu fais le PDF ou « Charger les photos »)");
         }
         let avant = self.c.lock().unwrap().clone();
         let occupe = self.occupe.load(Relaxed);
@@ -842,6 +863,7 @@ impl Outil for CataloguePrix {
         ui.horizontal(|ui| {
             ui.selectable_value(&mut self.onglet, 0, RichText::new("🏬 Des magasins entiers").strong());
             ui.selectable_value(&mut self.onglet, 1, RichText::new("🔗 Des produits précis").strong());
+            ui.selectable_value(&mut self.onglet, 2, RichText::new("🌐 Leclerc, Carrefour, Intermarché…").strong());
         });
         egui::Frame::group(ui.style()).show(ui, |ui| {
             if self.onglet == 0 {
@@ -856,7 +878,7 @@ impl Outil for CataloguePrix {
                         g.magasins.retain(|m| crate::magasins::origine(&m.0) != crate::magasins::origine(&s));
                         g.magasins.push((s.clone(), self.max));
                         drop(g);
-                        self.travailler(vec![(s, self.max)], vec![], vec![]);
+                        self.travailler(vec![(s, self.max)], vec![], vec![], false);
                         self.site.clear();
                     }
                 });
@@ -864,7 +886,7 @@ impl Outil for CataloguePrix {
                 if !magasins.is_empty() {
                     ui.horizontal_wrapped(|ui| {
                         if ui.add_enabled(!occupe, egui::Button::new("🔄 Relever tous les magasins")).on_hover_text("Relève à nouveau tous les prix ; les baisses depuis la dernière fois comptent comme des promos").clicked() {
-                            self.travailler(magasins.clone(), vec![], vec![]);
+                            self.travailler(magasins.clone(), vec![], vec![], false);
                         }
                         let mut retirer = None;
                         for (s, _) in &magasins {
@@ -886,6 +908,25 @@ impl Outil for CataloguePrix {
                     });
                 }
                 ui.weak("Marche très bien avec les boutiques Shopify et WooCommerce (beaucoup de petits et moyens magasins), et avec la plupart des sites qui ont un plan du site. Les très gros sites (Amazon, Leclerc…) refusent souvent les robots : pour eux, utilise le bouton 🛒 du navigateur d'Outils sur chaque produit. Outils va doucement pour ne pas gêner les sites (300 produits ≈ 3 à 5 minutes, beaucoup moins pour Shopify).");
+            } else if self.onglet == 2 {
+                ui.label("Ces grandes enseignes bloquent les robots et leurs prix dépendent de ton magasin : Outils passe donc par son navigateur, comme toi.");
+                ui.label(RichText::new("1. Ouvre le site ci-dessous et choisis ton magasin (ou ton drive).").strong());
+                ui.label(RichText::new("2. Va sur un rayon ou sur la page des promos.").strong());
+                ui.label(RichText::new("3. Clique sur « 🛒 Tout le rayon » en haut du navigateur : Outils descend la page, relève chaque produit, passe aux pages suivantes, puis envoie tout ici.").strong());
+                ui.weak("Si une vérification « je ne suis pas un robot » apparaît, Outils se met en pause : fais-la, puis clique « ▶ Continuer ». Il va doucement, comme quelqu'un qui regarde les pages.");
+                ui.horizontal_wrapped(|ui| {
+                    for (n, u) in [("E.Leclerc", "https://www.e.leclerc/"), ("Carrefour", "https://www.carrefour.fr/"), ("Intermarché", "https://www.intermarche.com/"), ("Auchan", "https://www.auchan.fr/"), ("Lidl", "https://www.lidl.fr/"), ("Super U", "https://www.coursesu.com/"), ("Monoprix", "https://courses.monoprix.fr/")] {
+                        if ui.button(format!("🌐 {n}")).clicked() {
+                            *OUVRIR_DANS_NAVIGATEUR.lock().unwrap() = Some(u.to_string());
+                            #[cfg(windows)]
+                            crate::interface2::ouvrir_outil("🌐 Navigateur");
+                            #[cfg(not(windows))]
+                            {
+                                *self.message.lock().unwrap() = "Le relevé dans le navigateur n'existe que sur Windows pour l'instant.".into();
+                            }
+                        }
+                    }
+                });
             } else {
                 ui.horizontal(|ui| {
                     ui.add(egui::TextEdit::multiline(&mut self.liens).desired_rows(2).desired_width(ui.available_width() - 150.0).hint_text("https://www.magasin.fr/produit…\n(un lien par ligne, ou plusieurs collés d'un coup)"));
@@ -893,7 +934,7 @@ impl Outil for CataloguePrix {
                         let re = regex::Regex::new(r#"https?://[^\s"'<>]+"#).unwrap();
                         let urls: Vec<String> = re.find_iter(&self.liens).map(|m| m.as_str().trim_end_matches([',', ';', ')']).to_string()).collect();
                         if !urls.is_empty() {
-                            self.travailler(vec![], urls, vec![]);
+                            self.travailler(vec![], urls, vec![], false);
                         }
                         self.liens.clear();
                     }
@@ -945,6 +986,10 @@ impl Outil for CataloguePrix {
                 self.faire_pdf();
             }
             ui.toggle_value(&mut self.apercu, "👁 Aperçu");
+            let sans_photo = self.c.lock().unwrap().produits.iter().filter(|p| !p.image_url.is_empty() && p.image.is_none()).count();
+            if sans_photo > 0 && ui.add_enabled(!occupe, egui::Button::new(format!("🖼 Charger les photos ({sans_photo})"))).clicked() {
+                self.travailler(vec![], vec![], vec![], true);
+            }
             ui.label(format!("{n_total} produits · 🔥 {n_promos} en promo"));
         });
         if self.apercu && n_total > 0 {
@@ -1145,6 +1190,21 @@ mod tests {
     }
 
     #[test]
+    fn releve_navigateur() {
+        let j = r#"{"produits":[{"url":"https://www.e.leclerc/fp/ipad","nom":"Apple iPad 128 Go","prix":459.99,"barre":511.1,"image":"https://media.e.leclerc/x.jpg","dispo":true},{"url":"https://www.e.leclerc/fp/lait","nom":"Lait","prix":0.95,"barre":null,"image":"data:x","dispo":false}],"verif":false,"titre":"Promotions | E.Leclerc"}"#;
+        let (t, verif) = lire_releve(j);
+        assert!(!verif);
+        assert_eq!(t.len(), 2);
+        assert_eq!((t[0].infos.prix, t[0].infos.prix_normal), (Some(459.99), Some(511.1)));
+        assert_eq!((t[1].infos.image.clone(), t[1].infos.dispo), (None, Some(false)));
+        assert!(lire_releve(r#"{"produits":[],"verif":true}"#).1);
+        assert_eq!(rayon_de_titre("Promotions | E.Leclerc"), "Promotions");
+        assert_eq!(magasin_de("https://www.e.leclerc/fp/ipad"), "Leclerc");
+        assert_eq!(magasin_de("https://www.carrefour.fr/p/x"), "Carrefour");
+        assert_eq!(magasin_de("https://courses.monoprix.fr/p/x"), "Monoprix");
+    }
+
+    #[test]
     fn pdf() {
         let mut c = Catalogue { regrouper: 0, ..Default::default() };
         for k in 0..8u64 {
@@ -1188,4 +1248,93 @@ mod tests {
             std::fs::write(format!("{d}/catalogue.pdf"), pdf_complet(&pages, None, &imgs)).unwrap();
         }
     }
+}
+
+// ---------------------------------------------------------------------------------------------------
+// Relevé dans le navigateur d'Outils (grandes enseignes : Leclerc, Carrefour, Intermarché…)
+// ---------------------------------------------------------------------------------------------------
+
+/// Script exécuté dans la page : relève chaque produit affiché (vignette avec lien, photo et prix).
+/// Renvoie { produits: [{url, nom, prix, barre, image, dispo}], verif, titre }.
+pub const JS_LIRE: &str = r#"(function(){
+const norm=t=>(t||'').replace(/[  ]/g,' ').replace(/\s+/g,' ').trim();
+const unite=/\/\s*(kg|g|l|litre|lt|cl|ml|unit|pi[eè]ce|pce|lavage|m|100\s?g|100\s?ml)\b|au kilo|le kilo|au litre/i;
+function prix(t){t=norm(t);if(unite.test(t))return null;let m=t.match(/(\d{1,3}(?:[ .]\d{3})*|\d+)\s*[,.]\s*(\d{2})\s*€/);if(m)return parseFloat(m[1].replace(/[ .]/g,'')+'.'+m[2]);
+m=t.match(/(\d{1,3}(?:[ .]\d{3})+|\d+)\s*€\s*[,.]?\s*(\d{2})(?!\d)/);if(m)return parseFloat(m[1].replace(/[ .]/g,'')+'.'+m[2]);m=t.match(/(\d{1,3}(?:[ .]\d{3})*|\d+)\s*€/);if(m)return parseFloat(m[1].replace(/[ .]/g,''));return null}
+const barreRe=/old|barr|strike|crossed|before|initial|ancien|was|regular|compare|reference|line-through/i;
+function estBarre(e,tuile){for(let x=e;x&&x!==tuile.parentElement;x=x.parentElement){const tag=x.tagName;if(tag==='DEL'||tag==='S'||tag==='STRIKE')return true;
+const c=(typeof x.className==='string'?x.className:'')+' '+(x.getAttribute('aria-label')||'');if(barreRe.test(c))return true;
+try{if(getComputedStyle(x).textDecorationLine.includes('line-through'))return true}catch(_){}}return false}
+function image(t){const i=t.querySelector('img');if(!i)return '';let s=i.currentSrc||i.src||'';if(!s||s.startsWith('data:'))s=i.dataset.src||i.dataset.lazy||i.getAttribute('data-original')||((i.srcset||i.dataset.srcset||'').split(' ')[0])||'';
+try{return s?new URL(s,location.href).href:''}catch(_){return ''}}
+const vus=new Set(),tuiles=[];
+for(const a of document.querySelectorAll('a[href]')){const h=a.getAttribute('href')||'';if(!h||h.startsWith('#')||h.startsWith('javascript'))continue;
+let u;try{u=new URL(a.href,location.href)}catch(_){continue}if(u.origin!==location.origin)continue;
+let t=a;for(let k=0;k<8&&t;k++){if(t.querySelector('img')&&/\d\s*€|€\s*\d/.test(norm(t.innerText)))break;t=t.parentElement}
+if(!t||t===document.body||vus.has(t))continue;
+const liens=new Set([...t.querySelectorAll('a[href]')].map(x=>x.href.split('#')[0]));if(liens.size>3)continue;vus.add(t);tuiles.push([t,a])}
+const produits=[];const deja=new Set();
+for(const [t,a] of tuiles){const url=a.href.split('#')[0];if(deja.has(url))continue;
+let cands=[...t.querySelectorAll('*')].filter(e=>{const x=norm(e.innerText);const v=x.length<40?prix(x):null;return v!==null&&v>0});
+// on garde l'élément le plus précis : un parent qui donne le même prix qu'un de ses enfants est écarté
+cands=cands.filter(e=>{const v=prix(e.innerText);return !cands.some(d=>d!==e&&e.contains(d)&&prix(d.innerText)===v)});
+let p=null,b=null;for(const e of cands){const v=prix(e.innerText);if(v===null)continue;if(estBarre(e,t)){if(b===null||v>b)b=v}else if(p===null)p=v}
+if(p===null)continue;
+const titre=t.querySelector('h1,h2,h3,h4,[class*=title i],[class*=name i],[class*=libelle i],[class*=designation i],[class*=label i]');
+let nom=norm(titre&&titre.innerText)||norm(a.getAttribute('title'))||norm((t.querySelector('img')||{}).alt)||norm(a.innerText).split(' € ')[0];
+if(!nom||nom.length<3)continue;deja.add(url);
+produits.push({url,nom:nom.slice(0,160),prix:p,barre:(b!==null&&b>p*1.005)?b:null,image:image(t),dispo:!/indisponible|rupture|épuisé|epuise/i.test(t.innerText)})}
+const txt=norm(document.title+' '+(document.body?document.body.innerText.slice(0,3000):''));
+const verif=produits.length===0&&(/captcha|robot|vérification|verify you are|unusual traffic|accès refusé|access denied|datadome|un instant|just a moment/i.test(txt)||!!document.querySelector('iframe[src*=captcha],iframe[src*=datadome],#challenge-form,[class*=captcha i]'));
+return {produits,verif,titre:document.title}})()"#;
+
+/// Fait défiler d'un écran ; renvoie vrai en bas de la page.
+pub const JS_DEFILER: &str = "(function(){window.scrollBy(0,Math.max(400,innerHeight*0.85));return (innerHeight+scrollY)>=document.documentElement.scrollHeight-80})()";
+
+/// Clique sur « page suivante » ou « voir plus » ; renvoie vrai si c'est fait.
+pub const JS_SUIVANT: &str = r#"(function(){
+const v=e=>e&&e.offsetParent!==null&&!e.disabled&&e.getAttribute('aria-disabled')!=='true';
+const n=document.querySelector('a[rel=next]');if(v(n)){n.click();return true}
+const l=document.querySelector('link[rel=next]');if(l&&l.href&&l.href!==location.href){location.href=l.href;return true}
+const re=/^(page suivante|suivant|suivante|voir plus|voir plus de produits|afficher plus|afficher plus de produits|charger plus|plus de produits|›|»|>)$/i;
+const b=[...document.querySelectorAll('a,button')].find(e=>v(e)&&(re.test((e.innerText||'').replace(/\s+/g,' ').trim())||/suivant|next page|page suivante/i.test(e.getAttribute('aria-label')||'')));
+if(b){b.scrollIntoView();b.click();return true}return false})()"#;
+
+/// Lit la réponse du script JS_LIRE : (produits, vérification anti-robot affichée).
+pub fn lire_releve(json: &str) -> (Vec<crate::magasins::Trouve>, bool) {
+    let v: serde_json::Value = serde_json::from_str(json).unwrap_or_default();
+    let mut t = vec![];
+    for p in v["produits"].as_array().into_iter().flatten() {
+        let (Some(url), Some(prix)) = (p["url"].as_str(), p["prix"].as_f64()) else { continue };
+        t.push(crate::magasins::Trouve {
+            url: url.to_string(),
+            infos: Infos {
+                nom: entites(p["nom"].as_str().unwrap_or("")),
+                prix: Some(prix).filter(|x| *x > 0.0),
+                prix_normal: p["barre"].as_f64().filter(|b| *b > prix * 1.005),
+                devise: "EUR".into(),
+                image: p["image"].as_str().filter(|s| s.starts_with("http")).map(String::from),
+                dispo: p["dispo"].as_bool(),
+                categorie: String::new(),
+            },
+        });
+    }
+    (t, v["verif"].as_bool().unwrap_or(false))
+}
+
+/// Produits relevés dans le navigateur : (magasin, rayon, produit).
+static RELEVES: Mutex<Vec<(String, String, crate::magasins::Trouve)>> = Mutex::new(Vec::new());
+
+pub fn recevoir_releve(magasin: &str, rayon: &str, v: Vec<crate::magasins::Trouve>) {
+    RELEVES.lock().unwrap().extend(v.into_iter().map(|t| (magasin.to_string(), rayon.to_string(), t)));
+}
+
+/// Site à ouvrir dans le navigateur d'Outils (demandé par le catalogue).
+pub static OUVRIR_DANS_NAVIGATEUR: Mutex<Option<String>> = Mutex::new(None);
+
+/// « Promos fruits et légumes | E.Leclerc » → « Promos fruits et légumes ».
+pub fn rayon_de_titre(titre: &str) -> String {
+    let t = titre.split(['|', '–', '—']).next().unwrap_or(titre);
+    let t = t.split(" - ").next().unwrap_or(t).trim();
+    t.chars().take(60).collect()
 }
