@@ -1,6 +1,6 @@
 # Nouveautés d'Outils
 
-## Prochaine version
+## 0.18.0 — Catalogue de prix, réinventer le PC, téléphone 0.9 et Linux 0.4
 ### Téléphone
 - 🔭 Ciel en réalité augmentée : pointe le téléphone vers le ciel, les étoiles, planètes et constellations apparaissent par-dessus la caméra
 - 🔎 Mon PC › Fichiers : cherche sur le PC en français (« pdf reçu sur discord », « photos de cet été »)
