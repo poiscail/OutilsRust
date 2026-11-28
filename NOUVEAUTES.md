@@ -1,6 +1,14 @@
 # Nouveautés d'Outils
 
 ## Prochaine version
+### Téléphone
+- 10 nouveautés venues du PC : 🤖 combat de robots codés, 🎡 roue de la fortune, 🔐 escape game, et une nouvelle rubrique 🔭 Sciences (planétarium, système solaire en 3D, simulateur de physique, écosystème, évolution en direct, aide aux maths, tableau périodique)
+- Démarrage plus rapide : ces outils ne se chargent qu'à leur première ouverture
+### Corrections
+- Sécurité du PC : la vérification « exécution automatique des clés USB » regardait la mauvaise valeur
+- Agent : ranger le dossier Images ne crée plus de dossier « Images/Images »
+- Fichiers sans dossiers : recherche plus rapide sur les gros disques
+- Dessiner sur l'écran : presque plus de processeur utilisé quand on ne dessine pas
 ### Réinventer le PC
 - 🗂 Fichiers sans dossiers : retrouve un fichier en disant ce que c'est (« photos de la plage cet été », « pdf reçu sur discord »)
 - 🤖 Agent : écris ce que tu veux, Outils prépare un plan et enchaîne les actions (ranger, compresser, chercher, prévenir…), avec un bouton pour tout remettre comme avant

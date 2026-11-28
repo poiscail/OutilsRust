@@ -666,7 +666,7 @@ impl Outil for RaccourcisOutils {
                 let r = Raccourci { ctrl: m.ctrl, alt: m.alt, maj: m.shift, win: false, vk: v, outil: self.choisi.clone() };
                 if !(r.ctrl || r.alt || r.win) && !(0x70..=0x87).contains(&v) {
                     self.message = "Ajoute Ctrl ou Alt (ou prends une touche F1–F12), sinon la touche ne servirait plus qu'à ça.".into();
-                } else if EXISTANTS.iter().any(|(t, _)| *t == texte_raccourci(&r).replace("Maj", "Maj")) || self.liste.iter().any(|x| x.ctrl == r.ctrl && x.alt == r.alt && x.maj == r.maj && x.vk == r.vk) {
+                } else if EXISTANTS.iter().any(|(t, _)| *t == texte_raccourci(&r)) || self.liste.iter().any(|x| x.ctrl == r.ctrl && x.alt == r.alt && x.maj == r.maj && x.vk == r.vk) {
                     self.message = format!("{} est déjà utilisé.", texte_raccourci(&r));
                 } else {
                     self.message = format!("✔ {} ouvre maintenant « {} »", texte_raccourci(&r), r.outil);

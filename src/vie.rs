@@ -554,7 +554,7 @@ impl Outil for Evolution {
             }
             p.text(zone.left_top() + Vec2::new(10.0, 8.0), egui::Align2::LEFT_TOP, format!("Meilleure de la génération {} · {:.0} cm", gen, (b.centre() - Corps::nouveau(c).centre()) / 2.0), FontId::proportional(14.0), Color32::BLACK);
         } else {
-            p.text(zone.center(), egui::Align2::CENTER_CENTER, "Clique « Faire évoluer » !", FontId::proportional(22.0), Color32::BLACK);
+            p.text(zone.center(), egui::Align2::CENTER_CENTER, "Appuie sur « Faire évoluer » !", FontId::proportional(22.0), Color32::BLACK);
         }
         // progrès au fil des générations
         let (g, _) = ui.allocate_exact_size(Vec2::new(zone.width(), 100.0), Sense::hover());

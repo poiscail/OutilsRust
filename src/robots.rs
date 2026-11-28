@@ -350,7 +350,7 @@ impl Outil for CombatRobots {
         let mut action: Option<(usize, i32)> = None;
         let regles = &mut self.mes[k].regles;
         for (i, (c, a)) in regles.iter_mut().enumerate() {
-            ui.horizontal(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 ui.label(RichText::new(format!("{}.", i + 1)).weak());
                 ui.label("Si");
                 egui::ComboBox::from_id_salt(("cond", k, i)).selected_text(CONDITIONS.iter().find(|x| x.0 == *c).map(|x| x.1).unwrap_or("")).show_ui(ui, |ui| {
@@ -408,7 +408,7 @@ impl Outil for CombatRobots {
             }
         });
         let choisis: Vec<Robot> = tous.iter().zip(&self.participants).filter(|(_, p)| **p).map(|(r, _)| r.clone()).collect();
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             if ui.add_enabled((2..=4).contains(&choisis.len()), egui::Button::new(RichText::new("⚔ Lancer le combat").strong())).on_disabled_hover_text("Choisis de 2 à 4 robots").clicked() {
                 self.combat = Some(Combat::nouveau(choisis));
             }

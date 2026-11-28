@@ -431,6 +431,9 @@ pub fn faire(e: &Etape, journal: &Journal, stop: &AtomicBool, dire: &dyn Fn(Stri
                     continue;
                 }
                 let sous = dossier_rangement(Genre::de(&p));
+                if d.file_name().is_some_and(|n| n.to_string_lossy().eq_ignore_ascii_case(sous)) {
+                    continue;
+                }
                 if deplacer(&p, d.join(sous).join(p.file_name().unwrap()), journal) {
                     n += 1;
                     dossiers.insert(sous);

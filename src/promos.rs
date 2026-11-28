@@ -49,10 +49,11 @@ fn maintenant() -> u64 {
 /// SteamID du dernier compte connecté (loginusers.vdf).
 pub fn steamid_dans(vdf: &str) -> Option<String> {
     let re = regex::Regex::new(r#""(7656\d{13})"\s*\{([^}]*)\}"#).ok()?;
+    let recent = regex::Regex::new(r#""MostRecent"\s*"1""#).ok()?;
     let mut premier = None;
     for c in re.captures_iter(vdf) {
         let bloc = &c[2];
-        if regex::Regex::new(r#""MostRecent"\s*"1""#).ok()?.is_match(bloc) {
+        if recent.is_match(bloc) {
             return Some(c[1].to_string());
         }
         premier.get_or_insert(c[1].to_string());

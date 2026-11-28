@@ -17,11 +17,13 @@ pub fn location_ssdp(r: &str) -> Option<String> {
 /// (type de service, URL de contrôle) de la connexion WAN dans la description de la box.
 pub fn service_wan(xml: &str, base: &str) -> Option<(String, String)> {
     let re = regex::Regex::new(r"(?s)<service>(.*?)</service>").unwrap();
+    let re_type = regex::Regex::new(r"<serviceType>(.*?)</serviceType>").unwrap();
+    let re_ctrl = regex::Regex::new(r"<controlURL>(.*?)</controlURL>").unwrap();
     for c in re.captures_iter(xml) {
         let s = &c[1];
-        let typ = regex::Regex::new(r"<serviceType>(.*?)</serviceType>").unwrap().captures(s)?[1].trim().to_string();
+        let typ = re_type.captures(s)?[1].trim().to_string();
         if typ.contains("WANIPConnection") || typ.contains("WANPPPConnection") {
-            let ctrl = regex::Regex::new(r"<controlURL>(.*?)</controlURL>").unwrap().captures(s)?[1].trim().to_string();
+            let ctrl = re_ctrl.captures(s)?[1].trim().to_string();
             let url = if ctrl.starts_with("http") { ctrl } else { format!("{}/{}", base.trim_end_matches('/'), ctrl.trim_start_matches('/')) };
             return Some((typ, url));
         }

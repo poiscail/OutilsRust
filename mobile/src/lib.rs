@@ -27,6 +27,18 @@ mod ludique;
 mod quotidien2;
 #[path = "../../src/quotidien3.rs"]
 mod quotidien3;
+#[path = "../../src/robots.rs"]
+mod robots;
+#[path = "../../src/vie.rs"]
+mod vie;
+#[path = "../../src/physique.rs"]
+mod physique;
+#[path = "../../src/fete.rs"]
+mod fete;
+#[path = "../../src/apprendre.rs"]
+mod apprendre;
+#[path = "../../src/espace.rs"]
+mod espace;
 
 mod android;
 mod appli;
@@ -111,7 +123,47 @@ pub struct Fiche {
     pub aide: &'static str,
 }
 
-pub const RUBRIQUES: [(&str, &str); 5] = [("🖥", "PC et réseau"), ("📱", "Téléphone"), ("🎮", "Jeux"), ("♟", "Réflexion"), ("📆", "Au quotidien")];
+pub const RUBRIQUES: [(&str, &str); 6] = [("🖥", "PC et réseau"), ("📱", "Téléphone"), ("🎮", "Jeux"), ("♟", "Réflexion"), ("🔭", "Sciences"), ("📆", "Au quotidien")];
+
+/// Outil créé seulement à sa première ouverture : l'appli démarre plus vite et prend moins de
+/// mémoire (le planétarium lit son catalogue d'étoiles, l'évolution lance un calcul…).
+struct Paresseux {
+    nom: &'static str,
+    cat: outil::Cat,
+    faire: Option<Box<dyn FnOnce() -> Box<dyn Outil>>>,
+    o: Option<Box<dyn Outil>>,
+}
+
+fn paresseux(nom: &'static str, cat: outil::Cat, faire: impl FnOnce() -> Box<dyn Outil> + 'static) -> Box<dyn Outil> {
+    Box::new(Paresseux { nom, cat, faire: Some(Box::new(faire)), o: None })
+}
+
+impl Outil for Paresseux {
+    fn nom(&self) -> &'static str {
+        self.nom
+    }
+    fn cat(&self) -> outil::Cat {
+        self.cat
+    }
+    fn ui(&mut self, ui: &mut egui::Ui) {
+        if self.o.is_none() {
+            if let Some(f) = self.faire.take() {
+                self.o = Some(f());
+            }
+        }
+        if let Some(o) = &mut self.o {
+            o.ui(ui);
+        }
+    }
+    fn tic(&mut self, ctx: &egui::Context) {
+        if let Some(o) = &mut self.o {
+            o.tic(ctx);
+        }
+    }
+    fn resume(&self) -> Option<String> {
+        self.o.as_ref().and_then(|o| o.resume())
+    }
+}
 
 pub fn catalogue() -> Vec<Fiche> {
     let f = |o: Box<dyn Outil>, rubrique, pave, aide| Fiche { outil: o, rubrique, pave, aide };
@@ -159,6 +211,9 @@ pub fn catalogue() -> Vec<Fiche> {
         f(Box::new(minijeux3::Reseau::new()), "Jeux", Aucun, "4 en ligne et morpion contre un PC ou un téléphone du même Wi-Fi."),
         f(Box::new(minijeux3::Clicker::new()), "Jeux", Aucun, "Tape sur le dango !"),
         f(Box::new(ludique::Reflexes::new()), "Jeux", Aucun, "Touche l'écran dès que la couleur change."),
+        f(paresseux("🤖 Combat de robots codés", outil::Cat::Fun, || Box::new(robots::CombatRobots::new())), "Jeux", Aucun, "Programme ton robot avec des règles « Si… alors… » et fais-le combattre. Partage-le avec un code."),
+        f(paresseux("🎡 Roue de la fortune", outil::Cat::Fun, || Box::new(fete::Roue::new())), "Jeux", Aucun, "Une roue à faire tourner : qui fait la vaisselle, quel jeu, quel film…"),
+        f(paresseux("🔐 Escape game", outil::Cat::Fun, || Box::new(fete::EscapeGame::new())), "Jeux", Aucun, "Crée des énigmes à résoudre entre amis."),
         f(Box::new(minijeux4::CourseFrappe::new()), "Jeux", Aucun, "Course de frappe contre un PC ou un téléphone du même Wi-Fi (clavier ⌨ en haut)."),
         // Réflexion
         f(Box::new(minijeux4::SudokuJour::new()), "Réflexion", Chiffres, "La même grille pour tout le monde chaque jour. Touche une case puis un chiffre."),
@@ -167,6 +222,14 @@ pub fn catalogue() -> Vec<Fiche> {
         f(Box::new(minijeux4::QuizDrapeaux::new()), "Réflexion", Aucun, "100 pays : drapeaux et capitales."),
         f(Box::new(minijeux3::MotsMeles::new()), "Réflexion", Aucun, "Glisse le doigt sur les lettres d'un mot."),
         f(Box::new(minijeux3::Frappe::new()), "Réflexion", Aucun, "Vitesse de frappe (clavier ⌨ en haut)."),
+        // Sciences
+        f(paresseux("🌌 Planétarium", outil::Cat::Fun, || Box::new(espace::Planetarium::new())), "Sciences", Aucun, "Le ciel de ce soir au-dessus de chez toi : étoiles, planètes, constellations."),
+        f(paresseux("🪐 Système solaire en 3D", outil::Cat::Fun, || Box::new(espace::SystemeSolaire::new())), "Sciences", Aucun, "Les planètes qui tournent ; glisse pour tourner, accélère le temps."),
+        f(paresseux("🧪 Simulateur de physique", outil::Cat::Fun, || Box::new(physique::Physique::new())), "Sciences", Aucun, "Balles, ressorts et dominos : touche pour lancer, glisse pour tirer."),
+        f(paresseux("🐇 Simulateur d'écosystème", outil::Cat::Fun, || Box::new(vie::EcosystemeOutil::new())), "Sciences", Aucun, "Herbe, lapins et renards dont les gènes évoluent."),
+        f(paresseux("🧬 Évolution en direct", outil::Cat::Fun, || Box::new(vie::Evolution::new())), "Sciences", Aucun, "Des créatures apprennent toutes seules à avancer, génération après génération."),
+        f(paresseux("🧮 Aide aux maths", outil::Cat::Quotidien, || Box::new(apprendre::Maths::new())), "Sciences", Aucun, "Équations, fractions, géométrie, avec les étapes expliquées."),
+        f(paresseux("🧪 Tableau périodique", outil::Cat::Quotidien, || Box::new(apprendre::Periodique::new())), "Sciences", Aucun, "Tous les éléments, avec leur fiche et un quiz."),
         // Au quotidien
         f(Box::new(quotidien2::Meteo::new()), "Au quotidien", Aucun, "Prévisions heure par heure et sur 7 jours."),
         f(Box::new(quotidien2::Agenda::new()), "Au quotidien", Aucun, "Événements et rappels (affichés quand l'appli est ouverte)."),

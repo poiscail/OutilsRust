@@ -401,6 +401,8 @@ pub struct Requete {
     pub taille_max: Option<u64>,
     pub internet: bool,
     pub dossier: Option<PathBuf>,
+    /// dossier des téléchargements (calculé une fois, pas pour chaque fichier)
+    pub telechargements: PathBuf,
     /// mots à trouver (chacun avec ses variantes)
     pub mots: Vec<Vec<String>>,
     /// ce qu'Outils a compris, à afficher
@@ -445,7 +447,7 @@ fn variantes(w: &str) -> Vec<String> {
 
 /// Comprend une demande en français. `maintenant` en secondes.
 pub fn comprendre(q: &str, maintenant: i64) -> Requete {
-    let mut r = Requete::default();
+    let mut r = Requete { telechargements: dossiers_perso()[0].2.clone(), ..Default::default() };
     let bas = q.to_lowercase().replace(['’', '\''], " ");
     let w: Vec<&str> = bas.split(|c: char| !(c.is_alphanumeric() || c == '-')).filter(|s| !s.is_empty()).collect();
     let jour0 = maintenant.div_euclid(86400);
@@ -650,7 +652,7 @@ pub fn note(f: &Fiche, r: &Requete) -> Option<usize> {
     if f.taille < r.taille_min || r.taille_max.is_some_and(|m| f.taille > m) {
         return None;
     }
-    if r.internet && f.source.is_empty() && !dossiers_perso()[0].2.as_path().eq(f.chemin.parent().unwrap_or(Path::new(""))) {
+    if r.internet && f.source.is_empty() && f.chemin.parent() != Some(r.telechargements.as_path()) {
         return None;
     }
     if let Some(d) = &r.dossier {

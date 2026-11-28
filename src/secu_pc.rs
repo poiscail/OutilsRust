@@ -521,7 +521,7 @@ pub fn controles(r: &BTreeMap<String, String>, uac: Option<u32>, rdp: Option<u32
     c.push(Controle { nom: "Disque chiffré (BitLocker)", ok: match v("bitlocker").as_str() { "On" => Some(true), "Off" => Some(false), _ => None }, detail: "Si le PC est volé, personne ne peut lire le disque. (Pas disponible sur Windows Famille : utilise le « chiffrement de l'appareil » s'il est proposé.)".into(), poids: 5, reparer: Some("ms-settings:deviceencryption") });
     c.push(Controle { nom: "Démarrage sécurisé (Secure Boot)", ok: vrai("secureboot"), detail: "Empêche les virus de se lancer avant Windows. Se règle dans le BIOS.".into(), poids: 5, reparer: None });
     c.push(Controle { nom: "Isolation du noyau (intégrité de la mémoire)", ok: hvci.map(|x| x == 1), detail: "Protège le cœur de Windows contre les pilotes malveillants (peut gêner quelques anti-triche anciens).".into(), poids: 3, reparer: Some("windowsdefender://coreisolation") });
-    c.push(Controle { nom: "Exécution automatique des clés USB coupée", ok: autorun.map(|x| x == 255 || x == 0xFF || x >= 0x91), detail: "Une clé USB piégée ne peut rien lancer toute seule.".into(), poids: 2, reparer: Some("autorun") });
+    c.push(Controle { nom: "Exécution automatique des clés USB coupée", ok: autorun.map(|x| x & 0x04 != 0), detail: "Une clé USB piégée ne peut rien lancer toute seule.".into(), poids: 2, reparer: Some("autorun") });
     let admins: Option<u32> = v("admins").parse().ok();
     c.push(Controle { nom: "Peu de comptes administrateurs", ok: admins.map(|n| n <= 2), detail: admins.map(|n| format!("{n} compte(s) administrateur(s)")).unwrap_or_default(), poids: 5, reparer: Some("ms-settings:otherusers") });
     c

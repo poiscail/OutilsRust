@@ -500,7 +500,7 @@ impl Outil for HistoCoupures {
         ui.ctx().request_repaint_after(Duration::from_secs(5));
         let c = self.c.lock().unwrap().clone();
         let semaine: i64 = c.liste.iter().filter(|x| x.1 > maintenant_utc() - 7 * 86400).map(|x| x.1 - x.0).sum();
-        ui.label(format!("{} coupure(s) enregistrée(s) · {} de coupure ces 7 derniers jours", c.liste.len(), crate::quotidien::duree(semaine as u64).replace(" min", " min")));
+        ui.label(format!("{} coupure(s) enregistrée(s) · {} de coupure ces 7 derniers jours", c.liste.len(), crate::quotidien::duree(semaine as u64)));
         if ui.button("📋 Copier le rapport").clicked() {
             let t: String = c.liste.iter().map(|(d, f)| format!("{} → {} ({} s)\n", crate::notes::format_local(*d, off), crate::notes::format_local(*f, off), f - d)).collect();
             ui.ctx().copy_text(t);

@@ -230,8 +230,14 @@ impl Annotation {
             let mut ecran: Option<RgbaImage> = None;
             let mut saisie_montree = false;
             let mut dernier: Option<(usize, Option<Trait>, bool, bool, (i32, i32))> = None;
+            let mut actif = false;
             loop {
-                std::thread::sleep(Duration::from_millis(12));
+                // au repos (rien à l'écran) : on regarde les raccourcis 10 fois par seconde seulement
+                std::thread::sleep(Duration::from_millis(if actif { 12 } else { 100 }));
+                {
+                    let e = etat.lock().unwrap();
+                    actif = e.dessin || e.loupe || e.projecteur || e.en_cours.is_some() || e.effacer || e.annuler;
+                }
                 let cfg = r.lock().unwrap().clone();
                 let mut e = etat.lock().unwrap();
                 // raccourcis
